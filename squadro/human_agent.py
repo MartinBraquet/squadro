@@ -14,11 +14,11 @@ class MyAgent(Agent):
 
 					if state.get_cur_player() == 0:
 						pawn = int(pos[0] / 100) - 1
-						if 0 <= pawn <= 4 and state.get_pawn_position(0, pawn)[1] <=  pos[1] <= state.get_pawn_position(0, pawn)[1] + 100:
+						if 0 <= pawn <= state.n_pawns - 1 and state.get_pawn_position(0, pawn)[1] <=  pos[1] <= state.get_pawn_position(0, pawn)[1] + 100:
 							valid_clic = True
 					else:
 						pawn = int(pos[1] / 100) - 1
-						if 0 <= pawn <= 4 and state.get_pawn_position(1, pawn)[0] <=  pos[0] <= state.get_pawn_position(1, pawn)[0] + 100:
+						if 0 <= pawn <= state.n_pawns - 1 and state.get_pawn_position(1, pawn)[0] <=  pos[0] <= state.get_pawn_position(1, pawn)[0] + 100:
 							valid_clic = True
 					
 					if valid_clic and state.is_action_valid(pawn):
