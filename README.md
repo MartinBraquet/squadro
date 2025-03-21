@@ -8,17 +8,103 @@
 [![Documentation Status](https://readthedocs.org/projects/squadro/badge/?version=latest)](https://squadro.readthedocs.io/en/latest/?badge=latest)
 [![Downloads](https://static.pepy.tech/badge/squadro)](https://pepy.tech/project/squadro) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Official repository: https://github.com/MartinBraquet/squadro.
-
 ![Alt Text](https://raw.githubusercontent.com/MartinBraquet/squadro/img/demo.gif)
 
-## Installation from PyPI
+
+## Documentation
+
+Click [here](https://martinbraquet.com/index.php/research/#Squadro) for a full description.
+
+
+## Demo
+
+...
+
+## Installation
+
+### From PyPI
 
 ```
 pip install squadro
 ```
 
-If you run into the following error when running the game:
+### From source
+
+```shell
+git clone git@github.com:MartinBraquet/squadro.git
+cd squadro
+```
+
+#### Environment
+
+If not already done, create a virtual environment using your favorite environment manager. For instance using conda:
+
+```shell
+conda create -n squadro python=3.12
+conda activate squadro
+```
+
+#### Prerequisites
+
+If running on a Linux machine without intent to use a GPU, run this beforehand to install only the CPU version
+of the `pytorch` library:
+
+```shell
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+#### Main Installation
+
+Install the package in editable mode:
+
+```shell
+pip install -e .
+```
+
+## Usage
+
+This package can be used in the following ways:
+
+### Training
+
+One can train a model from scratch via:
+
+```python
+from squadro.train import Trainer
+
+trainer = Trainer(
+    model_path='results/tolstoy',  # output directory where the model will be saved
+    training_data_path='https://www.gutenberg.org/cache/epub/2600/pg2600.txt',  # dataset URL or local path
+    eval_interval=10,  # when to evaluate the model
+    batch_size=4,  # batch size
+    block_size=16,  # block size (aka context length)
+    n_layer=2,  # number of layers
+    n_head=4,  # number of attention heads per layer
+    n_embd=32,  # embedding dimension
+    dropout=0.2,  # dropout rate
+    learning_rate=0.05,  # learning rate
+    min_lr=0.005,  # minimum learning rate
+    beta2=0.99,  # adam beta2 (should be reduced for larger models / datasets)
+)
+trainer.run()
+```
+
+It should take a few minutes to train on a typical CPU (8-16 cores), and it is much faster on a GPU.
+
+Note that there are many more parameters to tweak, if desired. See all of them in the doc:
+
+```python
+help(Trainer)
+```
+
+It will stop training when the evaluation loss stops improving. Once done, one can use the model; see the next
+section below (setting the appropriate value for `model_path`, e.g., `'...'`).
+
+### Play
+
+#### Preliminaries
+
+If you run into the following error when launching the game:
 ```
 libGL error: failed to load driver
 ```
@@ -28,7 +114,7 @@ Then try setting the following environment variable beforehand:
 export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
 ```
 
-### Usage
+#### Play against another human
 
 To play the game, run the following command:
 ```
@@ -36,72 +122,75 @@ python -m squadro
 ```
 
 
-## Installation from Source
 
-```
-pip install -r requirements.txt
-```
+To access all the parameters to play, see the doc:
 
-## Documentation
-
-Click [here](https://martinbraquet.com/index.php/research/#Squadro) for a full description.
-
-Visualization of the convolutional neural network:
-
-```
-nn_visualization.ipynb
+```python
+help(....__init__)  # for the arguments to ...
+help(....help_text_config)  # for the arguments to ...
 ```
 
-![](https://raw.githubusercontent.com/MartinBraquet/squadro/main/src/squadro/nn1.png)
+#### Play against your trained AI
 
-![](https://raw.githubusercontent.com/MartinBraquet/squadro/main/src/squadro/nn2.png)
+After training your AI as described in the [Training](#Training) section, you can play against her using:
 
-## Training
-
-Train the model and save it as `model.pt`.
-
-```
-squadro_training.ipynb
+```python
 ```
 
-Accuracy vs epochs.
+#### Play against a benchmarked AI
 
-![](https://raw.githubusercontent.com/MartinBraquet/squadro/main/src/squadro/accuracy.png)
+If you do not want to train a model, as described in the [Training](#Training) section, you can still play against
+a benchmarked model available online. After passing `init_from='online'`, you can set `model_path` to any of those
+currently supported models:
 
-Loss vs epochs.
+| `model_path` | # layers | # heads | embed dims | # params | size   |
+|--------------|----------|---------|------------|----------|--------|
+| `...`        | 12       | 12      | 768        | 124M     | 500 MB |
 
-![](https://raw.githubusercontent.com/MartinBraquet/squadro/main/src/squadro/loss.png)
+Note that the first time you use a model, it needs to be downloaded from the internet; so it can take a few minutes.
 
-## Test
+Example:
 
-Test in Jupiter Notebook. The model can be loaded from the training above in `model.pt` or from the 
-default precise model in `model_precise.pt`.
-
-```
-squadro_test.ipynb
-```
-
-Test in Python.
-
-```
-python src/squadro/drawing.py
+```python
+...
 ```
 
-## Tools
+### Profiling
 
-Draw a digit and save it as a PNG file.
+You can also profile (memory, CPU and GPU usage, etc.) and benchmark the training process via:
 
+```python
+...(
+    profile=True,
+    profile_dir='profile_logs',
+    ...
+)
 ```
-user_input_drawing.ipynb
+
+Then you can launch tensorboard and open http://localhost:6006 in your browser to watch in real time (or after hand) the training process.
+
+```shell
+tensorboard --logdir=profile_logs
 ```
 
-## Issues / Bug reports / Feature requests
+### User Interface
 
-Please open an issue.
+...
+
+## Tests
+
+```shell
+pytest squadro
+```
+
+## Feedback
+
+For any issue / bug report / feature request,
+open an [issue](https://github.com/MartinBraquet/squadro/issues).
 
 ## Contributions
 
-Contributions are welcome. Please check the outstanding issues and feel free to open a pull request.
+To provide upgrades or fixes, open a [pull request](https://github.com/MartinBraquet/squadro/pulls).
 
 ### Contributors
 

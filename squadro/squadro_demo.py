@@ -12,18 +12,18 @@ def main(agent_0, agent_1, time_out, sleep_time):
 	screen = pygame.display.set_mode((n_tiles * 100, n_tiles * 100))
 
 	# Ressourses
-	tile = pygame.image.load("resources/tile.png")
-	corner = pygame.image.load("resources/corner.png")
+	tile = pygame.image.load("../resources/tile.png")
+	corner = pygame.image.load("../resources/corner.png")
 	start_l = [pygame.image.load("resources/start_" + str(x) + "_l.png") for x in range(1, 4)]
 	start_b = [pygame.image.load("resources/start_" + str(x) + "_b.png") for x in range(1, 4)]
 	start_r = [pygame.image.load("resources/start_" + str(x) + "_r.png") for x in range(1, 4)]
 	start_t = [pygame.image.load("resources/start_" + str(x) + "_t.png") for x in range(1, 4)]
-	yellow_pawn = pygame.image.load("resources/yellow_pawn.png")
-	red_pawn = pygame.image.load("resources/red_pawn.png")
-	yellow_pawn_ret = pygame.image.load("resources/yellow_pawn_ret.png")
-	red_pawn_ret = pygame.image.load("resources/red_pawn_ret.png")
-	yellow_pawn_fin = pygame.image.load("resources/yellow_pawn_fin.png")
-	red_pawn_fin = pygame.image.load("resources/red_pawn_fin.png")
+	yellow_pawn = pygame.image.load("../resources/yellow_pawn.png")
+	red_pawn = pygame.image.load("../resources/red_pawn.png")
+	yellow_pawn_ret = pygame.image.load("../resources/yellow_pawn_ret.png")
+	red_pawn_ret = pygame.image.load("../resources/red_pawn_ret.png")
+	yellow_pawn_fin = pygame.image.load("../resources/yellow_pawn_fin.png")
+	red_pawn_fin = pygame.image.load("../resources/red_pawn_fin.png")
 
 	cur_state = SquadroState()
 	agents = [getattr(__import__(agent_0), 'MyAgent')(), getattr(__import__(agent_1), 'MyAgent')()]

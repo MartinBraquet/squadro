@@ -1,5 +1,4 @@
 import minimax
-from state import State
 
 """
 Class that represents a agent.

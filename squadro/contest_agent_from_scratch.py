@@ -9,7 +9,7 @@ import logging
 import random
 
 run_folder = './run/'
-model_path = 'model/contest_agent.pt'
+model_path = '../model/contest_agent_from_scratch.pt'
 
 class DeepNetwork(nn.Module):
     def __init__(self):
@@ -119,7 +119,7 @@ class MyAgent(AlphaBetaAgent):
         #### MCTS
         root_value = self.evaluateLeaf(root, 0)
         n = 1
-        #while time() - self.start_time < self.max_time: # TO REPLACE for contest
+        # while time() - self.start_time < self.max_time and n < 50: # TO REPLACE for contest
         while n < self.MC_steps:
             #print(time() - self.start_time)
             #logger_mcts.info('***************************')
@@ -156,8 +156,6 @@ class MyAgent(AlphaBetaAgent):
         self.results = np.array(results)
         self.results = np.transpose(np.reshape(self.results, newshape=[-1,1]))
         #print('{} {} {} {}'.format(self.id, l1, l2, pi))
-        
-        #print_state(state)
         
         return best_move
   
@@ -344,7 +342,7 @@ class MCTS():
                 
                 U = self.cpuct * ((1-epsilon) * edge.stats['P'] + epsilon * nu[idx]) * np.sqrt(Nb) / (1 + edge.stats['N'])
                 #U = self.cpuct * ((1-epsilon) + epsilon * nu[idx]) * np.sqrt(Nb) / (1 + edge.stats['N'])
-                #U = self.cpuct * np.sqrt(Nb) / (1 + edge.stats['N'])
+                U = self.cpuct * np.sqrt(Nb) / (1 + edge.stats['N'])
                    
                 Q = edge.stats['Q']
 

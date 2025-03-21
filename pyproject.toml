@@ -2,24 +2,51 @@
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+
+[tool.setuptools]
+packages = ["squadro"]
+
 [project]
 name = "squadro"
-version = "{{VERSION}}"
-dependencies = [
-    'torch',
-    'torchvision',
-    'Pillow',
-]
+version = "0.1.0"
 authors = [
-  { name="Martin" },
+    { name = "Martin" },
 ]
-description = "Squadro game"
+description = "Squadro board game"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+]
+dependencies = [
+    'pandas',
+    'pygame',
+    'numpy',
+    'torch',
+    'torchvision',
+    'Pillow',
+]
+
+
+[project.optional-dependencies]
+all = ["squadro[dev, testing]"]
+dev = [
+    "black",
+    "isort",
+    "flake8",
+    "flake8-pyproject",
+    "nox",
+    "notebook",
+    'pip-tools',
+    'build',
+]
+testing = [
+    "pytest",
+    "pytest-cov",
+    "pytest-env",
+    "pytest-html",
 ]
 
 [tool.setuptools.package-data]
