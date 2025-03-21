@@ -154,21 +154,21 @@ class Board:
         self.n_pawns = n_pawns
         self.screen = pygame.display.set_mode((n_tiles * 100, n_tiles * 100))
 
-        # Ressourses
-        self.tile = pygame.image.load("../resources/tile.png")
-        self.corner = pygame.image.load("../resources/corner.png")
+        # Resources
+        self.tile = pygame.image.load("resources/tile.png")
+        self.corner = pygame.image.load("resources/corner.png")
         self.start_l = [pygame.image.load("resources/start_" + str(x) + "_l.png") for x in range(1, 4)]
         self.start_b = [pygame.image.load("resources/start_" + str(x) + "_b.png") for x in range(1, 4)]
         self.start_r = [pygame.image.load("resources/start_" + str(x) + "_r.png") for x in range(1, 4)]
         self.start_t = [pygame.image.load("resources/start_" + str(x) + "_t.png") for x in range(1, 4)]
-        self.yellow_pawn = pygame.image.load("../resources/yellow_pawn.png")
-        self.red_pawn = pygame.image.load("../resources/red_pawn.png")
+        self.yellow_pawn = pygame.image.load("resources/yellow_pawn.png")
+        self.red_pawn = pygame.image.load("resources/red_pawn.png")
         self.yellow_pawn_ret = pygame.image.load(
-            "../resources/yellow_pawn_ret.png")
-        self.red_pawn_ret = pygame.image.load("../resources/red_pawn_ret.png")
+            "resources/yellow_pawn_ret.png")
+        self.red_pawn_ret = pygame.image.load("resources/red_pawn_ret.png")
         self.yellow_pawn_fin = pygame.image.load(
-            "../resources/yellow_pawn_fin.png")
-        self.red_pawn_fin = pygame.image.load("../resources/red_pawn_fin.png")
+            "resources/yellow_pawn_fin.png")
+        self.red_pawn_fin = pygame.image.load("resources/red_pawn_fin.png")
 
     def draw_board(self, cur_state):
         # Draw the tiles

@@ -21,7 +21,7 @@ def main(path, new):
     # Torchvision contains a link to download the FashionMNIST dataset. Let's first 
     # store the training and test sets.
     
-    train_data = SquadroDataset(path ='../data/smart_agent_data.csv')
+    train_data = SquadroDataset(path ='data/smart_agent_data.csv')
     
     # We now divide the training data in training set and validation set.
     n_train = len(train_data)
