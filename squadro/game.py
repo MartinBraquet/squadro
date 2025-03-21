@@ -16,7 +16,7 @@ Runs the game
 USE_TIMER = False
 
 
-def main(agent_0, agent_1, time_out, first):
+def main(agent_0='human_agent', agent_1='human_agent', time_out=900, first=-1):
     # Initialisation
     pygame.init()
     n_tiles = 7
@@ -289,6 +289,10 @@ class TimerDisplay(Thread):
                 # self.board.show_timer(self.times_left)
                 pygame.display.flip()
                 delta += 1
+
+
+def run():
+    main()
 
 
 if __name__ == "__main__":
