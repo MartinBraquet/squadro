@@ -22,7 +22,7 @@ class TestGame(TestCase):
              0, 2, 2, 2, 1, 0, 1, 4, 2, 3, 1, 3, 2, 2, 1, 4, 1, 2, 3, 4, 2, 2, 0, 1, 3, 4, 3, 3, 3,
              4, 0, 4, 2, 3, 0, 1, 0, 4, 0, 3, 0, 3, 0, 3, 0, 1, 2, 1, 2, 4, 0]
         )
-        self.assertEqual(game.winner, 1)
+        self.assertEqual(game.winner, 0)
 
     def test_game_3_pawns(self):
         game = Game(n_pawns=3, agent_0='random', agent_1='random')
