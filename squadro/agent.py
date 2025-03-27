@@ -3,7 +3,7 @@ from squadro import minimax
 
 class Agent:
     """
-    Class that represents a agent.
+    Class that represents an agent.
     """
 
     def __repr__(self):
@@ -29,6 +29,11 @@ class Agent:
         game it will be either 0 if we play first of 1 otherwise.
         """
         self.id = id
+
+    def to_dict(self):
+        return {
+            'name': self.get_name(),
+        }
 
 
 class AlphaBetaAgent(Agent):
