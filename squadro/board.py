@@ -184,10 +184,14 @@ class Board:
 def handle_events():
     # Events
     for event in pygame.event.get():
-        # Quit when pressing the X button
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            exit(0)
+        check_quit(event)
+
+
+def check_quit(event):
+    # Quit when pressing the X button
+    if event.type == pygame.QUIT:
+        pygame.quit()
+        exit(0)
 
 
 def get_position_from_click():
@@ -202,7 +206,7 @@ def pawn_to_board_position(pawn_pos):
 
 def board_to_pawn_position(board_pos):
     """
-    >>> board_to_pawn_position((100, 200))
+    >>> board_to_pawn_position((101, 200))
     (1, 2)
     >>> board_to_pawn_position(pawn_to_board_position((1, 2)))
     (1, 2)
