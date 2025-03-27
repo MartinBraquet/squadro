@@ -86,8 +86,7 @@ class SquadroState(State):
         self.winner = 1 - player
 
     def set_invalid_action(self, player):
-        self.invalid_player = player
-        self.winner = 1 - player
+        raise ValueError(f'Invalid action for player {player}')
 
     def get_pawn_position(self, player, pawn):
         """
