@@ -100,31 +100,15 @@ class RealTimeAnimatedGame(Game):
         self.board = Board(self.n_pawns)
         self.draw()
 
-            if state.is_action_valid(action):
-                state.apply_action(action)
-                last_action = action
-            else:
-                state.set_invalid_action(cur_player)
+    def run(self):
+        super().run()
+        while True:
+            self.board.display_winner(self.state)
+            handle_events()
+            sleep(.5)
 
-        except TimeoutError:
-            # timer_stop[0] = True
-            state.set_timed_out(cur_player)
-
-        # if USE_TIMER:
-        #     timer.join()
-
-        handle_events()
-
-    # Game finished: display the winner
-    while True:
-        # Draw board
-        board.screen.fill(0)
-        board.draw_board(state)
-        board.display_winner(state)
-
-        # Update screen
-        pygame.display.flip()
-
+    def _post_apply_action(self):
+        self.draw()
         handle_events()
 
     def draw(self):
@@ -135,13 +119,13 @@ class RealTimeAnimatedGame(Game):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-ai0",
-                        help="path to the ai that will play as player 0")
+                        help="path to the AI that will play as player 0")
     parser.add_argument("-ai1",
-                        help="path to the ai that will play as player 1")
+                        help="path to the AI that will play as player 1")
     parser.add_argument("-t",
                         help="time out: total number of seconds credited to each AI player")
     parser.add_argument("-f",
                         help="indicates the player (0 or 1) that plays first; random otherwise")
     _args = parser.parse_args()
 
-    play_animated_game(_args.ai0, _args.ai1, _args.t, _args.f)
+    RealTimeAnimatedGame(_args.ai0, _args.ai1, _args.t, first=_args.f).run()
