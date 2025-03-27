@@ -151,6 +151,12 @@ class SquadroState(State):
         cp.first = self.first
         return cp
 
+    def get_init_args(self):
+        return {
+            'first': self.first,
+            'n_pawns': self.n_pawns,
+        }
+
     def game_over(self):
         """
         Return true if and only if the game is over (game ended, player timed out or made invalid move).
@@ -197,6 +203,9 @@ class SquadroState(State):
         Applies a given action to this state. It assumes that the actions is
         valid. This must be checked with is_action_valid.
         """
+        if not self.is_action_valid(action):
+            self.set_invalid_action(self.cur_player)
+
         fun = get_moves_return if self.returning[self.cur_player][action] else get_moves
         n_moves = fun(self.n_pawns)[self.cur_player][action]
 
