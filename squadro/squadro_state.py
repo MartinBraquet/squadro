@@ -6,9 +6,9 @@ from squadro.state import State
 from squadro.tools.constants import DefaultParams
 
 # Allowed moves
-MOVES = [[1, 3, 2, 3, 1], [3, 1, 2, 1, 3]]
-MOVES_RETURN = [[3, 1, 2, 1, 3], [1, 3, 2, 3, 1]]
-
+MOVES = [[1, 3, 2, 3, 1, 3, 2, 1, 2], [3, 1, 2, 1, 3, 1, 2, 3, 2]]
+MOVES_RETURN = [[3, 1, 2, 1, 3, 1, 2, 3, 2], [1, 3, 2, 3, 1, 3, 2, 1, 2]]
+MAX_PAWNS = len(MOVES[0])
 
 @lru_cache
 def get_moves(n_pawns):
@@ -59,6 +59,7 @@ class SquadroState(State):
             self.cur_player = random.randint(0, 1)
         self.first = self.cur_player
         self.n_pawns = int(n_pawns) if n_pawns is not None else DefaultParams.n_pawns
+        assert 2 <= self.n_pawns <= MAX_PAWNS, f"n_pawns must be between 2 and {MAX_PAWNS}"
         # Position of the pawns
         self.pos = get_init_pos(self.n_pawns)
         # Are the pawns on their return journey ?

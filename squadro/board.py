@@ -153,12 +153,16 @@ class Board:
 
     def display_winner(self, state):
         """Print the winner"""
+        assert state.game_over(), "Game is not over"
         font = pygame.font.Font("freesansbold.ttf", 48)
 
-        if state.get_winner() == 0:
+        winner = state.get_winner()
+        if winner == 0:
             text = font.render(" Yellow wins! ", True, yellow, grey)
-        else:
+        elif winner == 1:
             text = font.render(" Red wins! ", True, red, grey)
+        else:
+            raise ValueError(f"Invalid winner: {winner}")
 
         textRect = text.get_rect()
         textRect.center = (self.width // 2, self.height // 2)
