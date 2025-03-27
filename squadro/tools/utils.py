@@ -6,6 +6,7 @@ AGENTS = {
     'random': random_agent,
     'basic': basic_agent,
 }
+AVAILABLE_AGENTS = list(AGENTS.keys())
 
 
 def get_agent(agent_name):
