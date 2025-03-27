@@ -1,3 +1,5 @@
+from squadro.tools.utils import AGENTS
+
 # Squadro
 
 
@@ -117,17 +119,38 @@ export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
 #### Play against another human
 
 To play the game, run the following command:
-```
-python -m squadro
-```
 
+```python
+from squadro.animated_game import RealTimeAnimatedGame
+
+RealTimeAnimatedGame(n_pawns=5, first=None).run()
+```
 
 
 To access all the parameters to play, see the doc:
 
 ```python
-help(....__init__)  # for the arguments to ...
-help(....help_text_config)  # for the arguments to ...
+from squadro.animated_game import RealTimeAnimatedGame
+
+help(RealTimeAnimatedGame.__init__)  # for the arguments to RealTimeAnimatedGame
+```
+
+#### Play against the computer
+
+To play against the computer, set `agent_1` to a value in:
+
+```python
+from squadro.tools.utils import AVAILABLE_AGENTS
+
+print(AVAILABLE_AGENTS)
+```
+
+For instance:
+
+```python
+from squadro.animated_game import RealTimeAnimatedGame
+
+RealTimeAnimatedGame(n_pawns=5, first=None, agent_1='random').run()
 ```
 
 #### Play against your trained AI
