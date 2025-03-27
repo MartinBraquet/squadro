@@ -1,6 +1,7 @@
-from agent import AlphaBetaAgent
-import minimax
 from time import time
+
+from squadro import minimax
+from squadro.agent import AlphaBetaAgent
 
 """
 Smart agent

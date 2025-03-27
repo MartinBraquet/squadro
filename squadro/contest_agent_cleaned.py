@@ -1,12 +1,12 @@
-from agent import AlphaBetaAgent
+import random
 from time import time
+
 import numpy as np
 import torch
-import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
-import logging
-import random
+
+from squadro.agent import AlphaBetaAgent
 
 model_path = 'model/contest_agent3.pt'
 

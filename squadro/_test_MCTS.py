@@ -1,5 +1,4 @@
-from squadro_state import SquadroState
-import numpy as np
+from squadro.squadro_state import SquadroState
 
 agent_0 = 'contest_agent3'
 agent_1 = 'contest_agent3'
@@ -10,9 +9,9 @@ def main():
     agents = [getattr(__import__(agent_0), 'MyAgent')(), getattr(__import__(agent_1), 'MyAgent')()]
     agents[0].set_id(0)
     agents[1].set_id(1)
-    
-    cur_state.cur_pos[0][0] = (100, 400)
-    cur_state.cur_pos[0][1] = (200, 100)
+
+    cur_state.pos[0][0] = (100, 400)
+    cur_state.pos[0][1] = (200, 100)
     cur_state.returning[0][1] = True
     cur_state.finished[0][2] = True
     cur_state.finished[0][3] = True

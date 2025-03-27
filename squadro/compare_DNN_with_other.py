@@ -1,8 +1,8 @@
-from squadro_state import SquadroState
-import numpy as np
-import torch
-import random
 import argparse
+
+import torch
+
+from squadro.squadro_state import SquadroState
 
 # text = 'model200neurons_7layers'
 

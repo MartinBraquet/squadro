@@ -1,8 +1,9 @@
-from squadro_state import SquadroState
-import numpy as np
-import random
 import argparse
-from training import training, save_new_model, print_network
+
+import numpy as np
+
+from squadro.squadro_state import SquadroState
+from squadro.training import training, save_new_model, print_network
 
 n_train = 60
 n_valid = 60

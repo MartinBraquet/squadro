@@ -1,8 +1,10 @@
-import pygame
 import argparse
-from pygame.locals import *
 from time import sleep
-from squadro_state import SquadroState
+
+import pygame
+
+from squadro.squadro_state import SquadroState
+
 
 def main(agent_0, agent_1, time_out, sleep_time):
 	# Initialisation

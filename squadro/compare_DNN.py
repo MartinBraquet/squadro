@@ -1,8 +1,9 @@
-from squadro_state import SquadroState
+import argparse
+
 import numpy as np
 import torch
-import random
-import argparse
+
+from squadro.squadro_state import SquadroState
 
 """
 Runs the game

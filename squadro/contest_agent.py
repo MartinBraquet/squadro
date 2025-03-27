@@ -1,12 +1,13 @@
-from agent import AlphaBetaAgent
-from time import time
-import numpy as np
-import torch
-import torch.optim as optim
-import torch.nn as nn
-import torch.nn.functional as F
 import logging
 import random
+from time import time
+
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+from squadro.agent import AlphaBetaAgent
 
 run_folder = './run/'
 model_path = '../model/contest_agent.pt'
@@ -461,7 +462,7 @@ logger_DISABLED = {
 #logger_mcts.disabled = #logger_DISABLED['mcts']
 
 def render(state, logger):
-    logger.info(state.cur_pos)
+    logger.info(state.pos)
     logger.info('--------------')
     
 def print_state(state):
