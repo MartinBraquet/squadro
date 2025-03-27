@@ -52,7 +52,7 @@ class Game:
                 last_action=last_action,
                 time_left=50,
             )
-            print('player', player, 'action', action)
+            # print('player', player, 'action', action)
             self.action_history.append(action)
 
             if self.state.is_action_valid(action):
