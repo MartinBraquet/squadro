@@ -16,6 +16,8 @@ class Board:
     """
 
     def __init__(self, n_pawns, n_tiles=None):
+        pygame.init()
+
         # Initialise screen
         self.n_pawns = n_pawns
         self.n_tiles = n_tiles if n_tiles is not None else n_pawns + 2
@@ -24,6 +26,7 @@ class Board:
             # pygame.RESIZABLE,
             # pygame.FULLSCREEN
         )
+        self.screen.fill(0)
 
         # Resources
         self.tile = pygame.image.load(RESOURCE_PATH / "tile.png")
@@ -58,6 +61,14 @@ class Board:
     @property
     def height(self):
         return self.screen.get_height()
+
+    def turn_draw(self, state):
+        """
+        Draw all the things for the current turn
+        """
+        self.draw_board(state)
+        self.show_turn(state)
+        pygame.display.flip()
 
     def draw_board(self, state):
         # Draw the tiles
@@ -150,6 +161,7 @@ class Board:
         textRect = text.get_rect()
         textRect.center = ((self.n_tiles - 1) * 100 + 50, 62)
         self.screen.blit(text, textRect)
+        pygame.display.flip()
 
     def display_winner(self, state):
         """Print the winner"""
@@ -183,6 +195,8 @@ class Board:
             textRect2 = text2.get_rect()
             textRect2.center = (self.width // 2, self.height // 2 + 34)
             self.screen.blit(text2, textRect2)
+
+        pygame.display.flip()
 
 
 def handle_events():
