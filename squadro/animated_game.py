@@ -99,53 +99,9 @@ def play_animated_game(
 
         handle_events()
 
-        sleep(sleep_seconds)
-
-
-def handle_timeout(signum, frame):
-    """
-    Define behavior in case of timeout.
-    """
-    raise TimeoutError()
-
-
-def get_action_timed(player, state, last_action, time_left):
-    """
-    Get an action from player with a timeout.
-    """
-    signal.signal(signal.SIGALRM, handle_timeout)
-    signal.setitimer(signal.ITIMER_REAL, time_left)
-    start_time = time()
-    try:
-        action = player.get_action(state, last_action, time_left)
-    finally:
-        signal.setitimer(signal.ITIMER_REAL, 0)
-        exe_time = time() - start_time
-    print('action', action)
-    return action, exe_time
-
-
-class TimerDisplay(Thread):
-
-    def __init__(self, board, cur_player, times_left, stopped):
-        Thread.__init__(self)
-        self.board = board
-        self.cur_player = cur_player
-        self.times_left = times_left
-        self.stopped = stopped
-
-    def run(self):
-        beg_time = time()
-        delta = self.times_left[self.cur_player] % 1
-        # self.board.show_timer(self.times_left)
-        pygame.display.flip()
-
-        while not self.stopped[0] and self.times_left[self.cur_player] > 0:
-            if time() - beg_time >= delta:
-                self.times_left[self.cur_player] -= 1
-                # self.board.show_timer(self.times_left)
-                pygame.display.flip()
-                delta += 1
+    def draw(self):
+        self.board.turn_draw(self.state)
+        self.board.show_timer(self.times_left)
 
 
 if __name__ == "__main__":
