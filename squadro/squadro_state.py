@@ -23,8 +23,8 @@ def get_moves_return(n_pawns):
 # @lru_cache
 def get_init_pos(n_pawns):
     init_pos = [
-        [((i + 1) * 100, (n_pawns + 1) * 100) for i in range(n_pawns)],
-        [((n_pawns + 1) * 100, (i + 1) * 100) for i in range(n_pawns)],
+        [(i + 1, n_pawns + 1) for i in range(n_pawns)],
+        [(n_pawns + 1, i + 1) for i in range(n_pawns)],
     ]
     return init_pos
 
@@ -32,13 +32,35 @@ def get_init_pos(n_pawns):
 # @lru_cache
 def get_init_return_pos(n_pawns):
     init_pos = [
-        [((i + 1) * 100, 0) for i in range(n_pawns)],
-        [(0, (i + 1) * 100) for i in range(n_pawns)],
+        [(i + 1, 0) for i in range(n_pawns)],
+        [(0, i + 1) for i in range(n_pawns)],
     ]
     return init_pos
 
 
 class SquadroState(State):
+    """
+    Player 0 is yellow, starting at the bottom
+    Player 1 is red, starting on the right
+    Coordinates start from the left top corner
+    (X, Y) where X goes downward and Y goes to the right, as in matrices
+    Player 0's moves increase with Y
+    Player 1's moves increase with X
+
+    With n, the number of pawns:
+    The possible positions are from 0 to n+1 (included)
+    Both player's pawns start at n+1
+    Since all pawns move along the same horizontal or vertical line, only the other component
+    is stored
+    For example, the first pawn of P0 moves along Y=1, so we store the X coordinate only
+
+        0 ... n+1    Y
+    0
+    ...       ...
+    n+1   ... ...
+
+    X
+    """
 
     def __init__(self, n_pawns=None, first=None):
         super().__init__()
@@ -47,6 +69,7 @@ class SquadroState(State):
             self.cur_player = first
         else:
             self.cur_player = random.randint(0, 1)
+        self.first = self.cur_player
         self.n_pawns = int(n_pawns) if n_pawns is not None else DefaultParams.n_pawns
         # Position of the pawns
         self.cur_pos = get_init_pos(self.n_pawns)
@@ -55,8 +78,19 @@ class SquadroState(State):
         # Have the pawns completed their journey ?
         self.finished = [[False] * self.n_pawns for _ in range(2)]
 
+    def __repr__(self):
+        return f'turn: {self.cur_player}, winner: {self.winner}'
+
     def __eq__(self, other):
         return self.cur_player == other.cur_player and self.cur_pos == other.cur_pos
+
+    @property
+    def max_pos(self):
+        return self.n_pawns + 1
+
+    @property
+    def n_pawns_to_win(self):
+        return self.n_pawns - 1
 
     def set_timed_out(self, player):
         self.timeout_player = player
@@ -68,29 +102,21 @@ class SquadroState(State):
 
     def get_pawn_position(self, player, pawn):
         """
-        Returns the position of the requested pawn ((x, y) position on the board (i.e. in multiples of 100))
+        Returns the position of the requested pawn ((x, y) position on the board)
         """
         return self.cur_pos[player][pawn]
 
     def get_pawn_advancement(self, player, pawn):
         """
-        Returns the number of tiles the pawn has advanced (i.e. {0, ..., 12})
+        Returns the number of tiles the pawn has advanced, i.e., {0, ..., 2 * (n_pawns + 1)}
         """
         if self.is_pawn_finished(player, pawn):
-            return 12
+            return 2 * self.max_pos
         elif self.is_pawn_returning(player, pawn):
-            if player == 0:
-                nb = self.get_pawn_position(player, pawn)[1] / 100
-            else:
-                nb = self.get_pawn_position(player, pawn)[0] / 100
-            return int(6 + nb)
+            nb = self.get_pawn_position(player, pawn)[1 - player]
+            return int(self.max_pos + nb)
         else:
-            if player == 0:
-                nb = (100 * (self.n_pawns + 1) -
-                      self.get_pawn_position(player, pawn)[1]) / 100
-            else:
-                nb = (100 * (self.n_pawns + 1) -
-                      self.get_pawn_position(player, pawn)[0]) / 100
+            nb = self.max_pos - self.get_pawn_position(player, pawn)[1 - player]
             return int(nb)
 
     def is_pawn_returning(self, player, pawn):
@@ -118,32 +144,30 @@ class SquadroState(State):
         cp.returning = deepcopy(self.returning)
         cp.finished = deepcopy(self.finished)
         cp.n_pawns = self.n_pawns
+        cp.first = self.first
         return cp
 
     def game_over(self):
         """
         Return true if and only if the game is over (game ended, player timed out or made invalid move).
         """
-        if self.winner != None:
+        if self.winner is not None:
             return True
         return self.game_over_check()
 
     def game_over_check(self):
         """
-        Checks if a player succeeded to win the game, i.e. move self.n_pawns - 1 pawns to the other side and back again.
+        Checks if a player succeeded to win the game, i.e. move n_pawns - 1 pawns to the other side and back again.
         """
-        if sum(self.finished[0]) >= self.n_pawns - 1:
-            self.winner = 0
-            return True
-        elif sum(self.finished[1]) >= self.n_pawns - 1:
-            self.winner = 1
-            return True
-        else:
-            return False
+        for i in range(2):
+            if sum(self.finished[i]) >= self.n_pawns_to_win:
+                self.winner = i
+                return True
+        return False
 
     def get_cur_player(self):
         """
-            Return the index of the current player.
+        Return the index of the current player.
         """
         return self.cur_player
 
@@ -158,10 +182,10 @@ class SquadroState(State):
         """
         Get all the actions that the current player can perform.
         """
-        actions = []
-        for i in range(self.n_pawns):
-            if not self.finished[self.cur_player][i]:
-                actions.append(i)
+        actions = [
+            a for a in range(self.n_pawns)
+            if not self.finished[self.cur_player][a]
+        ]
         return actions
 
     def apply_action(self, action):
@@ -192,32 +216,30 @@ class SquadroState(State):
         if player == 0:
             if not self.returning[player][pawn]:
                 self.cur_pos[player][pawn] = (self.cur_pos[player][pawn][0],
-                                              self.cur_pos[player][pawn][
-                                                  1] - 100)
+                                              self.cur_pos[player][pawn][1] - 1)
                 if self.cur_pos[player][pawn][1] <= 0:
                     self.returning[player][pawn] = True
 
             else:
                 self.cur_pos[player][pawn] = (self.cur_pos[player][pawn][0],
-                                              self.cur_pos[player][pawn][
-                                                  1] + 100)
-                if self.cur_pos[player][pawn][1] >= 100 * (self.n_pawns + 1):
+                                              self.cur_pos[player][pawn][1] + 1)
+                if self.cur_pos[player][pawn][1] >= self.max_pos:
                     self.finished[player][pawn] = True
 
         else:
 
             if not self.returning[player][pawn]:
                 self.cur_pos[player][pawn] = (
-                    self.cur_pos[player][pawn][0] - 100,
+                    self.cur_pos[player][pawn][0] - 1,
                     self.cur_pos[player][pawn][1])
                 if self.cur_pos[player][pawn][0] <= 0:
                     self.returning[player][pawn] = True
 
             else:
                 self.cur_pos[player][pawn] = (
-                    self.cur_pos[player][pawn][0] + 100,
+                    self.cur_pos[player][pawn][0] + 1,
                     self.cur_pos[player][pawn][1])
-                if self.cur_pos[player][pawn][0] >= 100 * (self.n_pawns + 1):
+                if self.cur_pos[player][pawn][0] >= self.max_pos:
                     self.finished[player][pawn] = True
 
     def return_init(self, player, pawn):
@@ -240,12 +262,11 @@ class SquadroState(State):
 
         if player == 0:
             while not ended:
-                opponent_pawn = int(self.cur_pos[0][pawn][1] / 100) - 1
+                opponent_pawn = self.cur_pos[0][pawn][1] - 1
 
                 if not 0 <= opponent_pawn <= self.n_pawns - 1:
                     ended = True
-                elif self.cur_pos[1][opponent_pawn][0] != self.cur_pos[0][pawn][
-                    0]:
+                elif self.cur_pos[1][opponent_pawn][0] != self.cur_pos[0][pawn][0]:
                     ended = True
 
                 else:
@@ -255,14 +276,11 @@ class SquadroState(State):
 
         else:
             while not ended:
-                opponent_pawn = int(self.cur_pos[1][pawn][0] / 100) - 1
+                opponent_pawn = self.cur_pos[1][pawn][0] - 1
 
                 if not 0 <= opponent_pawn <= self.n_pawns - 1:
                     ended = True
-                elif (
-                    self.cur_pos[0][opponent_pawn][1]
-                    != self.cur_pos[1][pawn][1]
-                ):
+                elif self.cur_pos[0][opponent_pawn][1] != self.cur_pos[1][pawn][1]:
                     ended = True
 
                 else:
@@ -274,7 +292,7 @@ class SquadroState(State):
 
     def get_scores(self):
         """
-        Return the scores of each players.
+        Return the scores of each player.
         """
         pass
 

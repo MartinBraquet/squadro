@@ -1,6 +1,7 @@
 import pygame
 
 from squadro.agent import Agent
+from squadro.board import get_position_from_click
 
 
 class MyAgent(Agent):
@@ -11,19 +12,19 @@ class MyAgent(Agent):
 		while not played:
 			for event in pygame.event.get():
 				if event.type == pygame.MOUSEBUTTONUP:
-					pos = pygame.mouse.get_pos()
-					valid_clic = False
+					pos = get_position_from_click()
+					valid_click = False
 
 					if state.get_cur_player() == 0:
-						pawn = int(pos[0] / 100) - 1
-						if 0 <= pawn <= state.n_pawns - 1 and state.get_pawn_position(0, pawn)[1] <=  pos[1] <= state.get_pawn_position(0, pawn)[1] + 100:
-							valid_clic = True
+						pawn = pos[0] - 1
+						if 0 <= pawn <= state.n_pawns - 1 and state.get_pawn_position(0, pawn)[1] <= pos[1] <= state.get_pawn_position(0, pawn)[1] + 1:
+							valid_click = True
 					else:
-						pawn = int(pos[1] / 100) - 1
-						if 0 <= pawn <= state.n_pawns - 1 and state.get_pawn_position(1, pawn)[0] <=  pos[0] <= state.get_pawn_position(1, pawn)[0] + 100:
-							valid_clic = True
+						pawn = pos[1] - 1
+						if 0 <= pawn <= state.n_pawns - 1 and state.get_pawn_position(1, pawn)[0] <= pos[0] <= state.get_pawn_position(1, pawn)[0] + 1:
+							valid_click = True
 					
-					if valid_clic and state.is_action_valid(pawn):
+					if valid_click and state.is_action_valid(pawn):
 						played = True
 						action = pawn
 
