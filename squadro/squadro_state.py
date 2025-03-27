@@ -1,13 +1,26 @@
 import random
 from copy import deepcopy
+from functools import lru_cache
 
-from state import State
+from squadro.state import State
+from squadro.tools.constants import DefaultParams
 
 # Allowed moves
 MOVES = [[1, 3, 2, 3, 1], [3, 1, 2, 1, 3]]
 MOVES_RETURN = [[3, 1, 2, 1, 3], [1, 3, 2, 3, 1]]
 
+@lru_cache
+def get_moves(n_pawns):
+    moves = [m[:n_pawns].copy() for m in MOVES]
+    return moves
 
+@lru_cache
+def get_moves_return(n_pawns):
+    moves = [m[:n_pawns].copy() for m in MOVES_RETURN]
+    return moves
+
+# Removing cache for now to avoid issues when modifying in place the same object
+# @lru_cache
 def get_init_pos(n_pawns):
     init_pos = [
         [((i + 1) * 100, (n_pawns + 1) * 100) for i in range(n_pawns)],
@@ -16,6 +29,7 @@ def get_init_pos(n_pawns):
     return init_pos
 
 
+# @lru_cache
 def get_init_return_pos(n_pawns):
     init_pos = [
         [((i + 1) * 100, 0) for i in range(n_pawns)],
@@ -26,14 +40,16 @@ def get_init_return_pos(n_pawns):
 
 class SquadroState(State):
 
-    def __init__(self, n_pawns=5):
-        self.cur_player = random.randint(0, 1)
-        self.winner = None
-        self.timeout_player = None
-        self.invalid_player = None
-        self.n_pawns = n_pawns
+    def __init__(self, n_pawns=None, first=None):
+        super().__init__()
+        if first is not None:
+            assert first in [0, 1], "first must be 0 or 1"
+            self.cur_player = first
+        else:
+            self.cur_player = random.randint(0, 1)
+        self.n_pawns = int(n_pawns) if n_pawns is not None else DefaultParams.n_pawns
         # Position of the pawns
-        self.cur_pos = get_init_pos(n_pawns)
+        self.cur_pos = get_init_pos(self.n_pawns)
         # Are the pawns on their return journey ?
         self.returning = [[False] * self.n_pawns for _ in range(2)]
         # Have the pawns completed their journey ?
@@ -150,13 +166,11 @@ class SquadroState(State):
 
     def apply_action(self, action):
         """
-        Applies a given action to this state. It assume that the actions is
+        Applies a given action to this state. It assumes that the actions is
         valid. This must be checked with is_action_valid.
         """
-        if not self.returning[self.cur_player][action]:
-            n_moves = MOVES[self.cur_player][action]
-        else:
-            n_moves = MOVES_RETURN[self.cur_player][action]
+        fun = get_moves_return if self.returning[self.cur_player][action] else get_moves
+        n_moves = fun(self.n_pawns)[self.cur_player][action]
 
         for i in range(n_moves):
             ret_before = self.returning[self.cur_player][action]

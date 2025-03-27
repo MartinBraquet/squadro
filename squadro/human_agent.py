@@ -1,5 +1,7 @@
 import pygame
-from agent import Agent
+
+from squadro.agent import Agent
+
 
 class MyAgent(Agent):
 

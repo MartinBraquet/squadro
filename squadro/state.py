@@ -1,83 +1,80 @@
-import minimax
+class State:
+    """
+    State history
+    """
 
-"""
-State history
-"""
+    def __init__(self):
+        self.cur_player = 0
+        self.winner = None
+        self.timeout_player = None
+        self.invalid_player = None
 
-class State():
+    def set_timed_out(self, player):
+        self.timeout_player = player
+        self.winner = 1 - player
 
-  def __init__(self):
-    self.cur_player = 0
-    self.winner = None
-    self.timeout_player = None
-    self.invalid_player = None
-  
-  def set_timed_out(self, player):
-    self.timeout_player = player
-    self.winner = 1 - player
-  
-  def set_invalid_action(self, player):
-    self.invalid_player = player
-    self.winner = 1 - player
+    def set_invalid_action(self, player):
+        self.invalid_player = player
+        self.winner = 1 - player
 
-  """
-  Return a deep copy of this state.
-  """
-  def copy(self):
-    pass
+    def copy(self):
+        """
+        Return a deep copy of this state.
+        """
+        pass
 
-  """
-  Return true if and only if the game is over.
-  """
-  def game_over(self):
-    if self.winner != None:
-      return True
-    self.game_over_check()
-  
-  def game_over_check(self):
-    pass
+    def game_over(self):
+        """
+        Return true if and only if the game is over.
+        """
+        if self.winner is not None:
+            return True
+        self.game_over_check()
 
-  """
-  Return the index of the current player.
-  """
-  def get_cur_player(self):
-    return self.cur_player
+    def game_over_check(self):
+        pass
 
-  """
-  Checks if a given action is valid.
-  """
-  def is_action_valid(self, action):
-    actions = self.get_current_player_actions()
-    return action in actions
+    def get_cur_player(self):
+        """
+        Return the index of the current player.
+        """
+        return self.cur_player
 
-  """
-  Get all the actions that the current player can perform.
-  """
-  def get_current_player_actions(self):
-    pass
+    def is_action_valid(self, action):
+        """
+        Checks if a given action is valid.
+        """
+        actions = self.get_current_player_actions()
+        return action in actions
 
-  """
-  Applies a given action to this state. It assume that the actions is
-  valid. This must be checked with is_action_valid.
-  """
-  def apply_action(self, action):
-    pass
+    def get_current_player_actions(self):
+        """
+        Get all the actions that the current player can perform.
+        """
+        pass
 
-  """
-  Return the scores of each players.
-  """
-  def get_scores(self):
-    pass
+    def apply_action(self, action):
+        """
+        Applies a given action to this state. It assume that the actions is
+        valid. This must be checked with is_action_valid.
+        """
+        pass
 
-  """
-  Get the winner of the game. Call only if the game is over.
-  """
-  def get_winner(self):
-    return self.winner
+    def get_scores(self):
+        """
+        Return the scores of each players.
+        """
+        pass
 
-  """
-  Return the information about the state that is given to students.
-  Usually they have to implement their own state class.
-  """
-  def get_state_data(self):
-    pass
+    def get_winner(self):
+        """
+        Get the winner of the game. Call only if the game is over.
+        """
+        return self.winner
+
+    def get_state_data(self):
+        """
+        Return the information about the state that is given to students.
+        Usually they have to implement their own state class.
+        """
+        pass

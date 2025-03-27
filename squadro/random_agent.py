@@ -1,5 +1,5 @@
 import random
-from agent import Agent
+from squadro.agent import Agent
 from time import sleep
 
 class MyAgent(Agent):

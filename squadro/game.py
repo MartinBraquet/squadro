@@ -6,134 +6,111 @@ from time import sleep, time
 
 import pygame
 
-from squadro.squadro_state import MOVES
-from squadro_state import SquadroState
+from squadro.squadro_state import SquadroState, get_moves
+from squadro.tools.constants import DefaultParams
+from squadro.tools.utils import get_agent
 
 RESOURCE_PATH = Path(__file__).parent / 'resources'
 
 # Timer makes pygame raises this calling pygame.display.flip():
 # pygame.error: Could not make GL context current: BadAccess (attempt to access private resource denied)
-USE_TIMER = False
+# USE_TIMER = True
 
 
-def run(agent_0=None, agent_1=None, time_out=None, first=None):
+sleep_seconds = .2
+
+
+def run(
+    agent_0=None,
+    agent_1=None,
+    time_out=None,
+    first=None,
+    n_pawns=None,
+):
     """
     Runs the game
     """
-    agent_0 = agent_0 if agent_0 is not None else "human_agent"
-    agent_1 = agent_1 if agent_1 is not None else "human_agent"
-    time_out = float(time_out) if time_out is not None else 900.0
-    first = int(first) if first is not None else -1
+    agent_0 = agent_0 if agent_0 is not None else DefaultParams.agent
+    agent_1 = agent_1 if agent_1 is not None else DefaultParams.agent
+    time_out = float(time_out) if time_out is not None else DefaultParams.time_out
+    # first = int(first) if first is not None else DefaultParams.first
+    n_pawns = int(n_pawns) if n_pawns is not None else DefaultParams.n_pawns
 
     # Initialisation
     pygame.init()
-    n_pawns = 4
-    n_tiles = n_pawns + 2
-    board = Board(n_tiles, n_pawns)
-    cur_state = SquadroState(n_pawns=n_pawns)
-    if first != -1:
-        cur_state.cur_player = first
-    agents = [
-        getattr(__import__(agent_0), 'MyAgent')(),
-        getattr(__import__(agent_1), 'MyAgent')()
-    ]
+
+    board = Board(n_pawns)
+    state = SquadroState(n_pawns=n_pawns, first=first)
+    agents = [get_agent(a) for a in (agent_0, agent_1)]
     agents[0].set_id(0)
     agents[1].set_id(1)
-    times_left = [time_out, time_out]
+    times_left = [time_out] * 2
     last_action = None
 
-    while not cur_state.game_over():
+    while not state.game_over():
         # Draw board
         board.screen.fill(0)
-        board.draw_board(cur_state)
-        board.show_turn(cur_state)
+        board.draw_board(state)
+        board.show_turn(state)
+        board.show_timer(times_left)
 
         # Update screen
         pygame.display.flip()
 
         # Make move
-        cur_player = cur_state.get_cur_player()
-        timer_stop = [False]
-        if USE_TIMER:
-            timer = TimerDisplay(board, cur_player, times_left.copy(),
-                                 timer_stop)
-            timer.start()
+        cur_player = state.get_cur_player()
+        # timer_stop = [False]
+        # if USE_TIMER:
+        #     timer = TimerDisplay(board, cur_player, times_left.copy(),
+        #                          timer_stop)
+        #     timer.start()
         try:
-            action, exe_time = get_action_timed(agents[cur_player],
-                                                cur_state.copy(), last_action,
-                                                times_left[cur_player])
-            timer_stop[0] = True
+            action, exe_time = get_action_timed(
+                agents[cur_player],
+                state.copy(),
+                last_action,
+                times_left[cur_player]
+            )
+            # timer_stop[0] = True
             times_left[cur_player] -= exe_time
 
-            if cur_state.is_action_valid(action):
-                cur_state.apply_action(action)
+            if state.is_action_valid(action):
+                state.apply_action(action)
                 last_action = action
             else:
-                cur_state.set_invalid_action(cur_player)
+                state.set_invalid_action(cur_player)
 
         except TimeoutError:
-            timer_stop[0] = True
-            cur_state.set_timed_out(cur_player)
+            # timer_stop[0] = True
+            state.set_timed_out(cur_player)
 
-        if USE_TIMER:
-            timer.join()
+        # if USE_TIMER:
+        #     timer.join()
 
-        # Events
-        for event in pygame.event.get():
-
-            # Quit when pressing the X button
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit(0)
-
-    pygame.quit()
-    exit(0)
+        handle_events()
 
     # Game finished: display the winner
     while True:
         # Draw board
         board.screen.fill(0)
-        board.draw_board(cur_state)
-
-        # Print the winner
-        font = pygame.font.Font("freesansbold.ttf", 48)
-
-        if cur_state.get_winner() == 0:
-            text = font.render(" Yellow wins! ", True, (255, 164, 0),
-                               (34, 34, 34))
-        else:
-            text = font.render(" Red wins! ", True, (150, 0, 0), (34, 34, 34))
-
-        textRect = text.get_rect()
-        textRect.center = (n_tiles * 100 // 2, n_tiles * 100 // 2)
-        board.screen.blit(text, textRect)
-
-        # Print if time-out or invalid action
-        if cur_state.timeout_player != None:
-            font2 = pygame.font.Font("freesansbold.ttf", 18)
-            text2 = font2.render("The opponent timed out", True,
-                                 (255, 255, 255), (34, 34, 34))
-            textRect2 = text2.get_rect()
-            textRect2.center = (n_tiles * 100 // 2, n_tiles * 100 // 2 + 34)
-            board.screen.blit(text2, textRect2)
-        elif cur_state.invalid_player != None:
-            font2 = pygame.font.Font("freesansbold.ttf", 18)
-            text2 = font2.render("The opponent made an invalid move", True,
-                                 (255, 255, 255), (34, 34, 34))
-            textRect2 = text2.get_rect()
-            textRect2.center = (n_tiles * 100 // 2, n_tiles * 100 // 2 + 34)
-            board.screen.blit(text2, textRect2)
+        board.draw_board(state)
+        board.display_winner(state)
 
         # Update screen
         pygame.display.flip()
 
-        for event in pygame.event.get():
+        handle_events()
 
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit(0)
+        sleep(sleep_seconds)
 
-        sleep(1)
+
+def handle_events():
+    # Events
+    for event in pygame.event.get():
+        # Quit when pressing the X button
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            exit(0)
 
 
 def handle_timeout(signum, frame):
@@ -155,16 +132,21 @@ def get_action_timed(player, state, last_action, time_left):
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         exe_time = time() - exe_time
+    print('action', action)
     return action, exe_time
 
 
 class Board:
 
-    def __init__(self, n_tiles, n_pawns):
+    def __init__(self, n_pawns, n_tiles=None):
         # Initialise screen
-        self.n_tiles = n_tiles
         self.n_pawns = n_pawns
-        self.screen = pygame.display.set_mode((n_tiles * 100, n_tiles * 100))
+        self.n_tiles = n_tiles if n_tiles is not None else n_pawns + 2
+        self.screen = pygame.display.set_mode(
+            (self.n_tiles * 100, self.n_tiles * 100),
+            # pygame.RESIZABLE,
+            # pygame.FULLSCREEN
+        )
 
         # Resources
         self.tile = pygame.image.load(RESOURCE_PATH / "tile.png")
@@ -213,11 +195,15 @@ class Board:
         self.screen.blit(self.corner, (n_pixels, n_pixels))
         self.screen.blit(self.corner, (n_pixels, 0))
 
+        moves = get_moves(self.n_pawns)
+
         for i in range(self.n_pawns):
-            self.screen.blit(self.start_l[MOVES[0][i] - 1], (0, 100 * (i + 1)))
-            self.screen.blit(self.start_b[MOVES[0][i] - 1], (100 * (i + 1), n_pixels))
-            self.screen.blit(self.start_r[MOVES[1][i] - 1], (n_pixels, 100 * (i+1)))
-            self.screen.blit(self.start_t[MOVES[1][i] - 1], (100 * (i+1), 0))
+            self.screen.blit(self.start_l[moves[0][i] - 1], (0, 100 * (i + 1)))
+            self.screen.blit(self.start_b[moves[0][i] - 1],
+                             (100 * (i + 1), n_pixels))
+            self.screen.blit(self.start_r[moves[1][i] - 1],
+                             (n_pixels, 100 * (i + 1)))
+            self.screen.blit(self.start_t[moves[1][i] - 1], (100 * (i + 1), 0))
 
         # Draw the pawns
         for i in range(self.n_pawns):
@@ -241,7 +227,7 @@ class Board:
                 self.screen.blit(self.red_pawn,
                                  cur_state.get_pawn_position(1, i))
 
-    def show_turn(self, cur_state):
+    def show_turn(self, state):
         # Draw whose turn it is
         font1 = pygame.font.Font("freesansbold.ttf", 12)
         text1 = font1.render("Current player:", True, (255, 255, 255),
@@ -252,13 +238,13 @@ class Board:
         self.screen.blit(text1, textRect1)
 
         font2 = pygame.font.Font("freesansbold.ttf", 20)
-        if cur_state.get_cur_player() == 0:
-            text2 = font2.render("    ", True, (255, 164, 0), (255, 164, 0))
-        else:
-            text2 = font2.render("    ", True, (150, 0, 0), (150, 0, 0))
+        color = (255, 164, 0) if state.get_cur_player() == 0 else (150, 0, 0)
+        text2 = font2.render("    ", True, color, color)
         textRect2 = text2.get_rect()
         textRect2.center = (
-            (self.n_tiles - 1) * 100 + 50, (self.n_tiles - 1) * 100 + 62)
+            (self.n_tiles - 1) * 100 + 50,
+            (self.n_tiles - 1) * 100 + 62
+        )
         self.screen.blit(text2, textRect2)
 
         font3 = pygame.font.Font("freesansbold.ttf", 12)
@@ -296,6 +282,36 @@ class Board:
         textRect = text.get_rect()
         textRect.center = ((self.n_tiles - 1) * 100 + 50, 62)
         self.screen.blit(text, textRect)
+
+    def display_winner(self, state):
+        """Print the winner"""
+        font = pygame.font.Font("freesansbold.ttf", 48)
+
+        if state.get_winner() == 0:
+            text = font.render(" Yellow wins! ", True, (255, 164, 0),
+                               (34, 34, 34))
+        else:
+            text = font.render(" Red wins! ", True, (150, 0, 0), (34, 34, 34))
+
+        textRect = text.get_rect()
+        textRect.center = (self.n_tiles * 100 // 2, self.n_tiles * 100 // 2)
+        self.screen.blit(text, textRect)
+
+        # Print if time-out or invalid action
+        if state.timeout_player is not None:
+            font2 = pygame.font.Font("freesansbold.ttf", 18)
+            text2 = font2.render("The opponent timed out", True,
+                                 (255, 255, 255), (34, 34, 34))
+            textRect2 = text2.get_rect()
+            textRect2.center = (self.n_tiles * 100 // 2, self.n_tiles * 100 // 2 + 34)
+            self.screen.blit(text2, textRect2)
+        elif state.invalid_player is not None:
+            font2 = pygame.font.Font("freesansbold.ttf", 18)
+            text2 = font2.render("The opponent made an invalid move", True,
+                                 (255, 255, 255), (34, 34, 34))
+            textRect2 = text2.get_rect()
+            textRect2.center = (self.n_tiles * 100 // 2, self.n_tiles * 100 // 2 + 34)
+            self.screen.blit(text2, textRect2)
 
 
 class TimerDisplay(Thread):

@@ -1,5 +1,5 @@
-from agent import AlphaBetaAgent
-import minimax
+from squadro.agent import AlphaBetaAgent
+from squadro import minimax
 from time import time
 
 """
