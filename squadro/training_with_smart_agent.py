@@ -235,12 +235,12 @@ def print_network(network):
         
 
 if __name__ == "__main__":
-	  parser = argparse.ArgumentParser()
-	  parser.add_argument("-p", help="path")
-	  parser.add_argument("-n", help="new network")
-	  args = parser.parse_args()
+      parser = argparse.ArgumentParser()
+      parser.add_argument("-p", help="path")
+      parser.add_argument("-n", help="new network")
+      args = parser.parse_args()
 
-	  path = args.p if args.p != None else "error"
-	  new = args.n if args.n != None else "error"
+      path = args.p if args.p != None else "error"
+      new = args.n if args.n != None else "error"
 
-	  main(path, new)
+      main(path, new)
