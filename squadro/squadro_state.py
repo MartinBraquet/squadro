@@ -9,33 +9,30 @@ from squadro.tools.constants import DefaultParams
 MOVES = [[1, 3, 2, 3, 1], [3, 1, 2, 1, 3]]
 MOVES_RETURN = [[3, 1, 2, 1, 3], [1, 3, 2, 3, 1]]
 
+
 @lru_cache
 def get_moves(n_pawns):
     moves = [m[:n_pawns].copy() for m in MOVES]
     return moves
+
 
 @lru_cache
 def get_moves_return(n_pawns):
     moves = [m[:n_pawns].copy() for m in MOVES_RETURN]
     return moves
 
+
 # Removing cache for now to avoid issues when modifying in place the same object
 # @lru_cache
 def get_init_pos(n_pawns):
-    init_pos = [
-        [(i + 1, n_pawns + 1) for i in range(n_pawns)],
-        [(n_pawns + 1, i + 1) for i in range(n_pawns)],
-    ]
+    init_pos = [[n_pawns + 1] * n_pawns for _ in range(2)]
     return init_pos
 
 
 # @lru_cache
-def get_init_return_pos(n_pawns):
-    init_pos = [
-        [(i + 1, 0) for i in range(n_pawns)],
-        [(0, i + 1) for i in range(n_pawns)],
-    ]
-    return init_pos
+# def get_init_return_pos(n_pawns):
+#     init_pos = [[0] * n_pawns for _ in range(2)]
+#     return init_pos
 
 
 class SquadroState(State):
@@ -43,23 +40,14 @@ class SquadroState(State):
     Player 0 is yellow, starting at the bottom
     Player 1 is red, starting on the right
     Coordinates start from the left top corner
-    (X, Y) where X goes downward and Y goes to the right, as in matrices
-    Player 0's moves increase with Y
-    Player 1's moves increase with X
 
     With n, the number of pawns:
     The possible positions are from 0 to n+1 (included)
     Both player's pawns start at n+1
     Since all pawns move along the same horizontal or vertical line, only the other component
     is stored
-    For example, the first pawn of P0 moves along Y=1, so we store the X coordinate only
-
-        0 ... n+1    Y
-    0
-    ...       ...
-    n+1   ... ...
-
-    X
+    For example, the first pawn of P0 moves along Y=1, so we store the X coordinate only.
+    Example pos after one move action = 2 from P1: [[4, 4, 4], [4, 4, 3]]
     """
 
     def __init__(self, n_pawns=None, first=None):
@@ -72,7 +60,7 @@ class SquadroState(State):
         self.first = self.cur_player
         self.n_pawns = int(n_pawns) if n_pawns is not None else DefaultParams.n_pawns
         # Position of the pawns
-        self.cur_pos = get_init_pos(self.n_pawns)
+        self.pos = get_init_pos(self.n_pawns)
         # Are the pawns on their return journey ?
         self.returning = [[False] * self.n_pawns for _ in range(2)]
         # Have the pawns completed their journey ?
@@ -82,7 +70,7 @@ class SquadroState(State):
         return f'turn: {self.cur_player}, winner: {self.winner}'
 
     def __eq__(self, other):
-        return self.cur_player == other.cur_player and self.cur_pos == other.cur_pos
+        return self.cur_player == other.cur_player and self.pos == other.pos
 
     @property
     def max_pos(self):
@@ -103,8 +91,24 @@ class SquadroState(State):
     def get_pawn_position(self, player, pawn):
         """
         Returns the position of the requested pawn ((x, y) position on the board)
+        (X, Y) where Y goes downward and X goes to the right, transposed of matrices
+        Player 0's moves increase with Y
+        Player 1's moves increase with X
+
+            0 ... n+1    X
+        0
+        ...       ...    P1
+        n+1   ... ...
+
+        Y     P0
         """
-        return self.cur_pos[player][pawn]
+        if 0 > pawn or pawn > self.n_pawns - 1:
+            raise ValueError('pawn must be between 0 and n_pawns - 1')
+        if player == 0:
+            return pawn + 1, self.pos[player][pawn]
+        elif player == 1:
+            return self.pos[player][pawn], pawn + 1
+        raise ValueError('player must be 0 or 1')
 
     def get_pawn_advancement(self, player, pawn):
         """
@@ -140,7 +144,7 @@ class SquadroState(State):
         cp.winner = self.winner
         cp.timeout_player = self.timeout_player
         cp.invalid_player = self.invalid_player
-        cp.cur_pos = deepcopy(self.cur_pos)
+        cp.pos = deepcopy(self.pos)
         cp.returning = deepcopy(self.returning)
         cp.finished = deepcopy(self.finished)
         cp.n_pawns = self.n_pawns
@@ -213,45 +217,21 @@ class SquadroState(State):
         """
         Moves the pawn one tile forward in the correct direction
         """
-        if player == 0:
-            if not self.returning[player][pawn]:
-                self.cur_pos[player][pawn] = (self.cur_pos[player][pawn][0],
-                                              self.cur_pos[player][pawn][1] - 1)
-                if self.cur_pos[player][pawn][1] <= 0:
-                    self.returning[player][pawn] = True
-
-            else:
-                self.cur_pos[player][pawn] = (self.cur_pos[player][pawn][0],
-                                              self.cur_pos[player][pawn][1] + 1)
-                if self.cur_pos[player][pawn][1] >= self.max_pos:
-                    self.finished[player][pawn] = True
+        if not self.returning[player][pawn]:
+            self.pos[player][pawn] -= 1
+            if self.pos[player][pawn] <= 0:
+                self.returning[player][pawn] = True
 
         else:
-
-            if not self.returning[player][pawn]:
-                self.cur_pos[player][pawn] = (
-                    self.cur_pos[player][pawn][0] - 1,
-                    self.cur_pos[player][pawn][1])
-                if self.cur_pos[player][pawn][0] <= 0:
-                    self.returning[player][pawn] = True
-
-            else:
-                self.cur_pos[player][pawn] = (
-                    self.cur_pos[player][pawn][0] + 1,
-                    self.cur_pos[player][pawn][1])
-                if self.cur_pos[player][pawn][0] >= self.max_pos:
-                    self.finished[player][pawn] = True
+            self.pos[player][pawn] += 1
+            if self.pos[player][pawn] >= self.max_pos:
+                self.finished[player][pawn] = True
 
     def return_init(self, player, pawn):
         """
         Puts the pawn back at the start (or the return start)
         """
-        fun = (
-            get_init_return_pos
-            if self.returning[player][pawn]
-            else get_init_pos
-        )
-        self.cur_pos[player][pawn] = fun(self.n_pawns)[player][pawn]
+        self.pos[player][pawn] = 0 if self.returning[player][pawn] else self.max_pos
 
     def check_crossings(self, player, pawn):
         """
@@ -259,34 +239,19 @@ class SquadroState(State):
         """
         ended = False
         crossed = False
+        opponent = 1 - player
 
-        if player == 0:
-            while not ended:
-                opponent_pawn = self.cur_pos[0][pawn][1] - 1
-
-                if not 0 <= opponent_pawn <= self.n_pawns - 1:
-                    ended = True
-                elif self.cur_pos[1][opponent_pawn][0] != self.cur_pos[0][pawn][0]:
-                    ended = True
-
-                else:
-                    crossed = True
-                    self.move_1(0, pawn)
-                    self.return_init(1, opponent_pawn)
-
-        else:
-            while not ended:
-                opponent_pawn = self.cur_pos[1][pawn][0] - 1
-
-                if not 0 <= opponent_pawn <= self.n_pawns - 1:
-                    ended = True
-                elif self.cur_pos[0][opponent_pawn][1] != self.cur_pos[1][pawn][1]:
-                    ended = True
-
-                else:
-                    crossed = True
-                    self.move_1(1, pawn)
-                    self.return_init(0, opponent_pawn)
+        while not ended:
+            opponent_pawn = self.pos[player][pawn] - 1
+            if (
+                0 <= opponent_pawn <= self.n_pawns - 1
+                and self.pos[opponent][opponent_pawn] == pawn + 1
+            ):
+                crossed = True
+                self.move_1(player, pawn)
+                self.return_init(opponent, opponent_pawn)
+            else:
+                ended = True
 
         return crossed
 
