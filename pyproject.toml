@@ -21,12 +21,13 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
+    'Pillow',
+    'matplotlib',
+    'numpy',
     'pandas',
     'pygame',
-    'numpy',
     'torch',
     'torchvision',
-    'Pillow',
 ]
 
 
