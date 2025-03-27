@@ -1,76 +1,104 @@
 import argparse
-import signal
-from threading import Thread
-from time import sleep, time
+from time import sleep
 
 import pygame
 
-from squadro.board import Board, handle_events
+from squadro.board import Board, handle_events, check_quit
+from squadro.game import Game
 from squadro.squadro_state import SquadroState
 from squadro.tools.constants import DefaultParams
-from squadro.tools.utils import get_agent
-
-# Timer makes pygame raises this calling pygame.display.flip():
-# pygame.error: Could not make GL context current: BadAccess (attempt to access private resource denied)
-# USE_TIMER = True
 
 
-sleep_seconds = .2
-
-
-def play_animated_game(
-    agent_0=None,
-    agent_1=None,
-    time_out=None,
-    first=None,
-    n_pawns=None,
-):
+class GameAnimation:
     """
-    Runs the game
+    Visualize a game that was played between two computer agents
     """
-    agent_0 = agent_0 if agent_0 is not None else 'human'
-    agent_1 = agent_1 if agent_1 is not None else 'human'
-    time_out = float(time_out) if time_out is not None else DefaultParams.time_out
-    # first = int(first) if first is not None else DefaultParams.first
-    n_pawns = int(n_pawns) if n_pawns is not None else DefaultParams.n_pawns
 
-    # Initialisation
-    pygame.init()
+    def __init__(self, game: Game, move_delay=.05):
+        """
+        :param game: Game
+        :param move_delay: delay in seconds between moves
+        """
+        self.game = game
+        self.move_delay = move_delay
 
-    board = Board(n_pawns)
-    state = SquadroState(n_pawns=n_pawns, first=first)
-    agents = [get_agent(a) for a in (agent_0, agent_1)]
-    agents[0].set_id(0)
-    agents[1].set_id(1)
-    times_left = [time_out] * 2
-    last_action = None
+    def show(self):
+        board = Board(self.game.n_pawns)
+        state = SquadroState(n_pawns=self.game.n_pawns, first=self.game.first)
+        board.turn_draw(state)
 
-    while not state.game_over():
-        # Draw board
-        board.screen.fill(0)
-        board.draw_board(state)
-        board.show_turn(state)
-        board.show_timer(times_left)
+        action_history = self.game.run()
+        previous_states = []
 
-        # Update screen
-        pygame.display.flip()
+        while True:
+            command = self.get_command()
+            if command == 'next':
+                if state.game_over():
+                    continue
+                action = action_history[len(previous_states)]
+                previous_states.append(state.copy())
+                # print(action)
+                state.apply_action(action)
 
-        # Make move
-        cur_player = state.get_cur_player()
-        # timer_stop = [False]
-        # if USE_TIMER:
-        #     timer = TimerDisplay(board, cur_player, times_left.copy(),
-        #                          timer_stop)
-        #     timer.start()
-        try:
-            action, exe_time = get_action_timed(
-                agents[cur_player],
-                state.copy(),
-                last_action,
-                times_left[cur_player]
-            )
-            # timer_stop[0] = True
-            times_left[cur_player] -= exe_time
+            elif command == 'previous':
+                if previous_states:
+                    state = previous_states.pop()
+
+            board.turn_draw(state)
+
+            if state.game_over():
+                board.display_winner(state)
+
+            sleep(self.move_delay)
+
+    @staticmethod
+    def get_command():
+        """
+        Wait for a command that will dictate the next update in the animation.
+        Available commands:
+        - next: show the next move
+        - previous: show the previous move
+        - quit: quit the game
+        """
+        while True:
+            for event in pygame.event.get():
+                check_quit(event)
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RIGHT:
+                        sleep(.1)
+                        return 'next'
+                    if event.key == pygame.K_LEFT:
+                        sleep(.1)
+                        return 'previous'
+
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_RIGHT]:
+                return 'next'
+            if keys[pygame.K_LEFT]:
+                return 'previous'
+
+
+class RealTimeAnimatedGame(Game):
+    """
+    Runs the game and renders the board in real time
+    """
+
+    def __init__(
+        self,
+        agent_0=None,
+        agent_1=None,
+        time_out=None,
+        **kwargs
+    ):
+        super().__init__(
+            agent_0=agent_0 or 'human',
+            agent_1=agent_1 or 'human',
+            time_out=time_out or DefaultParams.time_out,
+            **kwargs
+        )
+        self.board = Board(self.n_pawns)
+        self.draw()
 
             if state.is_action_valid(action):
                 state.apply_action(action)
