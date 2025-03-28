@@ -101,14 +101,14 @@ class AlphaBetaRelativeAdvancementAgent(AlphaBetaAdvancementAgent):
         )
 
 
-class AlphaBetaAdvancement4DeepAgent(AlphaBetaAdvancementAgent):
+class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
     """
     Alpha-beta advancement agent:
 
     Pick the action according to minimax tree search (with alpha-beta pruning, depth up to 5),
     where the state
     evaluation function is the player's advancement compared to the opponent's advancement (limited
-    to the `n_pawns` most advanced pawns).
+    to the `n_pawns - 1` most advanced pawns, required to win).
 
     Also limits the tree search according to the total remaining player's time, via iterative
     deepening. It finds the best move after stopping at depth 1, then finds the best move after
@@ -117,40 +117,43 @@ class AlphaBetaAdvancement4DeepAgent(AlphaBetaAdvancementAgent):
     """
 
     def __init__(self):
-        self.max_depth = 5
+        self.max_depth = 9
         self.max_time = None
         self.start_time = None
-        self.total_time = None
+        # self.total_time = None
         super().__init__()
 
     @classmethod
     def get_name(cls):
-        return 'ab_advancement_4_deep'
+        return 'ab_advancement_deep'
 
     def get_action(self, state, last_action, time_left):
         # self.last_action = last_action
         # self.time_left = time_left
-        if time_left is None:
-            self.depth = self.max_depth
-            return minimax.search(state, self)
+
+        # if time_left is None:
+        #     self.depth = self.max_depth
+        #     return minimax.search(state, self)
 
         self.depth = 0
         self.start_time = time()
-        if self.total_time is None:
-            self.total_time = time_left
-        if time_left / self.total_time > 0.2:
-            self.max_time = 0.03 * self.total_time
-        else:
-            self.max_time = 0.03 * self.total_time * (time_left / (0.2 * self.total_time)) ** 2
-        best_move = 1
-        # print(time_left)
+        self.max_time = .05  # use fixed time for now
+
+        # if self.total_time is None:
+        #     self.total_time = time_left
+        # if time_left / self.total_time > 0.2:
+        #     self.max_time = 0.03 * self.total_time
+        # else:
+        #     self.max_time = 0.03 * self.total_time * (time_left / (0.2 * self.total_time)) ** 2
 
         # Iterative deepening
+        best_move = 1
         while time() - self.start_time < self.max_time and self.depth < self.max_depth:
             # print(time() - self.start_time)
-            print('depth', self.depth)
+            # print('depth', self.depth)
             best_move = minimax.search(state, self)
             self.depth += 1
+
         # print("Finish")
         # print(self.depth)
         # print("Time elapsed during smart agent play:", time() - self.start_time)
@@ -158,7 +161,10 @@ class AlphaBetaAdvancement4DeepAgent(AlphaBetaAdvancementAgent):
         return best_move
 
     def cutoff(self, state, depth):
-        return depth > self.depth or self.max_time and time() - self.start_time > self.max_time
+        return (
+            super().cutoff(state, depth)
+            or self.max_time and time() - self.start_time > self.max_time
+        )
 
     def evaluate(self, state):
         l1 = []
