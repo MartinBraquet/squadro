@@ -16,10 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 """
+from squadro.squadro_state import SquadroState
 
 inf = float("inf")
 
-def search(state, player, prune=True):
+
+def search(st: SquadroState, player, prune=True):
     """Perform a MiniMax/AlphaBeta search and return the best action.
 
     Arguments:
@@ -28,9 +30,12 @@ def search(state, player, prune=True):
     prune -- whether to use AlphaBeta pruning
 
     """
+
     def max_value(state, alpha, beta, depth):
         if player.cutoff(state, depth):
-            return player.evaluate(state), None
+            value = player.evaluate(state)
+            # print(f'max eval, {value=} {state=}, {depth=}')
+            return value, None
         val = -inf
         action = None
         for a, s in player.successors(state):
@@ -46,7 +51,9 @@ def search(state, player, prune=True):
 
     def min_value(state, alpha, beta, depth):
         if player.cutoff(state, depth):
-            return player.evaluate(state), None
+            value = player.evaluate(state)
+            # print(f'min eval, {value=} {state=}, {depth=}')
+            return value, None
         val = inf
         action = None
         for a, s in player.successors(state):
@@ -60,5 +67,7 @@ def search(state, player, prune=True):
                     beta = min(beta, v)
         return val, action
 
-    _, action = max_value(state, -inf, inf, 0)
-    return action
+    _, ac = max_value(st, -inf, inf, 0)
+    if ac is None:
+        max_value(st, -inf, inf, 0)
+    return ac
