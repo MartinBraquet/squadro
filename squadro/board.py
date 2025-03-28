@@ -1,7 +1,8 @@
 import pygame
 
-from squadro.squadro_state import get_moves
+from squadro.squadro_state import get_moves, SquadroState
 from squadro.tools.constants import RESOURCE_PATH
+from squadro.tools.timer import pretty_print_time
 
 black = (255, 255, 255)
 grey = (34, 34, 34)
@@ -15,8 +16,10 @@ class Board:
     Must not contain any logic intrinsic to the game.
     """
 
-    def __init__(self, n_pawns, n_tiles=None):
+    def __init__(self, n_pawns, n_tiles=None, title=None):
         pygame.init()
+        if title:
+            pygame.display.set_caption(title)
 
         # Initialise screen
         self.n_pawns = n_pawns
@@ -27,6 +30,7 @@ class Board:
             # pygame.FULLSCREEN
         )
         self.screen.fill(0)
+
 
         # Resources
         self.tile = pygame.image.load(RESOURCE_PATH / "tile.png")
@@ -109,13 +113,15 @@ class Board:
                 pawn_board_pos = pawn_to_board_position(pawn_pos)
                 self.screen.blit(pawn_img, pawn_board_pos)
 
-    def show_turn(self, state):
+    def show_turn(self, state: SquadroState):
         # Draw whose turn it is
         font1 = pygame.font.Font("freesansbold.ttf", 12)
         text1 = font1.render("Current player:", True, black, grey)
         textRect1 = text1.get_rect()
         textRect1.center = (
-            (self.n_tiles - 1) * 100 + 50, (self.n_tiles - 1) * 100 + 38)
+            (self.n_tiles - 1) * 100 + 50,
+            (self.n_tiles - 1) * 100 + 38
+        )
         self.screen.blit(text1, textRect1)
 
         font2 = pygame.font.Font("freesansbold.ttf", 20)
@@ -134,30 +140,35 @@ class Board:
         textRect3.center = (50, (self.n_tiles - 1) * 100 + 38)
         self.screen.blit(text3, textRect3)
 
-        font3 = pygame.font.Font("freesansbold.ttf", 12)
         text3 = font3.render("Time left:", True, black, grey)
         textRect3 = text3.get_rect()
         textRect3.center = ((self.n_tiles - 1) * 100 + 50, 38)
         self.screen.blit(text3, textRect3)
 
-        font4 = pygame.font.Font("freesansbold.ttf", 2)
-        text4 = font4.render(" " * 60, True, black, yellow)
+        text3 = font3.render(f"Turn: {state.total_moves}", True, black, grey)
+        textRect3 = text3.get_rect()
+        textRect3.center = (50, 38)
+        self.screen.blit(text3, textRect3)
+
+    def show_timer(self, times_left):
+        font = pygame.font.Font("freesansbold.ttf", 2)
+        text4 = font.render(" " * 60, True, black, yellow)
         textRect4 = text4.get_rect()
         textRect4.center = (50, (self.n_tiles - 1) * 100 + 50)
         self.screen.blit(text4, textRect4)
 
-        text4 = font4.render(" " * 60, True, black, red)
+        text4 = font.render(" " * 60, True, black, red)
         textRect4 = text4.get_rect()
         textRect4.center = ((self.n_tiles - 1) * 100 + 50, 50)
         self.screen.blit(text4, textRect4)
 
-    def show_timer(self, times_left):
         font = pygame.font.Font("freesansbold.ttf", 12)
-        text = font.render("  " + str(int(times_left[0])) + " sec  ", True, black, grey)
+        text = font.render(f"  {pretty_print_time(times_left[0])}  ", True, black, grey)
         textRect = text.get_rect()
         textRect.center = (50, (self.n_tiles - 1) * 100 + 62)
         self.screen.blit(text, textRect)
-        text = font.render("  " + str(int(times_left[1])) + " sec  ", True, black, grey)
+
+        text = font.render(f"  {pretty_print_time(times_left[1])}  ", True, black, grey)
         textRect = text.get_rect()
         textRect.center = ((self.n_tiles - 1) * 100 + 50, 62)
         self.screen.blit(text, textRect)
