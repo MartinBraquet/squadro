@@ -116,13 +116,51 @@ export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
 
 #### Available Agents
 
-You can play against another human or many different types of computer algorithms:
+You can play against someone else or many different types of computer algorithms.
+
+Most computer algorithms discretize the game into states and actions. Here the state is the positions of the pawns
+and the available actions are the possible moves of the pawns.
+
+Squadro is a finite state machine, meaning
+that the next state of the game is completely determined by the current state and the action played.
+With this definition, one can see that the game is a Markov Decision Process (MDP). At each state, the current player
+can play
+different actions, which lead to different states. Then the next player can play different actions from any of those new
+states, etc.
+The future of the game can be represented as a tree, whose branches are the actions that lead to different states.
+
+An algorithm can explore that space of possibilities to infer the best move to play now.
+As the tree is very large, it is not possible to explore all the possible paths until the end of the game.
+Typically, they explore only a small fraction of the tree, and then use the information gathered from those states to
+make a decision.
+More precisely, those two phases are:
+
+* State exploration: exploring the space of states by a careful choice of actions. The most common explorations methods
+  are Minimax and MCTS.
+  Minimax explores all the states up to a specific depth, while MCTS navigates until it finds a state that has not been
+  visited yet.
+* State evaluation: evaluating a state. If we have a basic understanding of the game and how to win, one can design a
+  heuristic (state evaluation function) that gives an estimate of how good it is to be in that state / position.
+  Otherwise, it can often be better to use a computer algorithm to evaluate the state.
+  * The simplest algorithm to estimate the state is to randomly let the game play until it is over (i.e., pick random
+    actions for both players). When played enough times, it can gives the probability to win in that state.
+  * More complex, and hence accurate, algorithms are using reinforcement learning (AI). They learn from experience by
+    storing information about each state/action, in forms such as
+    * a Q value function, a lookup table for each state and action;
+    * a deep Q network (DQN), a neural network that approximates the Q value function, which is necessary when the state
+      space is very large (i.e., cannot be stored in memory).
+
+List of available agents:
 
 * _human_: another human player
 * _random_: a computer that plays randomly among all available moves
-* _basic_: a computer that plays ...
-* _smart_:
-* _MCTS_:
+* _ab_advancement_: a computer that lists the possible moves from the current position, where the evaluation function is
+  the player's advancement
+* _ab_relative_advancement_: a computer that lists the possible moves from the current position, where the evaluation
+  function is the player's advancement compared to the other player
+* _ab_advancement_deep_: a computer that plays minimax with alpha-beta pruning (depth ~4), where the evaluation function
+  is the player's advancement compared to the other player
+* _mcts_:
 
 You can also print the updated list of available agents with:
 
@@ -137,7 +175,7 @@ print(AVAILABLE_AGENTS)
 To play the game with someone else, run the following command:
 
 ```python
-from squadro.animated_game import RealTimeAnimatedGame
+from squadro.animation.animated_game import RealTimeAnimatedGame
 
 RealTimeAnimatedGame(n_pawns=5, first=None).run()
 ```
@@ -145,7 +183,7 @@ RealTimeAnimatedGame(n_pawns=5, first=None).run()
 To access all the parameters to play, see the doc:
 
 ```python
-from squadro.animated_game import RealTimeAnimatedGame
+from squadro.animation.animated_game import RealTimeAnimatedGame
 
 help(RealTimeAnimatedGame.__init__)  # for the arguments to RealTimeAnimatedGame
 ```
@@ -157,7 +195,7 @@ To play against the computer, set `agent_1` to one of the `AVAILABLE_AGENTS` abo
 For instance:
 
 ```python
-from squadro.animated_game import RealTimeAnimatedGame
+from squadro.animation.animated_game import RealTimeAnimatedGame
 
 RealTimeAnimatedGame(n_pawns=5, first=None, agent_1='random').run()
 ```
@@ -208,7 +246,7 @@ navigate through the game.
 
 ```python
 from squadro.game import Game
-from squadro.animated_game import GameAnimation
+from squadro.animation.animated_game import GameAnimation
 
 game = Game(agent_0='basic', agent_1='random')
 GameAnimation(game).show()
