@@ -44,6 +44,9 @@ class GameAnimation:
                 if previous_states:
                     state = previous_states.pop()
 
+            elif command == 'quit':
+                break
+
             board.turn_draw(state)
 
             if state.game_over():
@@ -60,23 +63,26 @@ class GameAnimation:
         - previous: show the previous move
         - quit: quit the game
         """
-        while True:
-            for event in pygame.event.get():
-                check_quit(event)
+        try:
+            while True:
+                for event in pygame.event.get():
+                    check_quit(event)
 
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_RIGHT:
-                        sleep(.1)
-                        return 'next'
-                    if event.key == pygame.K_LEFT:
-                        sleep(.1)
-                        return 'previous'
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_RIGHT:
+                            sleep(.1)
+                            return 'next'
+                        if event.key == pygame.K_LEFT:
+                            sleep(.1)
+                            return 'previous'
 
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_RIGHT]:
-                return 'next'
-            if keys[pygame.K_LEFT]:
-                return 'previous'
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_RIGHT]:
+                    return 'next'
+                if keys[pygame.K_LEFT]:
+                    return 'previous'
+        except SystemExit:
+            return 'quit'
 
 
 class RealTimeAnimatedGame(Game):
@@ -101,11 +107,14 @@ class RealTimeAnimatedGame(Game):
         self.draw()
 
     def run(self):
-        super().run()
-        while True:
-            self.board.display_winner(self.state)
-            handle_events()
-            sleep(.5)
+        try:
+            super().run()
+            while True:
+                self.board.display_winner(self.state)
+                handle_events()
+                sleep(.5)
+        except SystemExit:
+            pass
 
     def _post_apply_action(self):
         self.draw()

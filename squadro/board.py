@@ -209,7 +209,7 @@ def check_quit(event):
     # Quit when pressing the X button
     if event.type == pygame.QUIT:
         pygame.quit()
-        exit(0)
+        raise SystemExit("Exiting due to pygame QUIT event")
 
 
 def get_position_from_click():
