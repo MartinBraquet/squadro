@@ -23,7 +23,7 @@ class GameAnimation:
         self.move_delay = move_delay
 
     def show(self):
-        board = Board(self.game.n_pawns)
+        board = Board(self.game.n_pawns, title=f"Game Visualization: {self.game.title}")
         state = SquadroState(n_pawns=self.game.n_pawns, first=self.game.first)
         board.turn_draw(state)
 
@@ -103,7 +103,7 @@ class RealTimeAnimatedGame(Game):
             time_out=time_out or DefaultParams.time_out,
             **kwargs
         )
-        self.board = Board(self.n_pawns)
+        self.board = Board(self.n_pawns, title=f"Real-Time Game: {self.title}")
         self.draw()
 
     def run(self):
