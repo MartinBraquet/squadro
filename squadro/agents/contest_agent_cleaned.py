@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from squadro.agents.agent import AlphaBetaAgent
+from squadro.agents.alphabeta_agent import AlphaBetaAgent
 
 model_path = 'model/contest_agent3.pt'
 
@@ -58,7 +58,9 @@ class DeepNetwork(nn.Module):
 """
 Contest agent
 """
-class MyAgent(AlphaBetaAgent):
+
+
+class ContestAgentCleaned(AlphaBetaAgent):
 
     def __init__(self):
         self.action_size = 5         # Number of actions

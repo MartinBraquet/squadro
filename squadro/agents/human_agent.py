@@ -4,7 +4,7 @@ from squadro.agents.agent import Agent
 from squadro.animation.board import get_position_from_click, check_quit
 
 
-class MyAgent(Agent):
+class HumanAgent(Agent):
 
     def get_action(self, state, last_action, time_left):
         while True:
@@ -20,5 +20,6 @@ class MyAgent(Agent):
                             if state.is_action_valid(pawn):
                                 return pawn
 
-    def get_name(self):
+    @classmethod
+    def get_name(cls):
         return "human"

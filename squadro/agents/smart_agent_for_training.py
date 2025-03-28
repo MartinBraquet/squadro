@@ -1,12 +1,14 @@
 from time import time
 
 from squadro import minimax
-from squadro.agents.agent import AlphaBetaAgent
+from squadro.agents.alphabeta_agent import AlphaBetaAgent
 
 """
 Smart agent
 """
-class MyAgent(AlphaBetaAgent):
+
+
+class SmartAgentForTraining(AlphaBetaAgent):
 
   def __init__(self):
       self.current_depth = 0
@@ -28,7 +30,7 @@ class MyAgent(AlphaBetaAgent):
       self.current_depth = 0
       self.start_time = time()
       if self.total_time == 0:
-          self.total_time = time_left;
+          self.total_time = time_left
       self.max_time = time_left
       best_move = 1
       # print(time_left)
@@ -51,17 +53,6 @@ class MyAgent(AlphaBetaAgent):
       
       return best_move
 
-  """
-  The successors function must return (or yield) a list of
-  pairs (a, s) in which a is the action played to reach the
-  state s.
-  """
-  def successors(self, state):
-      actions = state.get_current_player_actions()
-      for a in actions:
-          s = state.copy()
-          s.apply_action(a)
-          yield (a, s)
 
   """
   The cutoff function returns true if the alpha-beta/minimax
