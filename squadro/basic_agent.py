@@ -9,7 +9,7 @@ class MyAgent(AlphaBetaAgent):
     """
 
     def get_name(self):
-        return 'basic_agent'
+        return 'basic'
 
     def get_action(self, state, last_action, time_left):
         """

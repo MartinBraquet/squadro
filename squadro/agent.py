@@ -21,7 +21,7 @@ class Agent:
         pass
 
     def get_name(self):
-        return 'student agent'
+        return 'student'
 
     def set_id(self, id):
         """

@@ -11,4 +11,4 @@ class MyAgent(Agent):
         return action
 
     def get_name(self):
-        return "random_agent"
+        return "random"

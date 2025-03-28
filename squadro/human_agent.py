@@ -21,4 +21,4 @@ class MyAgent(Agent):
                                 return pawn
 
     def get_name(self):
-        return "human_agent"
+        return "human"
