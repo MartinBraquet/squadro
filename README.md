@@ -118,7 +118,7 @@ export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
 
 You can play against someone else or many different types of computer algorithms.
 
-Most computer algorithms discretize the game into states and actions. Here the state is the positions of the pawns
+Most computer algorithms discretize the game into states and actions. Here the state is the position of the pawns
 and the available actions are the possible moves of the pawns.
 
 Squadro is a finite state machine, meaning
@@ -135,19 +135,21 @@ Typically, they explore only a small fraction of the tree, and then use the info
 make a decision.
 More precisely, those two phases are:
 
-* State exploration: exploring the space of states by a careful choice of actions. The most common explorations methods
-  are Minimax and MCTS.
+* **State exploration**: exploring the space of states by a careful choice of actions. The most common explorations
+  methods
+  are Minimax and Monte Carlo Tree Search (MCTS).
   Minimax explores all the states up to a specific depth, while MCTS navigates until it finds a state that has not been
   visited yet.
-* State evaluation: evaluating a state. If we have a basic understanding of the game and how to win, one can design a
+* **State evaluation**: evaluating a state. If we have a basic understanding of the game and how to win, one can design
+  a
   heuristic (state evaluation function) that gives an estimate of how good it is to be in that state / position.
   Otherwise, it can often be better to use a computer algorithm to evaluate the state.
   * The simplest algorithm to estimate the state is to randomly let the game play until it is over (i.e., pick random
-    actions for both players). When played enough times, it can gives the probability to win in that state.
+    actions for both players). When played enough times, it can give the probability to win in that state.
   * More complex, and hence accurate, algorithms are using reinforcement learning (AI). They learn from experience by
-    storing information about each state/action, in forms such as
-    * a Q value function, a lookup table for each state and action;
-    * a deep Q network (DQN), a neural network that approximates the Q value function, which is necessary when the state
+    storing information about each state/action in one of:
+    * Q value function, a lookup table for each state and action;
+    * deep Q network (DQN), a neural network that approximates the Q value function, which is necessary when the state
       space is very large (i.e., cannot be stored in memory).
 
 List of available agents:
