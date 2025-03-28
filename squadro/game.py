@@ -3,7 +3,7 @@ import signal
 from pathlib import Path
 from time import time
 
-from squadro.agent import Agent
+from squadro.agents.agent import Agent
 from squadro.squadro_state import SquadroState
 from squadro.tools.constants import DefaultParams
 from squadro.tools.utils import get_agent

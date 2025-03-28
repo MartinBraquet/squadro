@@ -1,6 +1,6 @@
 import random
 
-from squadro.agent import Agent
+from squadro.agents.agent import Agent
 
 
 class MyAgent(Agent):

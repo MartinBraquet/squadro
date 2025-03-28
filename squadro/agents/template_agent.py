@@ -1,5 +1,5 @@
 from squadro import minimax
-from squadro.agent import AlphaBetaAgent
+from squadro.agents.agent import AlphaBetaAgent
 
 """
 Agent skeleton. Fill in the gaps.

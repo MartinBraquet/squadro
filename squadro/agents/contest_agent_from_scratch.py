@@ -7,10 +7,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from squadro.agent import AlphaBetaAgent
+from squadro.agents.agent import AlphaBetaAgent
 
 run_folder = './run/'
-model_path = '../model/contest_agent_from_scratch.pt'
+model_path = '../../model/contest_agent_from_scratch.pt'
 
 class DeepNetwork(nn.Module):
     def __init__(self):

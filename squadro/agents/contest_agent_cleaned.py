@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from squadro.agent import AlphaBetaAgent
+from squadro.agents.agent import AlphaBetaAgent
 
 model_path = 'model/contest_agent3.pt'
 

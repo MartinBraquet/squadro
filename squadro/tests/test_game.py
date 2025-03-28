@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import numpy as np
 
+from squadro.agents.random_agent import MyAgent
 from squadro.game import Game, GameFromState
-from squadro.random_agent import MyAgent
 from squadro.squadro_state import SquadroState
 
 

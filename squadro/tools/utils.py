@@ -1,5 +1,5 @@
-from squadro import human_agent, smart_agent, random_agent, basic_agent
-from squadro.agent import Agent
+from squadro.agents import random_agent, basic_agent, human_agent, smart_agent
+from squadro.agents.agent import Agent
 
 AGENTS = {
     'human': human_agent,

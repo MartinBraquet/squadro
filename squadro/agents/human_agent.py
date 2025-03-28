@@ -1,7 +1,7 @@
 import pygame
 
-from squadro.agent import Agent
-from squadro.board import get_position_from_click, check_quit
+from squadro.agents.agent import Agent
+from squadro.animation.board import get_position_from_click, check_quit
 
 
 class MyAgent(Agent):

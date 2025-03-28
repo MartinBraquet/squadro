@@ -3,7 +3,7 @@ from time import sleep
 
 import pygame
 
-from squadro.board import Board, handle_events, check_quit
+from squadro.animation.board import Board, handle_events, check_quit
 from squadro.game import Game
 from squadro.squadro_state import SquadroState
 from squadro.tools.constants import DefaultParams

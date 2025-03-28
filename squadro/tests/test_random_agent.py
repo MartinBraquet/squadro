@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from squadro.random_agent import MyAgent
+from squadro.agents.random_agent import MyAgent
 
 
 def test_get_action_returns_valid_action():
@@ -36,7 +36,7 @@ def mock_agent():
 
 
 def test_agent_inherits_from_base_class(mock_agent):
-    from squadro.agent import Agent
+    from squadro.agents.agent import Agent
     assert isinstance(mock_agent, Agent)
 
 
