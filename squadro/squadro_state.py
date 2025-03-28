@@ -239,13 +239,13 @@ class SquadroState(State):
             if self.pos[player][pawn] >= self.max_pos:
                 self.finished[player][pawn] = True
 
-    def return_init(self, player, pawn):
+    def return_init(self, player: int, pawn: int) -> None:
         """
         Puts the pawn back at the start (or the return start)
         """
         self.pos[player][pawn] = 0 if self.returning[player][pawn] else self.max_pos
 
-    def check_crossings(self, player, pawn):
+    def check_crossings(self, player: int, pawn: int) -> bool:
         """
         Returns whether the pawn crossed one or more opponents and updates the state accordingly
         """
