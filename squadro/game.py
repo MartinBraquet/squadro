@@ -35,6 +35,10 @@ class GameFromState:
         return text
 
     @property
+    def title(self):
+        return f'{self.agents[0]} vs {self.agents[1]}'
+
+    @property
     def first(self):
         """
         Index of the first player
