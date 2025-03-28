@@ -2,13 +2,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from squadro.agents.random_agent import MyAgent
+from squadro.agents.random_agent import RandomAgent
 
 
 def test_get_action_returns_valid_action():
     state = MagicMock()
     state.get_current_player_actions.return_value = ["action1", "action2", "action3"]
-    agent = MyAgent()
+    agent = RandomAgent()
 
     action = agent.get_action(state, None, 10)
 
@@ -18,7 +18,7 @@ def test_get_action_returns_valid_action():
 def test_get_action_uses_random_choice():
     state = MagicMock()
     state.get_current_player_actions.return_value = ["action1", "action2", "action3"]
-    agent = MyAgent()
+    agent = RandomAgent()
 
     actions_taken = set(agent.get_action(state, None, 10) for _ in range(100))
 
@@ -26,13 +26,13 @@ def test_get_action_uses_random_choice():
 
 
 def test_get_name_returns_random():
-    agent = MyAgent()
+    agent = RandomAgent()
     assert agent.get_name() == "random"
 
 
 @pytest.fixture
 def mock_agent():
-    return MyAgent()
+    return RandomAgent()
 
 
 def test_agent_inherits_from_base_class(mock_agent):
@@ -43,7 +43,7 @@ def test_agent_inherits_from_base_class(mock_agent):
 def test_get_action_no_available_actions():
     state = MagicMock()
     state.get_current_player_actions.return_value = []
-    agent = MyAgent()
+    agent = RandomAgent()
 
     with pytest.raises(IndexError):
         agent.get_action(state, None, 10)

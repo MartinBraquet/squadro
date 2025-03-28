@@ -10,7 +10,7 @@ class AlphaBetaAgent(Agent):
     """
     Abstract class that represents an alpha-beta agent.
 
-    Minimax tree search: assuming that the evaluation function is perfect, known by both players,
+    Minimax tree search: assuming that the heuristic evaluation function is perfect, known by both players,
       and that the other player plays perfectly to minimize that state value (worst-case approach),
       MMTS gives the action that maximizes the state value.
     Alpha-beta pruning: modification of MMTS to discard the exploration of nodes that are sure to
@@ -103,10 +103,10 @@ class AlphaBetaRelativeAdvancementAgent(AlphaBetaAdvancementAgent):
 
 class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
     """
-    Alpha-beta advancement agent:
+    Alpha-beta deep advancement agent:
 
     Pick the action according to minimax tree search (with alpha-beta pruning, depth up to 5),
-    where the state
+    where the heuristic state
     evaluation function is the player's advancement compared to the opponent's advancement (limited
     to the `n_pawns - 1` most advanced pawns, required to win).
 
@@ -128,9 +128,6 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
         return 'ab_advancement_deep'
 
     def get_action(self, state, last_action, time_left):
-        # self.last_action = last_action
-        # self.time_left = time_left
-
         # if time_left is None:
         #     self.depth = self.max_depth
         #     return minimax.search(state, self)
@@ -153,10 +150,6 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
             # print('depth', self.depth)
             best_move = minimax.search(state, self)
             self.depth += 1
-
-        # print("Finish")
-        # print(self.depth)
-        # print("Time elapsed during smart agent play:", time() - self.start_time)
 
         return best_move
 

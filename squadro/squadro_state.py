@@ -69,7 +69,8 @@ class SquadroState(State):
         self.total_moves = 0
 
     def __repr__(self):
-        return f'turn: {self.cur_player}, winner: {self.winner}'
+        # return f'turn: {self.cur_player}, winner: {self.winner}'
+        return f'{self.pos}'
 
     def __eq__(self, other):
         return self.cur_player == other.cur_player and self.pos == other.pos
@@ -86,8 +87,8 @@ class SquadroState(State):
         self.timeout_player = player
         self.winner = 1 - player
 
-    def set_invalid_action(self, player):
-        raise ValueError(f'Invalid action for player {player}')
+    def set_invalid_action(self, player, action='unknown'):
+        raise ValueError(f'Invalid action for player {player}, action: {action}')
 
     def get_pawn_position(self, player, pawn):
         """
@@ -206,7 +207,7 @@ class SquadroState(State):
         valid. This must be checked with is_action_valid.
         """
         if not self.is_action_valid(action):
-            self.set_invalid_action(self.cur_player)
+            self.set_invalid_action(player=self.cur_player, action=action)
 
         fun = get_moves_return if self.returning[self.cur_player][action] else get_moves
         n_moves = fun(self.n_pawns)[self.cur_player][action]
@@ -285,3 +286,15 @@ class SquadroState(State):
         Usually they have to implement their own state class.
         """
         pass
+
+    def anim(self):
+        # Avoid circular import, might need to refactor
+        from squadro.animation.board import Board, handle_events
+
+        board = Board(self.n_pawns, title=f"State Visualization")
+        board.turn_draw(self)
+        try:
+            while True:
+                handle_events()
+        except SystemExit:
+            pass

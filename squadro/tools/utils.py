@@ -1,12 +1,20 @@
-from squadro.agents import random_agent, basic_agent, human_agent, smart_agent
 from squadro.agents.agent import Agent
+from squadro.agents.alphabeta_agent import (
+    AlphaBetaAdvancementAgent,
+    AlphaBetaRelativeAdvancementAgent,
+    AlphaBetaAdvancementDeepAgent
+)
+from squadro.agents.human_agent import HumanAgent
+from squadro.agents.random_agent import RandomAgent
 
-AGENTS = {
-    'human': human_agent,
-    'smart': smart_agent,
-    'random': random_agent,
-    'basic': basic_agent,
-}
+AGENTS = (
+    HumanAgent,
+    RandomAgent,
+    AlphaBetaAdvancementAgent,
+    AlphaBetaRelativeAdvancementAgent,
+    AlphaBetaAdvancementDeepAgent,
+)
+AGENTS = {a.get_name(): a for a in AGENTS}
 AVAILABLE_AGENTS = list(AGENTS.keys())
 
 
@@ -14,4 +22,4 @@ def get_agent(agent):
     if isinstance(agent, Agent):
         return agent
     agent = agent.replace('_agent', '')
-    return getattr(AGENTS[agent], 'MyAgent')()
+    return AGENTS[agent]()

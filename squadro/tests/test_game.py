@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-from squadro.agents.random_agent import MyAgent
+from squadro.agents.random_agent import RandomAgent
 from squadro.game import Game, GameFromState
 from squadro.squadro_state import SquadroState
 
@@ -46,7 +46,7 @@ class TestGame(TestCase):
         game = GameFromState(state=state, agent_0="random", agent_1="random")
         self.assertListEqual(game.action_history, [])
 
-    @patch.object(MyAgent, "get_action", lambda *a, **kw: sleep(2))
+    @patch.object(RandomAgent, "get_action", lambda *a, **kw: sleep(2))
     def test_time_out(self):
         game = Game(time_out=1)
         game.run()
