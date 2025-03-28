@@ -29,3 +29,10 @@ class TimerDisplay(Thread):
                 # self.board.show_timer(self.times_left)
                 pygame.display.flip()
                 delta += 1
+
+
+def pretty_print_time(seconds):
+    # Calculate minutes and seconds
+    minutes, secs = divmod(seconds, 60)
+    # Format the time as mm:ss
+    return f"{int(minutes):02d}:{int(secs):02d}"

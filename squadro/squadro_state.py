@@ -66,6 +66,7 @@ class SquadroState(State):
         self.returning = [[False] * self.n_pawns for _ in range(2)]
         # Have the pawns completed their journey ?
         self.finished = [[False] * self.n_pawns for _ in range(2)]
+        self.total_moves = 0
 
     def __repr__(self):
         return f'turn: {self.cur_player}, winner: {self.winner}'
@@ -149,6 +150,7 @@ class SquadroState(State):
         cp.finished = deepcopy(self.finished)
         cp.n_pawns = self.n_pawns
         cp.first = self.first
+        cp.total_moves = self.total_moves
         return cp
 
     def get_init_args(self):
@@ -220,6 +222,7 @@ class SquadroState(State):
             if self.check_crossings(self.cur_player, action):
                 break
 
+        self.total_moves += 1
         self.cur_player = 1 - self.cur_player
 
     def move_1(self, player, pawn):
