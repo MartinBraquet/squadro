@@ -1,5 +1,6 @@
 import json
 import signal
+from pathlib import Path
 from time import time
 
 from squadro.agent import Agent
@@ -11,9 +12,9 @@ from squadro.tools.utils import get_agent
 class GameFromState:
     def __init__(
         self,
-        state,
-        agent_0: Agent = None,
-        agent_1: Agent = None,
+        state: SquadroState,
+        agent_0: Agent | str = None,
+        agent_1: Agent | str = None,
         time_out=None,
     ):
         agent_0 = agent_0 or DefaultParams.agent
@@ -33,6 +34,9 @@ class GameFromState:
         if self.winner is not None:
             text += f', winner: {self.winner}, {len(self.action_history)} moves'
         return text
+
+    def __eq__(self, other: 'GameFromState'):
+        return self.to_dict() == other.to_dict()
 
     @property
     def title(self):
@@ -98,7 +102,7 @@ class GameFromState:
             'state': self.state.get_init_args(),
         }
 
-    def save_results(self, filename: str):
+    def save_results(self, filename: str | Path):
         """
         Save the game results on disk
 
@@ -110,7 +114,7 @@ class GameFromState:
             json.dump(results, f, indent=2)
 
     @classmethod
-    def from_file(cls, filename: str):
+    def from_file(cls, filename: str | Path):
         with open(filename, 'r') as f:
             results = json.load(f)
         game = GameFromState(
@@ -139,7 +143,7 @@ def handle_timeout(signum, frame):
     """
     Define behavior in case of timeout.
     """
-    raise TimeoutError()
+    raise TimeoutError
 
 
 def get_timed_action(player, state, last_action, time_left):
