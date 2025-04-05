@@ -24,12 +24,16 @@ Click [here](https://martinbraquet.com/index.php/research/#Squadro) for a full d
 
 ### From PyPI
 
+The most straightforward way is to simply install it via:
 ```
 pip install squadro
 ```
 
 ### From source
 
+Alternatively, you can install it from source, which is necessary for development.
+
+First, download the project locally:
 ```shell
 git clone git@github.com:MartinBraquet/squadro.git
 cd squadro
@@ -99,18 +103,6 @@ section below (setting the appropriate value for `model_path`, e.g., `'...'`).
 
 ### Play
 
-
-> [!TIP]
-> If you run into the following error when launching the game:
-> > libGL error: failed to load driver
-> 
-> Then try setting the following environment variable beforehand:
-> ```
-> export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
-> ```
-
-#### Available Agents
-
 You can play against someone else or many different types of computer algorithms.
 
 Most computer algorithms discretize the game into states and actions. Here the state is the position of the pawns
@@ -159,13 +151,22 @@ List of available agents:
   is the player's advancement compared to the other player
 * _mcts_:
 
-You can also print the updated list of available agents with:
+You can also access the most updated list of available agents with:
 
 ```python
 from squadro.tools.utils import AVAILABLE_AGENTS
 
 print(AVAILABLE_AGENTS)
 ```
+
+> [!TIP]
+> If you run into the following error when launching the game:
+> > libGL error: failed to load driver
+> 
+> Then try setting the following environment variable beforehand:
+> ```
+> export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
+> ```
 
 #### Play against another human
 
