@@ -44,18 +44,15 @@ conda create -n squadro python=3.12
 conda activate squadro
 ```
 
-#### Prerequisites
-
-If running on a Linux machine without intent to use a GPU, run this beforehand to install only the CPU version
-of the `pytorch` library:
-
-```shell
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-```
-
 #### Main Installation
 
-Install the package in editable mode:
+> [!TIP]
+> If running on a Linux machine without intent to use a GPU, run this beforehand to install only the CPU version of the `pytorch` library:
+> ```shell
+> pip install torch --index-url https://download.pytorch.org/whl/cpu
+> ```
+
+Install the package and its dependencies in editable mode:
 
 ```shell
 pip install -e .
@@ -102,17 +99,15 @@ section below (setting the appropriate value for `model_path`, e.g., `'...'`).
 
 ### Play
 
-#### Preliminaries
 
-If you run into the following error when launching the game:
-```
-libGL error: failed to load driver
-```
-
-Then try setting the following environment variable beforehand:
-```
-export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
-```
+> [!TIP]
+> If you run into the following error when launching the game:
+> > libGL error: failed to load driver
+> 
+> Then try setting the following environment variable beforehand:
+> ```
+> export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
+> ```
 
 #### Available Agents
 
