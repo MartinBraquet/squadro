@@ -20,9 +20,7 @@ class GameFromState:
         agent_0 = agent_0 or DefaultParams.agent
         agent_1 = agent_1 or DefaultParams.agent
 
-        self.agents = [get_agent(a) for a in (agent_0, agent_1)]
-        self.agents[0].set_id(0)
-        self.agents[1].set_id(1)
+        self.agents = [get_agent(a, pid=i) for i, a in enumerate((agent_0, agent_1))]
         self.times_left = [time_out] * 2
 
         self.state = state
