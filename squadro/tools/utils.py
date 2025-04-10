@@ -18,8 +18,8 @@ AGENTS = {a.get_name(): a for a in AGENTS}
 AVAILABLE_AGENTS = list(AGENTS.keys())
 
 
-def get_agent(agent):
+def get_agent(agent, **kwargs):
     if isinstance(agent, Agent):
         return agent
     agent = agent.replace('_agent', '')
-    return AGENTS[agent]()
+    return AGENTS[agent](**kwargs)
