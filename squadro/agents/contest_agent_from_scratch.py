@@ -104,7 +104,8 @@ class ContestAgentFromScratch(AlphaBetaAgent):
     """
     This is the smart class of an agent to play the Squadro game.
     """
-    def get_action(self, state, last_action, time_left):
+
+    def get_action(self, state, last_action=None, time_left=None):
         self.last_action = last_action
         self.time_left = time_left
         self.start_time = time()
