@@ -18,7 +18,7 @@ class AlphaBetaAgent(Agent):
       modifying the outcome.
     """
 
-    def get_action(self, state: SquadroState, last_action: int, time_left: float):
+    def get_action(self, state: SquadroState, last_action: int = None, time_left: float = None):
         """This function is used to play a move according
         to the board, player and time left provided as input.
         It must return an action representing the move the player
@@ -63,8 +63,8 @@ class AlphaBetaAdvancementAgent(AlphaBetaAgent):
     Player's advancement: number of steps all the pawns have traveled so far.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.depth = 0
 
     @classmethod
@@ -105,7 +105,7 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
     """
     Alpha-beta deep advancement agent:
 
-    Pick the action according to minimax tree search (with alpha-beta pruning, depth up to 5),
+    Pick the action according to minimax tree search (with alpha-beta pruning, depth up to 9),
     where the heuristic state
     evaluation function is the player's advancement compared to the opponent's advancement (limited
     to the `n_pawns - 1` most advanced pawns, required to win).
@@ -116,18 +116,18 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
     (best move so far).
     """
 
-    def __init__(self):
-        self.max_depth = 9
+    def __init__(self, max_depth=9, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.max_depth = max_depth
         self.max_time = None
         self.start_time = None
         # self.total_time = None
-        super().__init__()
 
     @classmethod
     def get_name(cls):
         return 'ab_advancement_deep'
 
-    def get_action(self, state, last_action, time_left):
+    def get_action(self, state, last_action=None, time_left=None):
         # if time_left is None:
         #     self.depth = self.max_depth
         #     return minimax.search(state, self)
@@ -153,10 +153,14 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
 
         return best_move
 
+    @property
+    def time_is_limited(self):
+        return self.max_time
+
     def cutoff(self, state, depth):
         return (
             super().cutoff(state, depth)
-            or self.max_time and time() - self.start_time > self.max_time
+            or self.time_is_limited and time() - self.start_time > self.max_time
         )
 
     def evaluate(self, state):
