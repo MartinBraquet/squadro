@@ -98,38 +98,33 @@ Note that there are many more parameters to tweak, if desired. See all of them i
 help(Trainer)
 ```
 
-It will stop training when the evaluation loss stops improving. Once done, one can use the model; see the next
-section below (setting the appropriate value for `model_path`, e.g., `'...'`).
+It will stop training when the evaluation loss stops improving. Once done, one can use the model; see the next section
+below (setting the appropriate value for `model_path`, e.g., `'...'`).
 
 ### Play
 
 You can play against someone else or many different types of computer algorithms.
 
-Most computer algorithms discretize the game into states and actions. Here the state is the position of the pawns
-and the available actions are the possible moves of the pawns.
+Most computer algorithms discretize the game into states and actions. Here the state is the position of the pawns and
+the available actions are the possible moves of the pawns.
 
-Squadro is a finite state machine, meaning
-that the next state of the game is completely determined by the current state and the action played.
+Squadro is a finite state machine, meaning that the next state of the game is completely determined by the current state
+and the action played.
 With this definition, one can see that the game is a Markov Decision Process (MDP). At each state, the current player
-can play
-different actions, which lead to different states. Then the next player can play different actions from any of those new
-states, etc.
-The future of the game can be represented as a tree, whose branches are the actions that lead to different states.
+can play different actions, which lead to different states. Then the next player can play different actions from any of
+those new states, etc. The future of the game can be represented as a tree, whose branches are the actions that lead to
+different states.
 
-An algorithm can explore that space of possibilities to infer the best move to play now.
-As the tree is very large, it is not possible to explore all the possible paths until the end of the game.
-Typically, they explore only a small fraction of the tree, and then use the information gathered from those states to
-make a decision.
+An algorithm can explore that space of possibilities to infer the best move to play now. As the tree is very large, it
+is not possible to explore all the possible paths until the end of the game. Typically, they explore only a small
+fraction of the tree, and then use the information gathered from those states to make a decision.
 More precisely, those two phases are:
 
 * **State exploration**: exploring the space of states by a careful choice of actions. The most common explorations
-  methods
-  are Minimax and Monte Carlo Tree Search (MCTS).
-  Minimax explores all the states up to a specific depth, while MCTS navigates until it finds a state that has not been
-  visited yet.
+  methods are Minimax and Monte Carlo Tree Search (MCTS). Minimax explores all the states up to a specific depth, while
+  MCTS navigates until it finds a state that has not been visited yet.
 * **State evaluation**: evaluating a state. If we have a basic understanding of the game and how to win, one can design
-  a
-  heuristic (state evaluation function) that gives an estimate of how good it is to be in that state / position.
+  a heuristic (state evaluation function) that gives an estimate of how good it is to be in that state / position.
   Otherwise, it can often be better to use a computer algorithm to evaluate the state.
   * The simplest algorithm to estimate the state is to randomly let the game play until it is over (i.e., pick random
     actions for both players). When played enough times, it can give the probability to win in that state.
@@ -280,8 +275,7 @@ pytest squadro
 
 ## Feedback
 
-For any issue / bug report / feature request,
-open an [issue](https://github.com/MartinBraquet/squadro/issues).
+For any issue / bug report / feature request, open an [issue](https://github.com/MartinBraquet/squadro/issues).
 
 ## Contributions
 
