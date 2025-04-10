@@ -103,6 +103,22 @@ below (setting the appropriate value for `model_path`, e.g., `'...'`).
 
 ### Play
 
+#### Preliminaries
+
+If you run into the following error when launching the game:
+
+```
+libGL error: failed to load driver
+```
+
+Then try setting the following environment variable beforehand:
+
+```
+export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
+```
+
+#### Available Agents
+
 You can play against someone else or many different types of computer algorithms.
 
 Most computer algorithms discretize the game into states and actions. Here the state is the position of the pawns and
