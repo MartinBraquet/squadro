@@ -6,7 +6,7 @@ from squadro.animation.board import get_position_from_click, check_quit
 
 class HumanAgent(Agent):
 
-    def get_action(self, state, last_action, time_left):
+    def get_action(self, state, last_action=None, time_left=None):
         while True:
             for event in pygame.event.get():
                 check_quit(event)
