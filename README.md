@@ -103,38 +103,21 @@ below (setting the appropriate value for `model_path`, e.g., `'...'`).
 
 ### Play
 
-#### Preliminaries
-
-If you run into the following error when launching the game:
-
-```
-libGL error: failed to load driver
-```
-
-Then try setting the following environment variable beforehand:
-
-```
-export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
-```
-
-#### Available Agents
-
 You can play against someone else or many different types of computer algorithms.
 
 Most computer algorithms discretize the game into states and actions. Here the state is the position of the pawns and
 the available actions are the possible moves of the pawns.
 
 Squadro is a finite state machine, meaning that the next state of the game is completely determined by the current state
-and the action played.
-With this definition, one can see that the game is a Markov Decision Process (MDP). At each state, the current player
-can play different actions, which lead to different states. Then the next player can play different actions from any of
-those new states, etc. The future of the game can be represented as a tree, whose branches are the actions that lead to
-different states.
+and the action played. With this definition, one can see that the game is a Markov Decision Process (MDP). At each
+state, the current player can play different actions, which lead to different states. Then the next player can play
+different actions from any of those new states, etc. The future of the game can be represented as a tree, whose branches
+are the actions that lead to different states.
 
 An algorithm can explore that space of possibilities to infer the best move to play now. As the tree is very large, it
 is not possible to explore all the possible paths until the end of the game. Typically, they explore only a small
-fraction of the tree, and then use the information gathered from those states to make a decision.
-More precisely, those two phases are:
+fraction of the tree, and then use the information gathered from those states to make a decision. More precisely, those
+two phases are:
 
 * **State exploration**: exploring the space of states by a careful choice of actions. The most common explorations
   methods are Minimax and Monte Carlo Tree Search (MCTS). Minimax explores all the states up to a specific depth, while
@@ -218,8 +201,8 @@ After training your AI as described in the [Training](#Training) section, you ca
 
 #### Play against a benchmarked AI
 
-If you do not want to train a model, as described in the [Training](#Training) section, you can still play against
-a benchmarked model available online. After passing `init_from='online'`, you can set `model_path` to any of those
+If you do not want to train a model, as described in the [Training](#Training) section, you can still play against a
+benchmarked model available online. After passing `init_from='online'`, you can set `model_path` to any of those
 currently supported models:
 
 | `model_path` | # layers | # heads | embed dims | # params | size   |
@@ -236,8 +219,8 @@ Example:
 
 ### Simulations
 
-You can simulate a game between two computer algorithms. Set `agent_0` and
-`agent_1` to any of the `AVAILABLE_AGENTS` above and run:
+You can simulate a game between two computer algorithms. Set `agent_0` and `agent_1` to any of the `AVAILABLE_AGENTS`
+above and run:
 
 ```python
 from squadro.game import Game
@@ -250,8 +233,8 @@ game.save_results('game_results.json')
 
 ### Animations
 
-You can render an animation of a game between two computer algorithms. Press the left and right keys to
-navigate through the game.
+You can render an animation of a game between two computer algorithms. Press the left and right keys to navigate through
+the game.
 
 ```python
 from squadro.game import Game
