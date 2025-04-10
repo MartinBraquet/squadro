@@ -10,7 +10,7 @@ def test_get_action_returns_valid_action():
     state.get_current_player_actions.return_value = ["action1", "action2", "action3"]
     agent = RandomAgent()
 
-    action = agent.get_action(state, None, 10)
+    action = agent.get_action(state)
 
     assert action in state.get_current_player_actions()
 
@@ -20,7 +20,7 @@ def test_get_action_uses_random_choice():
     state.get_current_player_actions.return_value = ["action1", "action2", "action3"]
     agent = RandomAgent()
 
-    actions_taken = set(agent.get_action(state, None, 10) for _ in range(100))
+    actions_taken = set(agent.get_action(state) for _ in range(100))
 
     assert all(action in state.get_current_player_actions() for action in actions_taken)
 
@@ -46,4 +46,9 @@ def test_get_action_no_available_actions():
     agent = RandomAgent()
 
     with pytest.raises(IndexError):
-        agent.get_action(state, None, 10)
+        agent.get_action(state)
+
+
+def test_to_dict():
+    agent = RandomAgent()
+    assert agent.to_dict() == {'name': 'random'}
