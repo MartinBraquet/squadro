@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from squadro.squadro_state import SquadroState
 
@@ -8,14 +9,19 @@ class Agent(ABC):
     Abstract class that represents an agent.
     """
 
-    def __init__(self):
-        self.id = None
+    def __init__(self, pid=None):
+        self.id = pid
 
     def __repr__(self):
         return self.get_name()
 
     @abstractmethod
-    def get_action(self, state: SquadroState, last_action: int, time_left: float):
+    def get_action(
+        self,
+        state: SquadroState,
+        last_action: Optional[int] = None,
+        time_left: Optional[float] = None,
+    ):
         """
         Compute the action to perform on the current state
         of the game. The must be computed in at most time_left
