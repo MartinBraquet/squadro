@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from squadro.state import State
 from squadro.tools.constants import DefaultParams
+from squadro.tools.serialize import hash_dict
 
 # Allowed moves
 MOVES = [[1, 3, 2, 3, 1, 3, 2, 1, 2], [3, 1, 2, 1, 3, 1, 2, 3, 2]]
@@ -74,6 +75,18 @@ class SquadroState(State):
 
     def __eq__(self, other):
         return self.cur_player == other.cur_player and self.pos == other.pos
+
+    def to_dict(self):
+        return {
+            'cur_player': self.cur_player,
+            'pos': self.pos,
+            'returning': self.returning,
+            'finished': self.finished,
+        }
+
+    @property
+    def hash(self):
+        return hash_dict(self.to_dict())
 
     @property
     def max_pos(self):
