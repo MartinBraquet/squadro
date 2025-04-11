@@ -171,4 +171,4 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
             l2.append(state.get_pawn_advancement(1 - self.id, pawn))
         l1.sort()
         l2.sort()
-        return sum(l1[1:]) - sum(l2[1:])
+        return (sum(l1) - min(l1)) - (sum(l2) - min(l2))
