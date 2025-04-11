@@ -134,7 +134,7 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
 
         self.depth = 0
         self.start_time = time()
-        self.max_time = .05  # use fixed time for now
+        self.max_time = .04  # use fixed time for now
 
         # if self.total_time is None:
         #     self.total_time = time_left
