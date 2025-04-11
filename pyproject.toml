@@ -42,6 +42,8 @@ dev = [
     "notebook",
     'pip-tools',
     'build',
+    "igraph",
+    "plotly",
 ]
 testing = [
     "pytest",
