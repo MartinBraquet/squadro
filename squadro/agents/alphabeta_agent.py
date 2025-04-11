@@ -158,9 +158,11 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
         return self.max_time
 
     def cutoff(self, state, depth):
+        # Should not cut off at zero depth, otherwise search will not compute
+        # the best action, returning ac = None
         return (
             super().cutoff(state, depth)
-            or self.time_is_limited and time() - self.start_time > self.max_time
+            or self.time_is_limited and time() - self.start_time > self.max_time and depth > 0
         )
 
     def evaluate(self, state):
@@ -169,6 +171,4 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
         for pawn in range(state.n_pawns):
             l1.append(state.get_pawn_advancement(self.id, pawn))
             l2.append(state.get_pawn_advancement(1 - self.id, pawn))
-        l1.sort()
-        l2.sort()
         return (sum(l1) - min(l1)) - (sum(l2) - min(l2))
