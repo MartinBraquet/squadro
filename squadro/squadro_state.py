@@ -201,6 +201,10 @@ class SquadroState(State):
         ]
         return actions
 
+    def get_random_action(self):
+        actions = self.get_current_player_actions()
+        return random.choice(actions)
+
     def apply_action(self, action):
         """
         Applies a given action to this state. It assumes that the actions is

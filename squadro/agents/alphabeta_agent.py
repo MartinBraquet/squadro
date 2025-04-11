@@ -144,7 +144,7 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
         #     self.max_time = 0.03 * self.total_time * (time_left / (0.2 * self.total_time)) ** 2
 
         # Iterative deepening
-        best_move = 1
+        best_move = state.get_random_action()
         while time() - self.start_time < self.max_time and self.depth < self.max_depth:
             # print(time() - self.start_time)
             # print('depth', self.depth)
