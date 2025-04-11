@@ -16,9 +16,17 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 """
+import json
+import logging
+
 from squadro.squadro_state import SquadroState
 
 inf = float("inf")
+
+
+class Debug:
+    SAVE_TREE = False
+    TREE = []
 
 
 def search(st: SquadroState, player, prune=True):
@@ -32,9 +40,18 @@ def search(st: SquadroState, player, prune=True):
     """
 
     def max_value(state, alpha, beta, depth):
-        if player.cutoff(state, depth):
+        # Should not enter this clause at the first iteration, otherwise search will not compute
+        # the best action, returning ac = None
+        if player.cutoff(state, depth) and depth > 0:
             value = player.evaluate(state)
-            # print(f'max eval, {value=} {state=}, {depth=}')
+            if Debug.SAVE_TREE:
+                logging.info(f'max eval: {value=}, {state=}, {depth=}')
+                Debug.TREE.append({
+                    'eval': 'max',
+                    'state': str(state.pos),
+                    'value': value,
+                    'depth': depth,
+                })
             return value, None
         val = -inf
         action = None
@@ -52,7 +69,14 @@ def search(st: SquadroState, player, prune=True):
     def min_value(state, alpha, beta, depth):
         if player.cutoff(state, depth):
             value = player.evaluate(state)
-            # print(f'min eval, {value=} {state=}, {depth=}')
+            if Debug.SAVE_TREE:
+                logging.info(f'min eval: {value=}, {state=}, {depth=}')
+                Debug.TREE.append({
+                    'eval': 'min',
+                    'state': str(state.pos),
+                    'value': value,
+                    'depth': depth,
+                })
             return value, None
         val = inf
         action = None
@@ -67,7 +91,12 @@ def search(st: SquadroState, player, prune=True):
                     beta = min(beta, v)
         return val, action
 
+    logging.info(f'Current state: {st}')
+    if Debug.SAVE_TREE:
+        Debug.TREE = []
     _, ac = max_value(st, -inf, inf, 0)
     if ac is None:
-        max_value(st, -inf, inf, 0)
+        # max_value(st, -inf, inf, 0)
+        if Debug.SAVE_TREE:
+            json.dump(Debug.TREE, open('tree.json', 'w'), indent=4)
     return ac
