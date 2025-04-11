@@ -1,3 +1,4 @@
+import logging
 from abc import abstractmethod
 from time import time
 
@@ -134,7 +135,7 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
 
         self.depth = 0
         self.start_time = time()
-        self.max_time = .04  # use fixed time for now
+        self.max_time = .01  # use fixed time for now
 
         # if self.total_time is None:
         #     self.total_time = time_left
@@ -158,7 +159,7 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
             # print(time() - self.start_time)
             # print('depth', self.depth)
 
-        # print('depth', self.depth)
+        logging.info(f'depth: {self.depth}')
         return best_move
 
     @property
