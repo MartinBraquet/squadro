@@ -18,6 +18,9 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 """
 import json
 import logging
+from collections import defaultdict
+from os import mkdir
+from os.path import exists
 
 from squadro.squadro_state import SquadroState
 
@@ -25,8 +28,74 @@ inf = float("inf")
 
 
 class Debug:
-    SAVE_TREE = False
-    TREE = []
+    tree_wanted = False
+    edges = []
+    nodes = defaultdict(dict)
+    node_counter = 0
+
+    @classmethod
+    def save_tree(cls, state: SquadroState):
+        if not cls.tree_wanted:
+            return
+        if not exists('results'):
+            mkdir('results')
+        with open('results/edges.json', 'w') as f:
+            json.dump(cls.edges, f, indent=4)
+        with open('results/nodes.json', 'w') as f:
+            json.dump(cls.nodes, f, indent=4)
+
+        def save_nodes(s: SquadroState):
+            if not hasattr(s, 'children'):
+                return s.tree_index
+            return {
+                s.tree_index: [save_nodes(n) for n in s.children]
+            }
+
+        nested_nodes = save_nodes(state)
+        with open('results/nested_nodes.json', 'w') as f:
+            json.dump(nested_nodes, f, indent=4)
+
+    @classmethod
+    def clear(cls, state: SquadroState):
+        if not cls.tree_wanted:
+            return
+        cls.edges = []
+        cls.nodes = defaultdict(dict)
+        cls.node_counter = 0
+        if hasattr(state, 'tree_index'):
+            del state.tree_index
+        if hasattr(state, 'children'):
+            del state.children
+
+    @classmethod
+    def save_node(cls, value, state: SquadroState, eval_type, depth):
+        if not cls.tree_wanted:
+            return
+        if not hasattr(state, 'tree_index'):
+            state.tree_index = cls.node_counter
+            cls.node_counter += 1
+        cls.nodes[state.tree_index] |= {
+            'eval': eval_type,
+            'state': str(state.pos),
+            'value': value,
+            'depth': depth,
+        }
+        logging.info(f'{state.tree_index}: {cls.nodes[state.tree_index]}')
+
+    @classmethod
+    def save_edge(cls, parent: SquadroState, child: SquadroState):
+        if not cls.tree_wanted:
+            return
+        if not hasattr(parent, 'tree_index'):
+            parent.tree_index = cls.node_counter
+            cls.node_counter += 1
+        if not hasattr(child, 'tree_index'):
+            child.tree_index = cls.node_counter
+            cls.node_counter += 1
+        if not hasattr(parent, 'children'):
+            parent.children = []
+        parent.children.append(child)
+        cls.edges.append((parent.tree_index, child.tree_index))
 
 
 def search(st: SquadroState, player, prune=True):
@@ -40,63 +109,48 @@ def search(st: SquadroState, player, prune=True):
     """
 
     def max_value(state, alpha, beta, depth):
-        # Should not enter this clause at the first iteration, otherwise search will not compute
-        # the best action, returning ac = None
-        if player.cutoff(state, depth) and depth > 0:
+        if player.cutoff(state, depth):
             value = player.evaluate(state)
-            if Debug.SAVE_TREE:
-                logging.info(f'max eval: {value=}, {state=}, {depth=}')
-                Debug.TREE.append({
-                    'eval': 'max',
-                    'state': str(state.pos),
-                    'value': value,
-                    'depth': depth,
-                })
+            Debug.save_node(value, state, 'max', depth)
             return value, None
-        val = -inf
+        value = -inf
         action = None
         for a, s in player.successors(state):
+            Debug.save_edge(state, s)
             v, _ = min_value(s, alpha, beta, depth + 1)
-            if v > val:
-                val = v
+            if v > value:
+                value = v
                 action = a
                 if prune:
                     if v >= beta:
-                        return v, a
+                        break
                     alpha = max(alpha, v)
-        return val, action
+        Debug.save_node(value, state, 'max', depth)
+        return value, action
 
     def min_value(state, alpha, beta, depth):
         if player.cutoff(state, depth):
             value = player.evaluate(state)
-            if Debug.SAVE_TREE:
-                logging.info(f'min eval: {value=}, {state=}, {depth=}')
-                Debug.TREE.append({
-                    'eval': 'min',
-                    'state': str(state.pos),
-                    'value': value,
-                    'depth': depth,
-                })
+            Debug.save_node(value, state, 'min', depth)
             return value, None
-        val = inf
+        value = inf
         action = None
         for a, s in player.successors(state):
+            Debug.save_edge(state, s)
             v, _ = max_value(s, alpha, beta, depth + 1)
-            if v < val:
-                val = v
+            if v < value:
+                value = v
                 action = a
                 if prune:
                     if v <= alpha:
-                        return v, a
+                        break
                     beta = min(beta, v)
-        return val, action
+        Debug.save_node(value, state, 'min', depth)
+        return value, action
 
-    logging.info(f'Current state: {st}')
-    if Debug.SAVE_TREE:
-        Debug.TREE = []
+    Debug.clear(st)
     _, ac = max_value(st, -inf, inf, 0)
-    if ac is None:
-        # max_value(st, -inf, inf, 0)
-        if Debug.SAVE_TREE:
-            json.dump(Debug.TREE, open('tree.json', 'w'), indent=4)
+    # Debug.save_tree(st)
+    # if ac is None:
+    #   max_value(st, -inf, inf, 0)
     return ac
