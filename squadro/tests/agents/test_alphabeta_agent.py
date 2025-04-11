@@ -1,6 +1,9 @@
 import random
+from time import sleep
 from unittest import TestCase
+from unittest.mock import patch
 
+from squadro import minimax
 from squadro.agents.alphabeta_agent import (
     AlphaBetaAdvancementAgent,
     AlphaBetaRelativeAdvancementAgent, AlphaBetaAgent, AlphaBetaAdvancementDeepAgent,
@@ -124,3 +127,23 @@ class TestAdvancementDeep(TestCase):
         self.assertEqual(2, action)
 
         self.assertGreater(self.agent.depth, 0)
+
+    @patch.object(minimax, 'search', lambda *a, **kw: sleep(.01) or 2)
+    @patch.object(SquadroState, 'get_random_action', return_value=-1)
+    def test_skip_unfinished_depth(self, *args, **kwargs):
+        """
+        Test that the search skips the last minimax result if it finished due to timeout, which
+        prevented it from exploring all the leaf nodes at that depth, and hence does not guarantee
+        that the best move is found.
+        """
+        action = self.agent.get_action(self.state)
+        self.assertEqual(-1, action)
+
+    def test_minimax_timeout(self, *args, **kwargs):
+        """
+        Make sure minimax always explores at least the children of the root node, even if too long
+        to finish on time. Otherwise, it can't output an action.
+        """
+        with patch.object(self.agent, 'max_time', 1e-9):
+            action = self.agent.get_action(self.state)
+        self.assertTrue(self.state.is_action_valid(action))
