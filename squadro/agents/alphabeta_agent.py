@@ -146,11 +146,19 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
         # Iterative deepening
         best_move = state.get_random_action()
         while time() - self.start_time < self.max_time and self.depth < self.max_depth:
+            minimax_action = minimax.search(state, self)
+            if minimax_action is None:
+                raise ValueError('No best move found, check cutoff function')
+            if time() - self.start_time < self.max_time:
+                # Only keep the minimax action computed for the deepest depth if it got time to
+                # explore all the leaf nodes at that depth
+                best_move = minimax_action
+                minimax.Debug.save_tree(state)
+            self.depth += 1
             # print(time() - self.start_time)
             # print('depth', self.depth)
-            best_move = minimax.search(state, self)
-            self.depth += 1
 
+        # print('depth', self.depth)
         return best_move
 
     @property
