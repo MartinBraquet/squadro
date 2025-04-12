@@ -120,7 +120,7 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
     def __init__(self, max_depth=9, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.max_depth = max_depth
-        self.max_time = None
+        self.max_time = .01  # use fixed time for now
         self.start_time = None
         # self.total_time = None
 
@@ -135,7 +135,6 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
 
         self.depth = 0
         self.start_time = time()
-        self.max_time = .01  # use fixed time for now
 
         # if self.total_time is None:
         #     self.total_time = time_left
