@@ -1,12 +1,14 @@
 import random
-from time import sleep
+from time import sleep, time
 from unittest import TestCase
 from unittest.mock import patch
 
 from squadro import minimax
 from squadro.agents.alphabeta_agent import (
     AlphaBetaAdvancementAgent,
-    AlphaBetaRelativeAdvancementAgent, AlphaBetaAgent, AlphaBetaAdvancementDeepAgent,
+    AlphaBetaRelativeAdvancementAgent,
+    AlphaBetaAgent,
+    AlphaBetaAdvancementDeepAgent,
 )
 from squadro.agents.random_agent import RandomAgent
 from squadro.squadro_state import SquadroState
@@ -139,7 +141,7 @@ class TestAdvancementDeep(TestCase):
         action = self.agent.get_action(self.state)
         self.assertEqual(-1, action)
 
-    def test_minimax_timeout(self, *args, **kwargs):
+    def test_minimax_short_timeout(self, *args, **kwargs):
         """
         Make sure minimax always explores at least the children of the root node, even if too long
         to finish on time. Otherwise, it can't output an action.
@@ -147,3 +149,16 @@ class TestAdvancementDeep(TestCase):
         with patch.object(self.agent, 'max_time', 1e-9):
             action = self.agent.get_action(self.state)
         self.assertTrue(self.state.is_action_valid(action))
+
+    def test_minimax_timeout(self, *args, **kwargs):
+        """
+        Make sure iterative depth search is stopped when time runs out
+        """
+        time_out = .001
+        self.agent.max_time = time_out
+        compute_time = time()
+        self.agent.get_action(self.state)
+        compute_time = time() - compute_time
+        self.assertLess(compute_time, time_out + 2e-4)
+        self.assertGreater(self.agent.depth, 0)
+        self.assertLess(self.agent.depth, self.agent.max_depth)
