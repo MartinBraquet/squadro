@@ -121,8 +121,8 @@ List of available agents:
 
 * _human_: another human player
 * _random_: a computer that plays randomly among all available moves
-* _ab_advancement_: a computer that lists the possible moves from the current position, where the evaluation function is the player's advancement
-* _ab_relative_advancement_: a computer that lists the possible moves from the current position, where the evaluation function is the player's advancement compared to the other player
+* _ab_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement
+* _ab_relative_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement compared to the other player
 * _ab_advancement_deep_: a computer that plays minimax with alpha-beta pruning (depth ~4), where the evaluation function is the player's advancement compared to the other player
 * _mcts_:
 
