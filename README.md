@@ -110,7 +110,7 @@ Squadro is a finite state machine, meaning that the next state of the game is co
 
 An algorithm can explore that space of possibilities to infer the best move to play now. As the tree is very large, it is not possible to explore all the possible paths until the end of the game. Typically, they explore only a small fraction of the tree, and then use the information gathered from those states to make a decision. More precisely, those two phases are:
 
-* **State exploration**: exploring the space of states by a careful choice of actions. The most common explorations methods are Minimax and Monte Carlo Tree Search (MCTS). Minimax explores all the states up to a specific depth, while MCTS navigates until it finds a state that has not been visited yet.
+* **State exploration**: exploring the space of states by a careful choice of actions. The most common exploration methods are Minimax and Monte Carlo Tree Search (MCTS). Minimax explores all the states up to a specific depth, while MCTS navigates until it finds a state that has not been visited yet. Minimax can be sped up by skipping the search in the parts of the tree that won't affect the final decision; this method is called alpha-beta pruning.
 * **State evaluation**: evaluating a state. If we have a basic understanding of the game and how to win, one can design a heuristic (state evaluation function) that gives an estimate of how good it is to be in that state / position. Otherwise, it can often be better to use a computer algorithm to evaluate the state.
   * The simplest algorithm to estimate the state is to randomly let the game play until it is over (i.e., pick random actions for both players). When played enough times, it can give the probability to win in that state.
   * More complex, and hence accurate, algorithms are using reinforcement learning (AI). They learn from experience by storing information about each state/action in one of:
@@ -119,10 +119,10 @@ An algorithm can explore that space of possibilities to infer the best move to p
 
 List of available agents:
 
-* _human_: another human player
+* _human_: another local human player (i.e., both playing on the same computer)
 * _random_: a computer that plays randomly among all available moves
-* _ab_advancement_: a computer that lists the possible moves from the current position, where the evaluation function is the player's advancement
-* _ab_relative_advancement_: a computer that lists the possible moves from the current position, where the evaluation function is the player's advancement compared to the other player
+* _ab_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement
+* _ab_relative_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement compared to the other player
 * _ab_advancement_deep_: a computer that plays minimax with alpha-beta pruning (depth ~4), where the evaluation function is the player's advancement compared to the other player
 * _mcts_:
 
