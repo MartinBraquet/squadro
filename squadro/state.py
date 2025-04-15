@@ -55,14 +55,8 @@ class State:
 
     def apply_action(self, action):
         """
-        Applies a given action to this state. It assume that the actions is
+        Applies a given action to this state. It assumes that the actions is
         valid. This must be checked with is_action_valid.
-        """
-        pass
-
-    def get_scores(self):
-        """
-        Return the scores of each players.
         """
         pass
 
@@ -71,10 +65,3 @@ class State:
         Get the winner of the game. Call only if the game is over.
         """
         return self.winner
-
-    def get_state_data(self):
-        """
-        Return the information about the state that is given to students.
-        Usually they have to implement their own state class.
-        """
-        pass
