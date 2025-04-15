@@ -46,8 +46,9 @@ class AlphaBetaAgent(Agent):
 
     @abstractmethod
     def evaluate(self, state: SquadroState):
-        """The evaluate function must return an integer value
-        representing the utility function of the board.
+        """The evaluate function must return a number
+        representing the utility function of the board, according to the player doing the minimax
+        search (NOT the player for the passed `state` in `state.cur_player`).
         """
         pass
 
