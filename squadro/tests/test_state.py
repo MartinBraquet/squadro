@@ -110,3 +110,15 @@ def test_return_init_resets_pawn_position(sample_state):
     sample_state.returning[player][pawn] = True
     sample_state.return_init(player, pawn)
     assert sample_state.pos[player][pawn] == 0
+
+
+def test_set_advancement(sample_state):
+    advancement = [[2, 6, 12, 0, 1], [11, 8, 4, 3, 0]]
+    sample_state.set_from_advancement(advancement)
+    assert sample_state.pos == [[4, 0, 6, 6, 5], [5, 2, 2, 3, 6]]
+    assert sample_state.returning == [
+        [False, True, True, False, False], [True, True, False, False, False]
+    ]
+    assert sample_state.finished == [
+        [False, False, True, False, False], [False, False, False, False, False]
+    ]
