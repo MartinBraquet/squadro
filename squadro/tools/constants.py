@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import squadro
@@ -11,3 +12,4 @@ class DefaultParams:
 
 
 RESOURCE_PATH = Path(squadro.__file__).parent / 'resources'
+MAX_INT = sys.maxsize
