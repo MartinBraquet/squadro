@@ -11,8 +11,8 @@ from squadro.agents.alphabeta_agent import (
     AlphaBetaAdvancementDeepAgent,
 )
 from squadro.agents.random_agent import RandomAgent
-from squadro.minimax import inf
 from squadro.squadro_state import State
+from squadro.tools.constants import inf
 
 
 class RandomAlphaBetaAgent(AlphaBetaAgent):
@@ -27,6 +27,10 @@ class RandomAlphaBetaAgent(AlphaBetaAgent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.evaluations = 0
+
+    @classmethod
+    def get_name(cls) -> str:
+        return "random_alpha_beta"
 
     def cutoff(self, state: State, depth: int):
         return depth >= self.MAX_DEPTH
