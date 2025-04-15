@@ -2,6 +2,8 @@ import random
 from copy import deepcopy
 from functools import lru_cache
 
+import pygame
+
 from squadro.state import State
 from squadro.tools.constants import DefaultParams
 from squadro.tools.serialize import hash_dict
@@ -310,8 +312,13 @@ class SquadroState(State):
 
         board = Board(self.n_pawns, title=f"State Visualization")
         board.turn_draw(self)
-        try:
-            while True:
-                handle_events()
-        except SystemExit:
-            pass
+        if blocking:
+            try:
+                while True:
+                    handle_events()
+            except SystemExit:
+                pass
+        else:
+            pygame.image.save(board.screen, "/tmp/squadro_state.png")
+            import subprocess
+            subprocess.Popen(["xdg-open", "/tmp/squadro_state.png"])
