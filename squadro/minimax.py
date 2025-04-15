@@ -80,7 +80,7 @@ class Debug:
             'value': value,
             'depth': depth,
         }
-        logging.info(f'{state.tree_index}: {cls.nodes[state.tree_index]}')
+        logging.info(f'Node index #{state.tree_index}: {cls.nodes[state.tree_index]}')
 
     @classmethod
     def save_edge(cls, parent: SquadroState, child: SquadroState):
