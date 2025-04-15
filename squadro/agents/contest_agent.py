@@ -1,4 +1,3 @@
-import logging
 import random
 from time import time
 
@@ -435,20 +434,6 @@ class Edge():
         
         
 ##############################################################################      
-def setup_logger(name, log_file, level=logging.INFO):
-
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-
-    handler = logging.FileHandler(log_file)        
-    handler.setFormatter(formatter)
-
-    logger = logging.getlogger(name)
-    logger.setLevel(level)
-    if not logger.handlers:
-        logger.addHandler(handler)
-
-    return logger
-
 
 ### SET all #logger_DISABLED to True to disable logging
 ### WARNING: the mcts log file gets big quite quickly
