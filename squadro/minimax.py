@@ -118,7 +118,7 @@ def search(st: SquadroState, player, prune=True):
         for a, s in player.successors(state):
             Debug.save_edge(state, s)
             v, _ = min_value(s, alpha, beta, depth + 1)
-            if v > value:
+            if v > value or v == -inf and action is None:
                 value = v
                 action = a
                 if prune:
@@ -138,7 +138,7 @@ def search(st: SquadroState, player, prune=True):
         for a, s in player.successors(state):
             Debug.save_edge(state, s)
             v, _ = max_value(s, alpha, beta, depth + 1)
-            if v < value:
+            if v < value or v == inf and action is None:
                 value = v
                 action = a
                 if prune:
