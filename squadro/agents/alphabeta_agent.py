@@ -4,6 +4,7 @@ from time import time
 
 from squadro import minimax
 from squadro.agents.agent import Agent
+from squadro.minimax import inf
 from squadro.squadro_state import SquadroState
 
 
@@ -175,6 +176,10 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
         )
 
     def evaluate(self, state):
+        if state.game_over():
+            # Needed, otherwise a winning state might be less than a non-winning state.
+            # As a winning state might be as low as 1 (when the opponent is one tile from winning)
+            return inf if state.winner == self.id else -inf
         l1 = []
         l2 = []
         for pawn in range(state.n_pawns):

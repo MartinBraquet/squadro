@@ -11,6 +11,7 @@ from squadro.agents.alphabeta_agent import (
     AlphaBetaAdvancementDeepAgent,
 )
 from squadro.agents.random_agent import RandomAgent
+from squadro.minimax import inf
 from squadro.squadro_state import SquadroState
 
 
@@ -162,3 +163,46 @@ class TestAdvancementDeep(TestCase):
         self.assertLess(compute_time, time_out + 2e-4)
         self.assertGreater(self.agent.depth, 0)
         self.assertLess(self.agent.depth, self.agent.max_depth)
+
+    def test_favor_winning_move(self, *args, **kwargs):
+        """
+        Make sure that the agent picks the winning move
+        """
+        self.agent.max_depth = 1
+        state = SquadroState(first=0, n_pawns=5)
+        state.set_from_advancement([[12, 12, 12, 11, 0], [12, 12, 12, 9, 11]])
+        action = self.agent.get_action(state)
+        self.assertEqual(3, action)
+
+    def test_winning_state(self, *args, **kwargs):
+        """
+        Make sure the winning states have infinite value
+        """
+        state = SquadroState(first=0, n_pawns=5)
+        zero = [0, 0, 0, 0, 0]
+        winning = [12, 12, 12, 12, 0]
+
+        state.set_from_advancement([winning, zero])
+        value = self.agent.evaluate(state)
+        self.assertEqual(inf, value)
+
+        state.set_from_advancement([zero, winning])
+        value = self.agent.evaluate(state)
+        self.assertEqual(- inf, value)
+
+        self.agent.id = 1
+        state.set_from_advancement([winning, zero])
+        value = self.agent.evaluate(state)
+        self.assertEqual(-inf, value)
+
+        state.set_from_advancement([zero, winning])
+        value = self.agent.evaluate(state)
+        self.assertEqual(inf, value)
+
+    def test_all_winning_moves(self, *args, **kwargs):
+        """
+        Make sure that it returns an action when all the moves are winning
+        """
+        self.state.set_from_advancement([[0, 0, 8], [7, 7, 8]])
+        action = self.agent.get_action(self.state)
+        self.assertIn(action, {0, 1})
