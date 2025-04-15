@@ -3,13 +3,13 @@ from unittest.mock import patch
 import pytest
 
 from squadro.agents.random_agent import RandomAgent
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 
 
-@patch.object(SquadroState, 'get_current_player_actions',
+@patch.object(State, 'get_current_player_actions',
               lambda self: ["action1", "action2", "action3"])
 def test_get_action_returns_valid_action():
-    state = SquadroState()
+    state = State()
     agent = RandomAgent()
 
     action = agent.get_action(state)
@@ -17,10 +17,10 @@ def test_get_action_returns_valid_action():
     assert action in state.get_current_player_actions()
 
 
-@patch.object(SquadroState, 'get_current_player_actions',
+@patch.object(State, 'get_current_player_actions',
               lambda self: ["action1", "action2", "action3"])
 def test_get_action_uses_random_choice():
-    state = SquadroState()
+    state = State()
     agent = RandomAgent()
 
     actions_taken = set(agent.get_action(state) for _ in range(100))
@@ -43,9 +43,9 @@ def test_agent_inherits_from_base_class(mock_agent):
     assert isinstance(mock_agent, Agent)
 
 
-@patch.object(SquadroState, 'get_current_player_actions', lambda self: [])
+@patch.object(State, 'get_current_player_actions', lambda self: [])
 def test_get_action_no_available_actions():
-    state = SquadroState()
+    state = State()
     agent = RandomAgent()
 
     with pytest.raises(IndexError):

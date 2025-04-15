@@ -2,7 +2,7 @@ import argparse
 
 import numpy as np
 
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 from squadro.training import training, save_new_model, print_network
 
 n_train = 60
@@ -66,7 +66,7 @@ def game(agent, agent2, validation, i, model_path, new_model_path):
     DNN_new_player = 0
 
     # Initialisation
-    cur_state = SquadroState()
+    cur_state = State()
     cur_state.cur_player = 0 if i % 2 == 0 else 1
     if i % 4 < 2:
         agents = [getattr(__import__(agent2), 'MyAgent')(), getattr(__import__(agent), 'MyAgent')()]

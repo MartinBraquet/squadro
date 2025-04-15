@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import torch
 
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 
 """
 Runs the game
@@ -24,7 +24,7 @@ def game(agent_0, agent_1, i):
     init = 1
 
     # Initialisation
-    cur_state = SquadroState()
+    cur_state = State()
     
     agents = [getattr(__import__(agent_0), 'MyAgent')(), getattr(__import__(agent_0), 'MyAgent')()]
     

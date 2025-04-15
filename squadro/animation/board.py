@@ -1,6 +1,6 @@
 import pygame
 
-from squadro.squadro_state import get_moves, SquadroState
+from squadro.squadro_state import get_moves, State
 from squadro.tools.constants import RESOURCE_PATH
 from squadro.tools.timer import pretty_print_time
 
@@ -113,7 +113,7 @@ class Board:
                 pawn_board_pos = pawn_to_board_position(pawn_pos)
                 self.screen.blit(pawn_img, pawn_board_pos)
 
-    def show_turn(self, state: SquadroState):
+    def show_turn(self, state: State):
         # Draw whose turn it is
         font1 = pygame.font.Font("freesansbold.ttf", 12)
         text1 = font1.render("Current player:", True, black, grey)

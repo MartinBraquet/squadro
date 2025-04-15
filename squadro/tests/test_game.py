@@ -10,7 +10,7 @@ import pytest
 
 from squadro.agents.random_agent import RandomAgent
 from squadro.game import Game, GameFromState
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 
 
 class TestGame(TestCase):
@@ -36,14 +36,14 @@ class TestGame(TestCase):
         game.run()
 
     def test_game_from_state_initialization(self):
-        state = SquadroState(n_pawns=4, first=1)
+        state = State(n_pawns=4, first=1)
         game = GameFromState(state=state, agent_0="random", agent_1="random")
         self.assertEqual(game.first, 1)
         self.assertEqual(game.n_pawns, 4)
         self.assertEqual(game.winner, None)
 
     def test_game_from_state_action_history(self):
-        state = SquadroState(n_pawns=3, first=0)
+        state = State(n_pawns=3, first=0)
         game = GameFromState(state=state, agent_0="random", agent_1="random")
         self.assertListEqual(game.action_history, [])
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from time import time
 
 from squadro.agents.agent import Agent
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 from squadro.tools.constants import DefaultParams
 from squadro.tools.utils import get_agent
 
@@ -12,7 +12,7 @@ from squadro.tools.utils import get_agent
 class GameFromState:
     def __init__(
         self,
-        state: SquadroState,
+        state: State,
         agent_0: Agent | str = None,
         agent_1: Agent | str = None,
         time_out=None,
@@ -116,7 +116,7 @@ class GameFromState:
         with open(filename, 'r') as f:
             results = json.load(f)
         game = GameFromState(
-            state=SquadroState(**results['state']),
+            state=State(**results['state']),
             agent_0=results['agent_0'],
             agent_1=results['agent_1'],
         )
@@ -133,7 +133,7 @@ class Game(GameFromState):
         **kwargs,
     ):
         n_pawns = int(n_pawns) if n_pawns is not None else DefaultParams.n_pawns
-        state = SquadroState(n_pawns=n_pawns, first=first)
+        state = State(n_pawns=n_pawns, first=first)
         super().__init__(state=state, **kwargs)
 
 

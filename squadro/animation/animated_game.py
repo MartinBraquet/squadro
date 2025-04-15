@@ -5,7 +5,7 @@ import pygame
 
 from squadro.animation.board import Board, handle_events, check_quit
 from squadro.game import Game
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 from squadro.tools.constants import DefaultParams
 
 
@@ -24,7 +24,7 @@ class GameAnimation:
 
     def show(self):
         board = Board(self.game.n_pawns, title=f"Game Visualization: {self.game.title}")
-        state = SquadroState(n_pawns=self.game.n_pawns, first=self.game.first)
+        state = State(n_pawns=self.game.n_pawns, first=self.game.first)
         board.turn_draw(state)
 
         action_history = self.game.run()

@@ -4,7 +4,6 @@ from functools import lru_cache
 
 import pygame
 
-from squadro.state import State
 from squadro.tools.constants import DefaultParams
 from squadro.tools.serialize import hash_dict
 
@@ -39,7 +38,7 @@ def get_init_pos(n_pawns):
 #     return init_pos
 
 
-class SquadroState(State):
+class State:
     """
     Player 0 is yellow, starting at the bottom
     Player 1 is red, starting on the right
@@ -55,7 +54,10 @@ class SquadroState(State):
     """
 
     def __init__(self, n_pawns=None, first=None):
-        super().__init__()
+        self.cur_player = 0
+        self.winner = None
+        self.timeout_player = None
+        self.invalid_player = None
         if first is not None:
             assert first in [0, 1], "first must be 0 or 1"
             self.cur_player = first
@@ -163,7 +165,7 @@ class SquadroState(State):
         """
         Return a deep copy of this state.
         """
-        cp = SquadroState()
+        cp = State()
         cp.cur_player = self.cur_player
         cp.winner = self.winner
         cp.timeout_player = self.timeout_player

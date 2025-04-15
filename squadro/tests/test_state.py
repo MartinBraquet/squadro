@@ -1,12 +1,12 @@
 import pytest
 
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 
 
 @pytest.fixture
 def sample_state():
     """Provides a sample state for tests."""
-    return SquadroState(n_pawns=5, first=0)
+    return State(n_pawns=5, first=0)
 
 
 def test_apply_action_valid_action(sample_state):

@@ -1,11 +1,10 @@
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 
 agent_0 = 'contest_agent3'
 agent_1 = 'contest_agent3'
 
 def main():
-
-    cur_state = SquadroState()
+    cur_state = State()
     agents = [getattr(__import__(agent_0), 'MyAgent')(), getattr(__import__(agent_1), 'MyAgent')()]
     agents[0].set_id(0)
     agents[1].set_id(1)

@@ -12,7 +12,7 @@ from squadro.agents.alphabeta_agent import (
 )
 from squadro.agents.random_agent import RandomAgent
 from squadro.minimax import inf
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 
 
 class RandomAlphaBetaAgent(AlphaBetaAgent):
@@ -28,10 +28,10 @@ class RandomAlphaBetaAgent(AlphaBetaAgent):
         super().__init__(*args, **kwargs)
         self.evaluations = 0
 
-    def cutoff(self, state: SquadroState, depth: int):
+    def cutoff(self, state: State, depth: int):
         return depth >= self.MAX_DEPTH
 
-    def evaluate(self, state: SquadroState):
+    def evaluate(self, state: State):
         self.evaluations += 1
         return random.random()
 
@@ -42,7 +42,7 @@ class TestAlphaBeta(TestCase):
 
     def test_get_action(self):
         agent = RandomAlphaBetaAgent(pid=0)
-        state = SquadroState(first=0, n_pawns=5)
+        state = State(first=0, n_pawns=5)
         action = agent.get_action(state)
 
         # Less than n_pawns^MAX_DEPTH because of pruning
@@ -58,7 +58,7 @@ class TestAlphaBeta(TestCase):
 
     def test_successors(self):
         self.agent = AlphaBetaAdvancementAgent(pid=0)
-        self.state = SquadroState(n_pawns=3, first=0)
+        self.state = State(n_pawns=3, first=0)
         expected = [
             (0, [[3, 4, 4], [4, 4, 4]]),
             (1, [[4, 1, 4], [4, 4, 4]]),
@@ -74,7 +74,7 @@ class TestAlphaBeta(TestCase):
 class TestAdvancement(TestCase):
     def setUp(self):
         self.agent = AlphaBetaAdvancementAgent(pid=0)
-        self.state = SquadroState(first=0, n_pawns=3)
+        self.state = State(first=0, n_pawns=3)
 
     def test_cutoff(self):
         cutoff = self.agent.cutoff(self.state, 1)
@@ -101,7 +101,7 @@ class TestAdvancement(TestCase):
 class TestRelativeAdvancement(TestCase):
     def setUp(self):
         self.agent = AlphaBetaRelativeAdvancementAgent(pid=0)
-        self.state = SquadroState(first=0, n_pawns=3)
+        self.state = State(first=0, n_pawns=3)
 
     def test_evaluate(self):
         self.state.pos[0] = [4, 2, 1]
@@ -114,7 +114,7 @@ class TestRelativeAdvancement(TestCase):
 class TestAdvancementDeep(TestCase):
     def setUp(self):
         self.agent = AlphaBetaAdvancementDeepAgent(pid=0, max_depth=5)
-        self.state = SquadroState(first=0, n_pawns=3)
+        self.state = State(first=0, n_pawns=3)
 
     def test_evaluate(self):
         self.state.pos[0] = [4, 2, 1]
@@ -132,7 +132,7 @@ class TestAdvancementDeep(TestCase):
         self.assertGreater(self.agent.depth, 0)
 
     @patch.object(minimax, 'search', lambda *a, **kw: sleep(.01) or 2)
-    @patch.object(SquadroState, 'get_random_action', return_value=-1)
+    @patch.object(State, 'get_random_action', return_value=-1)
     def test_skip_unfinished_depth(self, *args, **kwargs):
         """
         Test that the search skips the last minimax result if it finished due to timeout, which
@@ -169,7 +169,7 @@ class TestAdvancementDeep(TestCase):
         Make sure that the agent picks the winning move
         """
         self.agent.max_depth = 1
-        state = SquadroState(first=0, n_pawns=5)
+        state = State(first=0, n_pawns=5)
         state.set_from_advancement([[12, 12, 12, 11, 0], [12, 12, 12, 9, 11]])
         action = self.agent.get_action(state)
         self.assertEqual(3, action)
@@ -178,7 +178,7 @@ class TestAdvancementDeep(TestCase):
         """
         Make sure the winning states have infinite value
         """
-        state = SquadroState(first=0, n_pawns=5)
+        state = State(first=0, n_pawns=5)
         zero = [0, 0, 0, 0, 0]
         winning = [12, 12, 12, 12, 0]
 

@@ -5,7 +5,7 @@ from time import time
 from squadro import minimax
 from squadro.agents.agent import Agent
 from squadro.minimax import inf
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 
 
 class AlphaBetaAgent(Agent):
@@ -20,7 +20,7 @@ class AlphaBetaAgent(Agent):
       modifying the outcome.
     """
 
-    def get_action(self, state: SquadroState, last_action: int = None, time_left: float = None):
+    def get_action(self, state: State, last_action: int = None, time_left: float = None):
         """This function is used to play a move according
         to the board, player and time left provided as input.
         It must return an action representing the move the player
@@ -28,7 +28,7 @@ class AlphaBetaAgent(Agent):
         """
         return minimax.search(state, self)
 
-    def successors(self, state: SquadroState):
+    def successors(self, state: State):
         """The successors function must return (or yield) a list of
         pairs (a, s) in which `a` is the action played to reach the
         state `s`;"""
@@ -39,14 +39,14 @@ class AlphaBetaAgent(Agent):
             yield a, s
 
     @abstractmethod
-    def cutoff(self, state: SquadroState, depth: int):
+    def cutoff(self, state: State, depth: int):
         """The cutoff function returns true if the alpha-beta/minimax
         search has to stop; false otherwise.
         """
         pass
 
     @abstractmethod
-    def evaluate(self, state: SquadroState):
+    def evaluate(self, state: State):
         """The evaluate function must return a number
         representing the utility function of the board, according to the player doing the minimax
         search (NOT the player for the passed `state` in `state.cur_player`).
@@ -74,10 +74,10 @@ class AlphaBetaAdvancementAgent(AlphaBetaAgent):
     def get_name(cls):
         return 'ab_advancement'
 
-    def cutoff(self, state: SquadroState, depth: int):
+    def cutoff(self, state: State, depth: int):
         return depth > self.depth or state.game_over_check()
 
-    def evaluate(self, state: SquadroState):
+    def evaluate(self, state: State):
         return sum(
             state.get_pawn_advancement(self.id, pawn)
             for pawn in range(state.n_pawns)
@@ -97,7 +97,7 @@ class AlphaBetaRelativeAdvancementAgent(AlphaBetaAdvancementAgent):
     def get_name(cls):
         return 'ab_relative_advancement'
 
-    def evaluate(self, state: SquadroState):
+    def evaluate(self, state: State):
         return sum(
             state.get_pawn_advancement(self.id, p) - state.get_pawn_advancement(1 - self.id, p)
             for p in range(state.n_pawns)

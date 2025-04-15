@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 
 
 class Agent(ABC):
@@ -18,7 +18,7 @@ class Agent(ABC):
     @abstractmethod
     def get_action(
         self,
-        state: SquadroState,
+        state: State,
         last_action: Optional[int] = None,
         time_left: Optional[float] = None,
     ):

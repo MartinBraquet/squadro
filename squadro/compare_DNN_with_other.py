@@ -2,7 +2,7 @@ import argparse
 
 import torch
 
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 
 # text = 'model200neurons_7layers'
 
@@ -23,7 +23,7 @@ def game(agent_0, agent_1, path, i):
     init = 1
 
     # Initialisation
-    cur_state = SquadroState()
+    cur_state = State()
     cur_state.cur_player = 0 if i % 4 < 2 else 1
     
     if i % 2 == 0:

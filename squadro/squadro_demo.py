@@ -3,7 +3,7 @@ from time import sleep
 
 import pygame
 
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 
 
 def main(agent_0, agent_1, time_out, sleep_time):
@@ -27,7 +27,7 @@ def main(agent_0, agent_1, time_out, sleep_time):
 	yellow_pawn_fin = pygame.image.load("resources/yellow_pawn_fin.png")
 	red_pawn_fin = pygame.image.load("resources/red_pawn_fin.png")
 
-	cur_state = SquadroState()
+	cur_state = State()
 	agents = [getattr(__import__(agent_0), 'MyAgent')(), getattr(__import__(agent_1), 'MyAgent')()]
 
 	while not cur_state.game_over():

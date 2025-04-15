@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pygame
 
 from squadro.agents.human_agent import HumanAgent
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 
 
 class MockedEvent:
@@ -23,7 +23,7 @@ class TestGame(TestCase):
 class TestPyGame(TestCase):
     def setUp(self):
         self.agent = HumanAgent()
-        self.state = SquadroState(first=0)
+        self.state = State(first=0)
         pygame.init()
 
     def tearDown(self):

@@ -22,7 +22,7 @@ from collections import defaultdict
 from os import mkdir
 from os.path import exists
 
-from squadro.squadro_state import SquadroState
+from squadro.squadro_state import State
 
 inf = float("inf")
 
@@ -34,7 +34,7 @@ class Debug:
     node_counter = 0
 
     @classmethod
-    def save_tree(cls, state: SquadroState):
+    def save_tree(cls, state: State):
         if not cls.tree_wanted:
             return
         if not exists('results'):
@@ -44,7 +44,7 @@ class Debug:
         with open('results/nodes.json', 'w') as f:
             json.dump(cls.nodes, f, indent=4)
 
-        def save_nodes(s: SquadroState):
+        def save_nodes(s: State):
             if not hasattr(s, 'children'):
                 return s.tree_index
             return {
@@ -56,7 +56,7 @@ class Debug:
             json.dump(nested_nodes, f, indent=4)
 
     @classmethod
-    def clear(cls, state: SquadroState):
+    def clear(cls, state: State):
         if not cls.tree_wanted:
             return
         cls.edges = []
@@ -68,7 +68,7 @@ class Debug:
             del state.children
 
     @classmethod
-    def save_node(cls, value, state: SquadroState, eval_type, depth):
+    def save_node(cls, value, state: State, eval_type, depth):
         if not cls.tree_wanted:
             return
         if not hasattr(state, 'tree_index'):
@@ -83,7 +83,7 @@ class Debug:
         logging.info(f'Node index #{state.tree_index}: {cls.nodes[state.tree_index]}')
 
     @classmethod
-    def save_edge(cls, parent: SquadroState, child: SquadroState):
+    def save_edge(cls, parent: State, child: State):
         if not cls.tree_wanted:
             return
         if not hasattr(parent, 'tree_index'):
@@ -98,7 +98,7 @@ class Debug:
         cls.edges.append((parent.tree_index, child.tree_index))
 
 
-def search(st: SquadroState, player, prune=True):
+def search(st: State, player, prune=True):
     """Perform a MiniMax/AlphaBeta search and return the best action.
 
     Arguments:
