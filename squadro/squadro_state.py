@@ -13,6 +13,7 @@ MOVES = [[1, 3, 2, 3, 1, 3, 2, 1, 2], [3, 1, 2, 1, 3, 1, 2, 3, 2]]
 MOVES_RETURN = [[3, 1, 2, 1, 3, 1, 2, 3, 2], [1, 3, 2, 3, 1, 3, 2, 1, 2]]
 MAX_PAWNS = len(MOVES[0])
 
+
 @lru_cache
 def get_moves(n_pawns):
     moves = [m[:n_pawns].copy() for m in MOVES]
@@ -134,11 +135,17 @@ class SquadroState(State):
         if self.is_pawn_finished(player, pawn):
             return 2 * self.max_pos
         elif self.is_pawn_returning(player, pawn):
-            nb = self.get_pawn_position(player, pawn)[1 - player]
-            return int(self.max_pos + nb)
+            pos = self.get_pawn_position(player, pawn)[1 - player]
+            return self.max_pos + pos
         else:
-            nb = self.max_pos - self.get_pawn_position(player, pawn)[1 - player]
-            return int(nb)
+            pos = self.max_pos - self.get_pawn_position(player, pawn)[1 - player]
+            return pos
+
+    def set_from_advancement(self, advancement: list[list[int]]):
+        self.returning = [[a >= self.max_pos for a in pa] for pa in advancement]
+        self.finished = [[a == 2 * self.max_pos for a in pa] for pa in advancement]
+        self.pos = [[abs(a - self.max_pos) for a in pa] for pa in advancement]
+        self.game_over_check()
 
     def is_pawn_returning(self, player, pawn):
         """
@@ -287,26 +294,13 @@ class SquadroState(State):
 
         return crossed
 
-    def get_scores(self):
-        """
-        Return the scores of each player.
-        """
-        pass
-
     def get_winner(self):
         """
         Get the winner of the game. Call only if the game is over.
         """
         return self.winner
 
-    def get_state_data(self):
-        """
-        Return the information about the state that is given to students.
-        Usually they have to implement their own state class.
-        """
-        pass
-
-    def anim(self):
+    def anim(self, blocking=True):
         # Avoid circular import, might need to refactor
         from squadro.animation.board import Board, handle_events
 
