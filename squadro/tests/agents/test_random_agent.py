@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from squadro.agents.random_agent import RandomAgent
-from squadro.squadro_state import State
+from squadro.state import State
 
 
 @patch.object(State, 'get_current_player_actions',

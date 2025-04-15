@@ -1,6 +1,6 @@
 import pygame
 
-from squadro.squadro_state import get_moves, State
+from squadro.state import get_moves, State
 from squadro.tools.constants import RESOURCE_PATH
 from squadro.tools.timer import pretty_print_time
 

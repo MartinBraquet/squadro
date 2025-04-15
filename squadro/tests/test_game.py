@@ -10,7 +10,7 @@ import pytest
 
 from squadro.agents.random_agent import RandomAgent
 from squadro.game import Game, GameFromState
-from squadro.squadro_state import State
+from squadro.state import State
 
 
 class TestGame(TestCase):

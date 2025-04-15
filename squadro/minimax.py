@@ -22,9 +22,8 @@ from collections import defaultdict
 from os import mkdir
 from os.path import exists
 
-from squadro.squadro_state import State
-
-inf = float("inf")
+from squadro.state import State
+from squadro.tools.constants import inf
 
 
 class Debug:

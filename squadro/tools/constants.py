@@ -13,3 +13,4 @@ class DefaultParams:
 
 RESOURCE_PATH = Path(squadro.__file__).parent / 'resources'
 MAX_INT = sys.maxsize
+inf = float("inf")

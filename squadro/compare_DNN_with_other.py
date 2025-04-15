@@ -2,7 +2,7 @@ import argparse
 
 import torch
 
-from squadro.squadro_state import State
+from squadro.state import State
 
 # text = 'model200neurons_7layers'
 

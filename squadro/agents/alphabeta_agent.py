@@ -4,8 +4,8 @@ from time import time
 
 from squadro import minimax
 from squadro.agents.agent import Agent
-from squadro.minimax import inf
-from squadro.squadro_state import State
+from squadro.state import State
+from squadro.tools.constants import inf
 
 
 class AlphaBetaAgent(Agent):

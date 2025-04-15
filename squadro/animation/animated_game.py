@@ -5,7 +5,7 @@ import pygame
 
 from squadro.animation.board import Board, handle_events, check_quit
 from squadro.game import Game
-from squadro.squadro_state import State
+from squadro.state import State
 from squadro.tools.constants import DefaultParams
 
 

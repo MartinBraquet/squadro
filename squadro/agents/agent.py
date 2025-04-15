@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from squadro.squadro_state import State
+from squadro.state import State
 
 
 class Agent(ABC):
@@ -33,8 +33,9 @@ class Agent(ABC):
         pass
 
     @classmethod
-    def get_name(cls):
-        return 'unnamed'
+    @abstractmethod
+    def get_name(cls) -> str:
+        pass
 
     def set_id(self, _id):
         """

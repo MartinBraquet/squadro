@@ -1,6 +1,6 @@
 import pytest
 
-from squadro.squadro_state import State
+from squadro.state import State
 
 
 @pytest.fixture

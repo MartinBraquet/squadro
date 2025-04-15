@@ -136,13 +136,13 @@ class ContestAgentCleaned(AlphaBetaAgent):
       
         ##### MOVE THE LEAF NODE
         # Breadcrumbs = path from root to leaf
-        leaf, done, breadcrumbs = self.mcts.moveToLeaf(self)
+        leaf, done, breadcrumbs = self.mcts.move_to_leaf(self)
         
         ##### EVALUATE THE LEAF NODE with deep neural network + add edges to leaf node
         value = self.evaluateLeaf(leaf, done)
 
         ##### BACKFILL THE VALUE THROUGH THE TREE
-        self.mcts.backFill(leaf, value, breadcrumbs)
+        self.mcts.back_fill(leaf, value, breadcrumbs)
 
   
     """
@@ -268,7 +268,7 @@ class MCTS():
 
         done = 0
 
-        while not currentNode.isLeaf():
+        while not currentNode.is_leaf():
             
             maxQU = -float('Inf')
 

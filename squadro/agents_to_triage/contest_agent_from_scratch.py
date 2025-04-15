@@ -171,7 +171,7 @@ class ContestAgentFromScratch(AlphaBetaAgent):
         
         ##### MOVE THE LEAF NODE
         # Breadcrumbs = path from root to leaf
-        leaf, done, breadcrumbs = self.mcts.moveToLeaf(self)
+        leaf, done, breadcrumbs = self.mcts.move_to_leaf(self)
         #render(leaf.state, #logger_mcts)
         
         
@@ -183,7 +183,7 @@ class ContestAgentFromScratch(AlphaBetaAgent):
         
 
         ##### BACKFILL THE VALUE THROUGH THE TREE
-        self.mcts.backFill(leaf, value, breadcrumbs)
+        self.mcts.back_fill(leaf, value, breadcrumbs)
 
 
     def evaluateLeaf(self, leaf, done):
@@ -326,7 +326,7 @@ class MCTS():
 
         done = 0
 
-        while not currentNode.isLeaf():
+        while not currentNode.is_leaf():
 
             #logger_mcts.info('PLAYER TURN...%d', currentNode.playerTurn)
             

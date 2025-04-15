@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import torch
 
-from squadro.squadro_state import State
+from squadro.state import State
 
 """
 Runs the game

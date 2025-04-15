@@ -11,7 +11,7 @@ from squadro.agents.alphabeta_agent import (
     AlphaBetaAdvancementDeepAgent,
 )
 from squadro.agents.random_agent import RandomAgent
-from squadro.squadro_state import State
+from squadro.state import State
 from squadro.tools.constants import inf
 
 

@@ -3,7 +3,7 @@ from time import sleep
 
 import pygame
 
-from squadro.squadro_state import State
+from squadro.state import State
 
 
 def main(agent_0, agent_1, time_out, sleep_time):

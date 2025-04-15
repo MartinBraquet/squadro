@@ -1,4 +1,4 @@
-from squadro.squadro_state import State
+from squadro.state import State
 
 agent_0 = 'contest_agent3'
 agent_1 = 'contest_agent3'
