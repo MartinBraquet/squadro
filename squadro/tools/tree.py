@@ -5,6 +5,14 @@ import plotly.graph_objects as go
 from igraph import Graph, EdgeSeq
 
 
+def get_nested_nodes(s):
+    if not hasattr(s, 'children'):
+        return s.tree_index
+    return {
+        s.tree_index: [get_nested_nodes(n) for n in s.children]
+    }
+
+
 def plot_tree():
     tree_directory = Path('results')
 

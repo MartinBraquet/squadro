@@ -1,29 +1,12 @@
-"""
-MiniMax and AlphaBeta algorithms.
-Author: Cyrille Dejemeppe <cyrille.dejemeppe@uclouvain.be>
-Copyright (C) 2014, Universite catholique de Louvain
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; version 2 of the License.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, see <http://www.gnu.org/licenses/>.
-
-"""
 import json
-import logging
 from collections import defaultdict
 from os import mkdir
 from os.path import exists
 
 from squadro.state import State
 from squadro.tools.constants import inf
+from squadro.tools.log import logger
+from squadro.tools.tree import get_nested_nodes
 
 
 class Debug:
@@ -43,14 +26,7 @@ class Debug:
         with open('results/nodes.json', 'w') as f:
             json.dump(cls.nodes, f, indent=4)
 
-        def save_nodes(s: State):
-            if not hasattr(s, 'children'):
-                return s.tree_index
-            return {
-                s.tree_index: [save_nodes(n) for n in s.children]
-            }
-
-        nested_nodes = save_nodes(state)
+        nested_nodes = get_nested_nodes(state)
         with open('results/nested_nodes.json', 'w') as f:
             json.dump(nested_nodes, f, indent=4)
 
@@ -79,7 +55,7 @@ class Debug:
             'value': value,
             'depth': depth,
         }
-        logging.info(f'Node index #{state.tree_index}: {cls.nodes[state.tree_index]}')
+        logger.info(f'Node index #{state.tree_index}: {cls.nodes[state.tree_index]}')
 
     @classmethod
     def save_edge(cls, parent: State, child: State):
