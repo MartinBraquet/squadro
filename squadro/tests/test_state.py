@@ -122,3 +122,4 @@ def test_set_advancement(sample_state):
     assert sample_state.finished == [
         [False, False, True, False, False], [False, False, False, False, False]
     ]
+    assert sample_state.get_advancement() == advancement
