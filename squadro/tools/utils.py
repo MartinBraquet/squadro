@@ -35,4 +35,6 @@ def get_agent(agent, **kwargs):
     if isinstance(agent, Agent):
         return agent
     agent = agent.replace('_agent', '')
+    if agent not in AGENTS:
+        raise ValueError(f"Agent '{agent}' not found. Available agents: {AVAILABLE_AGENTS}")
     return AGENTS[agent](**kwargs)
