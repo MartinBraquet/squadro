@@ -12,7 +12,6 @@ from squadro.agents.alphabeta_agent import (
 )
 from squadro.agents.random_agent import RandomAgent
 from squadro.state import State
-from squadro.tools.constants import inf
 
 
 class RandomAlphaBetaAgent(AlphaBetaAgent):
@@ -185,23 +184,24 @@ class TestAdvancementDeep(TestCase):
         state = State(first=0, n_pawns=5)
         zero = [0, 0, 0, 0, 0]
         winning = [12, 12, 12, 12, 0]
+        max_value = 48
 
         state.set_from_advancement([winning, zero])
         value = self.agent.evaluate(state)
-        self.assertEqual(inf, value)
+        self.assertEqual(max_value, value)
 
         state.set_from_advancement([zero, winning])
         value = self.agent.evaluate(state)
-        self.assertEqual(- inf, value)
+        self.assertEqual(- max_value, value)
 
         self.agent.id = 1
         state.set_from_advancement([winning, zero])
         value = self.agent.evaluate(state)
-        self.assertEqual(-inf, value)
+        self.assertEqual(-max_value, value)
 
         state.set_from_advancement([zero, winning])
         value = self.agent.evaluate(state)
-        self.assertEqual(inf, value)
+        self.assertEqual(max_value, value)
 
     def test_all_winning_moves(self, *args, **kwargs):
         """
