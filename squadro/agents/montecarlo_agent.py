@@ -9,7 +9,10 @@ tree all the way down to depth k, which takes many node expansions.
 Most of the time for MCTS is spent on the random playouts (function to compute next state from random action)
 Most of the time for Minimax is spent on state copies, keeping them in memory, and their evaluation
 """
+import json
+import os
 import random
+from collections import defaultdict
 from time import time
 from typing import Optional
 
@@ -20,12 +23,14 @@ from squadro.state import State, get_next_state
 from squadro.tools.evaluation import evaluate_advancement
 from squadro.tools.log import logger
 from squadro.tools.probabilities import get_random_sample
+from squadro.tools.tree import get_nested_nodes
 
 
 class Node:
-    def __init__(self, state: State):
+    def __init__(self, state: State, depth: int = None):
         self.state = state
         self.edges = []
+        self.depth = depth
 
     def is_leaf(self):
         return len(self.edges) == 0
@@ -42,6 +47,86 @@ class Node:
         if to_string:
             stats = '\n'.join(str(s) for s in stats)
         return stats
+
+    @property
+    def children(self):
+        return [edge.out_node for edge in self.edges]
+
+
+def save_edge_values(d: dict, node: Node):
+    for edge in node.edges:
+        value = edge.stats.N
+        idx = (edge.in_node.tree_index, edge.out_node.tree_index)
+        d[idx] = value
+        save_edge_values(d, edge.out_node)
+
+
+class Debug:
+    tree_wanted = False
+    nodes = defaultdict(dict)
+    node_counter = 0
+
+    @classmethod
+    def save_tree(cls, node: Node):
+        if not cls.tree_wanted:
+            return
+        if not os.path.exists('results'):
+            os.mkdir('results')
+
+        with open('results/edges.json', 'w') as f:
+            json.dump(cls.edges, f, indent=4)
+
+        edge_values = {}
+        save_edge_values(edge_values, node)
+        edge_values = {str(key): value for key, value in edge_values.items()}
+        with open('results/edge_values.json', 'w') as f:
+            json.dump(edge_values, f, indent=4)
+
+        with open('results/nodes.json', 'w') as f:
+            json.dump(cls.nodes, f, indent=4)
+
+        nested_nodes = get_nested_nodes(node)
+        with open('results/nested_nodes.json', 'w') as f:
+            json.dump(nested_nodes, f, indent=4)
+
+    @classmethod
+    def clear(cls, node: Node):
+        if not cls.tree_wanted:
+            return
+        cls.edges = []
+        cls.nodes = defaultdict(dict)
+        cls.node_counter = 0
+        if hasattr(node, 'tree_index'):
+            del node.tree_index
+        cls.save_node(node)
+
+    @classmethod
+    def save_node(cls, node: Node):
+        if not cls.tree_wanted:
+            return
+        if not hasattr(node, 'tree_index'):
+            node.tree_index = cls.node_counter
+            cls.node_counter += 1
+        cls.nodes[node.tree_index] |= {
+            # 'eval': eval_type,
+            'state': str(node.state),
+            # 'value': value,
+            'depth': node.depth,
+        }
+        logger.info(f'Node index #{node.tree_index}: {cls.nodes[node.tree_index]}')
+
+    @classmethod
+    def save_edge(cls, parent: Node, child: Node):
+        if not cls.tree_wanted:
+            return
+        if not hasattr(parent, 'tree_index'):
+            parent.tree_index = cls.node_counter
+            cls.node_counter += 1
+        if not hasattr(child, 'tree_index'):
+            child.tree_index = cls.node_counter
+            cls.node_counter += 1
+        cls.edges.append((parent.tree_index, child.tree_index))
+
 
 
 class Stats:
@@ -187,8 +272,9 @@ class MonteCarloAgent(Agent):
     ) -> int:
         self.start_time = time()
 
-        root = Node(state)
+        root = Node(state, depth=0)
         self.mcts = MCTS(root)
+        Debug.clear(root)
 
         n = 0
         while time() - self.start_time < self.max_time and n < self.mc_steps:
@@ -209,6 +295,8 @@ class MonteCarloAgent(Agent):
         logger.info(f'Action probs: {pi}\n'
                     f'Action chosen: {action}\n'
                     f'MCTS perceived value: {value:.4f}')
+
+        Debug.save_tree(root)
 
         return action
 
@@ -236,9 +324,11 @@ class MonteCarloAgent(Agent):
         probs = probs[allowed_actions]
         for idx, action in enumerate(allowed_actions):
             state = get_next_state(state=leaf.state, action=action)
-            node = Node(state)
+            node = Node(state, depth=leaf.depth + 1)
+
             # if state.id not in self.mcts.tree:
-            # self.mcts.addNode(node)
+            Debug.save_node(node=node)
+            Debug.save_edge(parent=leaf, child=node)
             # logger.info('added node......p = %f', probs[idx])
             # else:
             #    node = self.mcts.tree[state.id]
