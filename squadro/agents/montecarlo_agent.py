@@ -20,6 +20,7 @@ import numpy as np
 
 from squadro.agents.agent import Agent
 from squadro.state import State, get_next_state
+from squadro.tools.constants import DefaultParams
 from squadro.tools.evaluation import evaluate_advancement
 from squadro.tools.log import logger
 from squadro.tools.probabilities import get_random_sample
@@ -128,7 +129,6 @@ class Debug:
         cls.edges.append((parent.tree_index, child.tree_index))
 
 
-
 class Stats:
     def __init__(self, prior: float):
         self.N = 0
@@ -138,9 +138,7 @@ class Stats:
     def update(self, value: float):
         self.N += 1
         self.W += value
-        logger.debug(
-            f'Updating edge with value {value}: {self}'
-        )
+        logger.debug(f'Updating edge with value {value}: {self}')
 
     @property
     def Q(self) -> float:  # noqa
@@ -182,10 +180,9 @@ class MCTS:
     def __init__(self, root: Node, method: str = 'P'):
         self.root = root
         self.method = method
-        self.cpuct = 0.1
+        self.uct = 0.1  # Upper Confidence Bound for Trees (measure of exploration)
         self.epsilon_mcts = .2  # Probability to choose randomly the root edge
         self.is_training = False
-        self.stop_sim = False
 
     def _get_sim_edge_values(self, node) -> list[float]:
         # Introduce slight incentives for the root node to explore different edges (ONLY for training)
@@ -197,11 +194,11 @@ class MCTS:
         for i, edge in enumerate(node.edges):
             edge_frequency = np.sqrt(nb) / (1 + edge.stats.N)
             if self.method == 'P':
-                u = self.cpuct * edge_frequency * ((1 - epsilon) * edge.stats.P + epsilon * nu[i])
+                u = self.uct * edge_frequency * ((1 - epsilon) * edge.stats.P + epsilon * nu[i])
             elif self.method == 'random':
-                u = self.cpuct * edge_frequency * ((1 - epsilon) + epsilon * nu[i])
+                u = self.uct * edge_frequency * ((1 - epsilon) + epsilon * nu[i])
             elif self.method == 'N':
-                u = self.cpuct * edge_frequency
+                u = self.uct * edge_frequency
             else:
                 raise ValueError(f'Unknown method {self.method}')
             qu = edge.stats.Q + u
@@ -219,15 +216,11 @@ class MCTS:
         logger.debug('Sim step 1: MOVING TO LEAF')
         breadcrumbs = []
         node = self.root
-        self.stop_sim = False
 
         while not node.is_leaf():
             edge_best = self._pick_sim_edge(node)
             node = edge_best.out_node
             breadcrumbs.append(edge_best)
-            self.stop_sim = node.state.game_over()
-            if self.stop_sim:
-                break
 
         return node, breadcrumbs
 
@@ -251,13 +244,13 @@ class MonteCarloAgent(Agent):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.max_time = 1e9  # use fixed time for now
+        self.max_time = DefaultParams.max_time_per_move  # use fixed time for now
         self.start_time = None
 
         self.mcts = None
         self.is_training = False
-        self.mc_steps = 50  # Number of steps in MCTS
-        self.epsilon_move = 0.03  # Probability to choose randomly the move
+        self.mc_steps = 200  # Number of steps in MCTS
+        self.epsilon_move = 0.03  # Probability to sample the move from pi
         self.tau = 1  # If MCTS stochastic: select action with distribution pi^(1/tau)
 
     @classmethod
@@ -276,13 +269,15 @@ class MonteCarloAgent(Agent):
         self.mcts = MCTS(root)
         Debug.clear(root)
 
+        # Needs at least two simulations to give back-fill value to one root edge
         n = 0
-        while time() - self.start_time < self.max_time and n < self.mc_steps:
+        while (time() - self.start_time < self.max_time or n <= 1) and n < self.mc_steps:
             logger.debug(f'\nSIMULATION {n}')
             self.simulate()
             n += 1
 
-        logger.info(f'Root edges:\n{root.get_edge_stats(to_string=True)}')
+        logger.info(f'\n{n} simulations performed.\n'
+                    f'Root edges:\n{root.get_edge_stats(to_string=True)}')
 
         pi, values = self.get_av()
         action = self.choose_action(pi)
@@ -318,7 +313,7 @@ class MonteCarloAgent(Agent):
         return p, value
 
     def _expand_leaf(self, leaf: Node, probs: np.ndarray[float]) -> None:
-        if self.mcts.stop_sim:
+        if leaf.state.game_over():
             return
         allowed_actions = leaf.state.get_current_player_actions()
         probs = probs[allowed_actions]

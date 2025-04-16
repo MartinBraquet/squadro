@@ -33,6 +33,7 @@ class TestMonteCarlo(TestCase):
     def test_game(self):
         game = Game(n_pawns=3, agent_0='mcts', agent_1='random', first=0)
         game.agents[0].mc_steps = 50
+        game.agents[0].max_time = 1e9
         action_history = game.run()
         self.assertEqual(
             [2, 2, 2, 0, 1, 1, 0, 0, 1, 2, 0, 1, 0, 2, 2, 0, 1, 0, 0, 0, 1, 1, 0, 2, 2, 1, 2],
