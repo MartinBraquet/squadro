@@ -37,7 +37,7 @@ def game(agent_0, agent_1, path, i):
         
     agents[0].set_id(0)
     agents[1].set_id(1)
-    agents[DNN_player].epsilonMove = 0
+    agents[DNN_player].epsilon_move = 0
     agents[DNN_player].set_model_path(model_path)
     #if i == 0:
         #print('Network 0 (main) -------------------------------------------------------')

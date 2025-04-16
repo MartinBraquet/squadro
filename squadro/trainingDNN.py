@@ -84,8 +84,8 @@ def game(agent, agent2, validation, i, model_path, new_model_path):
         # Remove stochastic actions
         #agents[0].epsilonMCTS = 0
         #agents[1].epsilonMCTS = 0
-        agents[0].epsilonMove = 0
-        agents[1].epsilonMove = 0
+        agents[0].epsilon_move = 0
+        agents[1].epsilon_move = 0
         '''
         print('Current network model...............................................')
         print_network(agents[0].deepnetwork)

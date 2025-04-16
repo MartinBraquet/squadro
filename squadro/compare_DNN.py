@@ -40,8 +40,8 @@ def game(agent_0, agent_1, i):
     agents[0].epsilonMCTS = 0
     agents[1].epsilonMCTS = 0
     '''
-    agents[0].epsilonMove = 0
-    agents[1].epsilonMove = 0
+    agents[0].epsilon_move = 0
+    agents[1].epsilon_move = 0
     if i == 0:
         print('Network 0 (main) -------------------------------------------------------')
         print_network(agents[DNN_main_player].deepnetwork)
