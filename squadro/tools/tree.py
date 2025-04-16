@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 import plotly.graph_objects as go
-from igraph import Graph, EdgeSeq
+from igraph import Graph
 
 
 def get_nested_nodes(s):
@@ -13,7 +13,7 @@ def get_nested_nodes(s):
     }
 
 
-def plot_tree():
+def plot_tree(edge_labels=True):
     tree_directory = Path('results')
 
     edges = json.load(open(tree_directory / 'edges.json'))
@@ -21,6 +21,9 @@ def plot_tree():
     nodes = {int(k): v for k, v in nodes.items()}
     # labels = list(range(max(max(e) for e in edges) + 1))
     nested_nodes = json.load(open(tree_directory / 'nested_nodes.json'))
+    if edge_labels:
+        edge_labels = json.load(open(tree_directory / 'edge_values.json'))
+        edge_labels = {eval(key): value for key, value in edge_labels.items()}
 
     def get_n(l: list):
         assert isinstance(l, list)
@@ -58,17 +61,10 @@ def plot_tree():
 
     walk_nodes([nested_nodes])
 
-    labels = [nodes[k]['value'] for k in pos.keys()]
-    if not labels:
-        labels = list(map(str, range(n_vertices)))
 
     # pos = {i: (x, D - y) for i, (x, y) in node_ordering.items()}
 
-    es = EdgeSeq(G)  # sequence of edges
     E = [e.tuple for e in G.es]  # list of edges
-
-    min_x = min(pos[k][0] for k in pos)
-    # pos = {k: (x - min_x, y) for k, (x, y) in pos.items()}
 
     L = len(pos)
     Xn = [pos[k][0] for k in range(L)]
@@ -79,22 +75,39 @@ def plot_tree():
         Xe += [pos[edge[0]][0], pos[edge[1]][0], None]
         Ye += [pos[edge[0]][1], pos[edge[1]][1], None]
 
-    def make_annotations(pos, text, font_size=10, font_color='rgb(250,250,250)'):
-        L = len(pos)
-        if len(text) != L:
-            raise ValueError('The lists pos and text must have the same len')
-        annotations = []
-        for k in range(L):
+    if nodes[0].get('value') is not None:
+        labels = [nodes[k]['value'] for k in pos.keys()]
+    else:
+        labels = list(map(str, range(n_vertices)))
+
+    if len(labels) != L:
+        raise ValueError('The lists pos and text must have the same len')
+    annotations = []
+    for k in range(L):
+        annotations.append(
+            dict(
+                text=labels[k],
+                x=pos[k][0], y=pos[k][1],
+                xref='x1', yref='y1',
+                font=dict(color='rgb(250,250,250)', size=10),
+                showarrow=False)
+        )
+
+    if edge_labels:
+        for edge, label in edge_labels.items():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            mid_x = (x0 + x1) / 2
+            mid_y = (y0 + y1) / 2
             annotations.append(
                 dict(
-                    text=labels[k],
-                    # or replace labels with a different list for the text within the circle
-                    x=pos[k][0], y=pos[k][1],
-                    xref='x1', yref='y1',
-                    font=dict(color=font_color, size=font_size),
-                    showarrow=False)
+                    x=mid_x,
+                    y=mid_y,
+                    text=label,
+                    showarrow=False,
+                    font=dict(color="red", size=12)
+                )
             )
-        return annotations
 
     fig = go.Figure()
     # fig.update_layout(
@@ -117,8 +130,6 @@ def plot_tree():
                                          color='#6175c1',  # '#DB4551',
                                          line=dict(color='rgb(50,50,50)', width=1)
                                          ),
-                             text=labels,
-                             hoverinfo='text',
                              opacity=0.8
                              ))
     axis = dict(showline=False,  # hide axis line, grid, ticklabels and  title
@@ -128,7 +139,7 @@ def plot_tree():
                 )
 
     fig.update_layout(title='Minimax Tree',
-                      annotations=make_annotations(pos, labels),
+                      annotations=annotations,
                       font_size=12,
                       showlegend=False,
                       xaxis=axis,
