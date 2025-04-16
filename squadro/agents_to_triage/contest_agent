@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from squadro.agents.alphabeta_agent import AlphaBetaAgent
 
 run_folder = './run/'
-model_path = '../../model/contest_agent_from_scratch.pt'
+model_path = '../../model/contest_agent.pt'
 
 class DeepNetwork(nn.Module):
     def __init__(self):
@@ -63,7 +63,7 @@ Contest agent
 """
 
 
-class ContestAgentFromScratch(AlphaBetaAgent):
+class ContestAgent(AlphaBetaAgent):
 
     def __init__(self):
         self.action_size = 5         # Number of actions
@@ -122,7 +122,7 @@ class ContestAgentFromScratch(AlphaBetaAgent):
         #### MCTS
         root_value = self.evaluateLeaf(root, 0)
         n = 1
-        # while time() - self.start_time < self.max_time and n < 50: # TO REPLACE for contest
+        #while time() - self.start_time < self.max_time: # TO REPLACE for contest
         while n < self.MC_steps:
             #print(time() - self.start_time)
             #logger_mcts.info('***************************')
@@ -160,6 +160,8 @@ class ContestAgentFromScratch(AlphaBetaAgent):
         self.results = np.transpose(np.reshape(self.results, newshape=[-1,1]))
         #print('{} {} {} {}'.format(self.id, l1, l2, pi))
         
+        #print_state(state)
+        
         return best_move
   
     
@@ -169,7 +171,7 @@ class ContestAgentFromScratch(AlphaBetaAgent):
         #render(self.mcts.root.state, #logger_mcts)
         #logger_mcts.info('CURRENT PLAYER...%d', self.mcts.root.playerTurn)
         
-        ##### MOVE THE LEAF NODE
+        ##### MOVE TO LEAF NODE
         # Breadcrumbs = path from root to leaf
         leaf, done, breadcrumbs = self.mcts.move_to_leaf(self)
         #render(leaf.state, #logger_mcts)
@@ -251,7 +253,7 @@ class ContestAgentFromScratch(AlphaBetaAgent):
         
         done = 1 if self.cutoff(newState, self.max_depth) else 0
 
-        return (newState, done) 
+        return newState, done
 
 
     """
@@ -302,98 +304,4 @@ class ContestAgentFromScratch(AlphaBetaAgent):
         l1.sort()
         l2.sort()
         return sum(l1[1:]) - sum(l2[1:])
-
-
-# Source: https://github.com/AppliedDataSciencePartners/DeepReinforcementLearning/
-
-class MCTS():
-
-    def __init__(self, root):
-        self.root = root
-        self.cpuct = 0.1
-        #self.tree = {}
-    
-    #def __len__(self):
-    #    return len(self.tree)
-
-
-    def moveToLeaf(self, player):
-
-        #logger_mcts.info('------MOVING TO LEAF------')
-
-        breadcrumbs = []
-        currentNode = self.root
-
-        done = 0
-
-        while not currentNode.is_leaf():
-
-            #logger_mcts.info('PLAYER TURN...%d', currentNode.playerTurn)
-            
-            maxQU = -float('Inf')
-
-            # Choose randomly at 20% for the root node (ONLY for the training)
-            epsilon = player.epsilonMCTS if currentNode == self.root else 0
-            nu = np.random.dirichlet([0.8] * len(currentNode.edges)) if currentNode == self.root else [0] * len(currentNode.edges)
-
-            Nb = 0
-            for action, edge in currentNode.edges:
-                Nb = Nb + edge.stats['N']
-
-            for idx, (action, edge) in enumerate(currentNode.edges):
-
-                
-                U = self.cpuct * ((1-epsilon) * edge.stats['P'] + epsilon * nu[idx]) * np.sqrt(Nb) / (1 + edge.stats['N'])
-                #U = self.cpuct * ((1-epsilon) + epsilon * nu[idx]) * np.sqrt(Nb) / (1 + edge.stats['N'])
-                U = self.cpuct * np.sqrt(Nb) / (1 + edge.stats['N'])
-                   
-                Q = edge.stats['Q']
-
-                #logger_mcts.info('action: %d (%d)... N = %d, P = %f, nu = %f, adjP = %f, W = %f, Q = %f, U = %f, Q+U = %f'
-                #    , action, action % 7, edge.stats['N'], np.round(edge.stats['P'],6), np.round(nu[idx],6), ((1-epsilon) * edge.stats['P'] + epsilon * nu[idx] )
-                #    , np.round(edge.stats['W'],6), np.round(Q,6), np.round(U,6), np.round(Q+U,6))
-
-                if Q + U > maxQU:
-                    maxQU = Q + U
-                    simulationAction = action
-                    simulationEdge = edge
-
-            #logger_mcts.info('action with highest Q + U...%d', simulationAction)
-
-            newState, done = player.takeAction(currentNode.state, simulationAction) # the value of the newState from the POV of the new playerTurn
-            currentNode = simulationEdge.outNode
-            breadcrumbs.append(simulationEdge)
-
-        #logger_mcts.info('DONE...%d', done)
-
-        return currentNode, done, breadcrumbs
-
-
-    def backFill(self, leaf, value, breadcrumbs):
-        #logger_mcts.info('------DOING BACKFILL------')
-
-        #print_breadcrumbs(breadcrumbs)
-
-        currentPlayer = leaf.playerTurn
-
-        for edge in breadcrumbs:
-            playerTurn = edge.playerTurn
-            direction = 1 if playerTurn == currentPlayer else -1
-
-            edge.stats['N'] = edge.stats['N'] + 1
-            edge.stats['W'] = edge.stats['W'] + value * direction
-            edge.stats['Q'] = edge.stats['W'] / edge.stats['N']
-
-            #logger_mcts.info('updating edge with value %f for player %d... N = %d, W = %f, Q = %f'
-            #    , value * direction
-            #    , playerTurn
-             #   , edge.stats['N']
-              #  , edge.stats['W']
-              #  , edge.stats['Q']
-              #  )
-
-            #render(edge.outNode.state, #logger_mcts)
-
-    #def addNode(self, node):
-     #   self.tree[node.id] = node
 
