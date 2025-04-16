@@ -6,6 +6,7 @@ from time import time
 from squadro.agents.agent import Agent
 from squadro.state import State
 from squadro.tools.constants import DefaultParams
+from squadro.tools.log import logger
 from squadro.tools.utils import get_agent
 
 
@@ -74,6 +75,7 @@ class GameFromState:
                         last_action=last_action,
                         time_left=self.times_left[player],
                     )
+                    logger.info(f'Player {player} action: {action} (in {exe_time:.3f}s)')
                 except TimeoutError:
                     self.state.set_timed_out(player)
                     break
@@ -149,7 +151,8 @@ def get_timed_action(player, state, last_action, time_left):
     Get an action from player with a timeout.
     """
     if not time_left:
-        return player.get_action(state, last_action, time_left), 0
+        start_time = time()
+        return player.get_action(state, last_action, time_left), time() - start_time
 
     signal.signal(signal.SIGALRM, handle_timeout)
     signal.setitimer(signal.ITIMER_REAL, time_left)
@@ -157,6 +160,6 @@ def get_timed_action(player, state, last_action, time_left):
     try:
         action = player.get_action(state, last_action, time_left)
     finally:
-        signal.setitimer(signal.ITIMER_REAL, 0)
         exe_time = time() - start_time
+        signal.setitimer(signal.ITIMER_REAL, 0)
     return action, exe_time
