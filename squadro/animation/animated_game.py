@@ -5,8 +5,9 @@ import pygame
 
 from squadro.animation.board import Board, handle_events, check_quit
 from squadro.game import Game
-from squadro.state import State
+from squadro.state import State, get_next_state
 from squadro.tools.constants import DefaultParams
+from squadro.tools.log import logger
 
 
 class GameAnimation:
@@ -36,9 +37,9 @@ class GameAnimation:
                 if state.game_over():
                     continue
                 action = action_history[len(previous_states)]
-                previous_states.append(state.copy())
-                # print(action)
-                state.apply_action(action)
+                previous_states.append(state)
+                logger.debug(f"{action=}")
+                state = get_next_state(state, action)
 
             elif command == 'previous':
                 if previous_states:

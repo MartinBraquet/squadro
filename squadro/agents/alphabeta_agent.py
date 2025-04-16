@@ -4,7 +4,7 @@ from time import time
 
 from squadro import minimax
 from squadro.agents.agent import Agent
-from squadro.state import State
+from squadro.state import State, get_next_state
 from squadro.tools.evaluation import evaluate_advancement
 
 
@@ -28,14 +28,14 @@ class AlphaBetaAgent(Agent):
         """
         return minimax.search(state, self)
 
-    def successors(self, state: State):
+    @staticmethod
+    def successors(state: State):
         """The successors function must return (or yield) a list of
         pairs (a, s) in which `a` is the action played to reach the
         state `s`;"""
         actions = state.get_current_player_actions()
         for a in actions:
-            s = state.copy()
-            s.apply_action(a)
+            s = get_next_state(state, a)
             yield a, s
 
     @abstractmethod

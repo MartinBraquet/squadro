@@ -337,3 +337,9 @@ class State:
             pygame.image.save(board.screen, "/tmp/squadro_state.png")
             import subprocess
             subprocess.Popen(["xdg-open", "/tmp/squadro_state.png"])
+
+
+def get_next_state(state: State, action: int) -> State:
+    new_state = state.copy()
+    new_state.apply_action(action)
+    return new_state
