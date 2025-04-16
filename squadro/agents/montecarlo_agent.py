@@ -16,9 +16,9 @@ from typing import Optional
 import numpy as np
 
 from squadro.agents.agent import Agent
-from squadro.state import State
-from squadro.tools.constants import inf
+from squadro.state import State, get_next_state
 from squadro.tools.evaluation import evaluate_advancement
+from squadro.tools.log import logger
 from squadro.tools.probabilities import get_random_sample
 
 
@@ -37,6 +37,12 @@ class Node:
     def __repr__(self):
         return repr(self.state)
 
+    def get_edge_stats(self, to_string=False):
+        stats = [edge.stats for edge in self.edges]
+        if to_string:
+            stats = '\n'.join(str(s) for s in stats)
+        return stats
+
 
 class Stats:
     def __init__(self, prior: float):
@@ -47,6 +53,9 @@ class Stats:
     def update(self, value: float):
         self.N += 1
         self.W += value
+        logger.debug(
+            f'Updating edge with value {value}: {self}'
+        )
 
     @property
     def Q(self) -> float:  # noqa
@@ -55,7 +64,7 @@ class Stats:
         return self.W / self.N
 
     def __repr__(self):
-        return f'N={self.N}, W={self.W}, Q={self.Q}, P={self.P}'
+        return f'N={self.N}, W={self.W}, Q={round(self.Q, 3)}, P={self.P}'
 
 
 class Edge:
@@ -85,66 +94,57 @@ class MCTS:
     https://github.com/AppliedDataSciencePartners/DeepReinforcementLearning/blob/master/MCTS.py
     """
 
-    def __init__(self, root: Node):
+    def __init__(self, root: Node, method: str = 'P'):
         self.root = root
+        self.method = method
         self.cpuct = 0.1
+        self.epsilon_mcts = .2  # Probability to choose randomly the root edge
+        self.is_training = False
+        self.stop_sim = False
 
-    def move_to_leaf(self, player):
-        # logger_mcts.info('------MOVING TO LEAF------')
+    def _get_sim_edge_values(self, node) -> list[float]:
+        # Introduce slight incentives for the root node to explore different edges (ONLY for training)
+        epsilon = self.epsilon_mcts if node == self.root and self.is_training else 0
+        nu = np.random.dirichlet([0.8] * len(node.edges))
+        nb = sum(edge.stats.N for edge in node.edges)
 
+        values = []
+        for i, edge in enumerate(node.edges):
+            edge_frequency = np.sqrt(nb) / (1 + edge.stats.N)
+            if self.method == 'P':
+                u = self.cpuct * edge_frequency * ((1 - epsilon) * edge.stats.P + epsilon * nu[i])
+            elif self.method == 'random':
+                u = self.cpuct * edge_frequency * ((1 - epsilon) + epsilon * nu[i])
+            elif self.method == 'N':
+                u = self.cpuct * edge_frequency
+            else:
+                raise ValueError(f'Unknown method {self.method}')
+            qu = edge.stats.Q + u
+            values.append(qu)
+
+        return values
+
+    def _pick_sim_edge(self, node: Node) -> Edge:
+        qu_all = self._get_sim_edge_values(node)
+        i = np.argmax(qu_all)
+        edge_best = node.edges[i]
+        return edge_best
+
+    def move_to_leaf(self):
+        logger.debug('Sim step 1: MOVING TO LEAF')
         breadcrumbs = []
         node = self.root
-
-        done = False
+        self.stop_sim = False
 
         while not node.is_leaf():
-            # logger_mcts.info('PLAYER TURN...%d', node.playerTurn)
-
-            qu_max = -inf
-
-            # Choose randomly at 20% for the root node (ONLY for training)
-            epsilon_mcts = .2
-            epsilon = epsilon_mcts if node == self.root else 0
-
-            # TODO: keep only first line of nu, as it should only be used when node == self.root
-            nu = (
-                np.random.dirichlet([0.8] * len(node.edges))
-                if node == self.root else
-                [0] * len(node.edges)
-            )
-
-            nb = sum(edge.stats.N for edge in node.edges)
-
-            edge_best = None
-            for i, edge in enumerate(node.edges):
-                u = (
-                    self.cpuct * ((1 - epsilon) * edge.stats.P + epsilon * nu[i])
-                    * np.sqrt(nb) / (1 + edge.stats.N)
-                )
-                # u = self.cpuct * ((1-epsilon) + epsilon * nu[i]) * np.sqrt(nb) / (1 + edge.stats.N)
-                # u = self.cpuct * np.sqrt(nb) / (1 + edge.stats.N)
-
-                # logger_mcts.info('action: %d (%d)... N = %d, P = %f, nu = %f, adjP = %f, W = %f, q = %f, u = %f, q+u = %f'
-                #    , action, action % 7, edge.stats.N, np.round(edge.stats.P,6), np.round(nu[i],6), ((1-epsilon) * edge.stats.P + epsilon * nu[i] )
-                #    , np.round(edge.stats['W'],6), np.round(q,6), np.round(u,6), np.round(q+u,6))
-
-                qu = edge.stats.Q + u
-                if qu > qu_max:
-                    qu_max = qu
-                    edge_best = edge
-
-            # logger_mcts.info('action with highest q + u...%d', sim_action)
-
-            # the value of the new_state from the POV of the new playerTurn
+            edge_best = self._pick_sim_edge(node)
             node = edge_best.out_node
             breadcrumbs.append(edge_best)
-
-            done = node.state.game_over()
-            if done:
+            self.stop_sim = node.state.game_over()
+            if self.stop_sim:
                 break
 
-        # logger_mcts.info('DONE...%d', done)
-        return node, done, breadcrumbs
+        return node, breadcrumbs
 
     @staticmethod
     def back_fill(
@@ -152,19 +152,11 @@ class MCTS:
         value: float,
         breadcrumbs: list,
     ):
-        # logger_mcts.info('------DOING BACKFILL------')
-        # print_breadcrumbs(breadcrumbs)
+        logger.debug('Sim step 3: DOING BACK-FILL')
+        log_breadcrumbs(breadcrumbs)
         for edge in breadcrumbs:
             direction = 1 if edge.player_turn == leaf.player_turn else -1
             edge.stats.update(value * direction)
-            # logger_mcts.info('updating edge with value %f for player %d... N = %d, W = %f, Q = %f'
-            #    , value * direction
-            #    , playerTurn
-            #   , edge.stats.N
-            #  , edge.stats['W']
-            #  , edge.stats.Q
-            #  )
-            # render(edge.outNode.state, logger_mcts)
 
 
 class MonteCarloAgent(Agent):
@@ -178,9 +170,9 @@ class MonteCarloAgent(Agent):
         self.start_time = None
 
         self.mcts = None
+        self.is_training = False
         self.mc_steps = 50  # Number of steps in MCTS
         self.epsilon_move = 0.03  # Probability to choose randomly the move
-        self.epsilon_mcts = 0.2  # Probability to choose randomly the node in MCTS (for TRAINING only)
         self.tau = 1  # If MCTS stochastic: select action with distribution pi^(1/tau)
 
     @classmethod
@@ -194,52 +186,35 @@ class MonteCarloAgent(Agent):
         time_left: Optional[float] = None,
     ) -> int:
         self.start_time = time()
-        # action = state.get_random_action()
 
         root = Node(state)
         self.mcts = MCTS(root)
 
-        # root_value = self.evaluateLeaf(root)
         n = 0
         while time() - self.start_time < self.max_time and n < self.mc_steps:
-            # print(time() - self.start_time)
-            # logger_mcts.info('***************************')
-            # logger_mcts.info('****** SIMULATION %d ******', n)
-            # logger_mcts.info('***************************')
+            logger.debug(f'\nSIMULATION {n}')
             self.simulate()
             n += 1
-        # print("Finish")
-        # print(self.current_depth)
-        # print("Time elapsed during smart agent play:", time() - self.start_time)
+
+        logger.info(f'Root edges:\n{root.get_edge_stats(to_string=True)}')
 
         pi, values = self.get_av()
-
         action = self.choose_action(pi)
 
-        # value = values[action]
+        value = values[action]
         # next_state, _ = self.take_action(state, action)
         # - sign because it evaluates with respect to the current player of the state
         # NN_value = -self.evaluate(next_state)[1]
 
-        # logger_mcts.info('ACTION VALUES...%s', pi)
-        # logger_mcts.info('CHOSEN ACTION...%d', action)
-        # logger_mcts.info('MCTS PERCEIVED VALUE...%f', value)  # Value estimated by MCTS: Q = W/N (average of the all the values along the path)
-        # logger_mcts.info('NN PERCEIVED VALUE...%f', NN_value) # Value estimated by the Neural Network (only for the next state)
-
-        # print(action, pi, value, NN_value)
+        logger.info(f'Action probs: {pi}\n'
+                    f'Action chosen: {action}\n'
+                    f'MCTS perceived value: {value:.4f}')
 
         return action
 
     def simulate(self):
-        # logger_mcts.info('ROOT NODE...')
-        # render(self.mcts.root.state, logger_mcts)
-        # logger_mcts.info('CURRENT PLAYER...%d', self.mcts.root.playerTurn)
-
-        leaf, done, breadcrumbs = self.mcts.move_to_leaf(self)
-        # render(leaf.state, logger_mcts)
-        # print_state(leaf.state)
-
-        value = self.evaluate_leaf(leaf, done)
+        leaf, breadcrumbs = self.mcts.move_to_leaf()
+        value = self.evaluate_leaf(leaf)
         self.mcts.back_fill(leaf, value, breadcrumbs)
 
     @staticmethod
@@ -254,33 +229,34 @@ class MonteCarloAgent(Agent):
         )
         return p, value
 
-    def evaluate_leaf(self, leaf: Node, done=False):
-        # logger_mcts.info('------EVALUATING LEAF------')
+    def _expand_leaf(self, leaf: Node, probs: np.ndarray[float]) -> None:
+        if self.mcts.stop_sim:
+            return
+        allowed_actions = leaf.state.get_current_player_actions()
+        probs = probs[allowed_actions]
+        for idx, action in enumerate(allowed_actions):
+            state = get_next_state(state=leaf.state, action=action)
+            node = Node(state)
+            # if state.id not in self.mcts.tree:
+            # self.mcts.addNode(node)
+            # logger.info('added node......p = %f', probs[idx])
+            # else:
+            #    node = self.mcts.tree[state.id]
+            #   logger.info('existing node...%s...', node.id)
 
-        if not done:
-            probs, value = self.evaluate(leaf.state)
-            # print(probs)
-            allowed_actions = leaf.state.get_current_player_actions()
-            # logger_mcts.info('PREDICTED VALUE FOR %d: %f', leaf.playerTurn, value)
-            probs = probs[allowed_actions]
+            edge = Edge(in_node=leaf, out_node=node, prior=probs[idx], action=action)
+            leaf.edges.append(edge)
 
-            # Add node in tree
-            for idx, action in enumerate(allowed_actions):
-                state, _ = self.take_action(state=leaf.state, action=action)
-                node = Node(state)
-                # if state.id not in self.mcts.tree:
-                # self.mcts.addNode(node)
-                # logger_mcts.info('added node......p = %f', probs[idx])
-                # else:
-                #    node = self.mcts.tree[state.id]
-                #   logger_mcts.info('existing node...%s...', node.id)
+    def evaluate_leaf(self, leaf: Node):
+        logger.debug('Sim step 2: EVALUATING LEAF')
 
-                edge = Edge(in_node=leaf, out_node=node, prior=probs[idx], action=action)
-                leaf.edges.append(edge)
+        # if stop_sim:
+        #     return 1 if leaf.player_turn == self.id else -1
 
-        else:  # End of game leaf
-            # value = 1 if leaf.player_turn == self.id else -1
-            _, value = self.evaluate(leaf.state)
+        probs, value = self.evaluate(leaf.state)
+        logger.debug(f'Predicted value for player {leaf.player_turn}: {value}')
+
+        self._expand_leaf(leaf, probs)
 
         return value
 
@@ -301,53 +277,23 @@ class MonteCarloAgent(Agent):
     def choose_action(self, pi: np.ndarray) -> int:
         """
         Pick the action.
-        With probability epsilon (e.g., 3% of picks), draw a sample from the distribution pi
-        Otherwise, pick the action with the highest probability in pi
+        With probability epsilon (e.g., 3% of picks), draw a random sample from the distribution pi
+        (training only)
+        Otherwise, pick deterministically the action with the highest probability in pi
         """
-        if random.uniform(0, 1) < self.epsilon_move:  # Choose stochastically (for TRAINING)
+        if self.is_training and random.uniform(0, 1) < self.epsilon_move:
             action = get_random_sample(pi)
-        else:  # Choose deterministically
+        else:
             actions = np.argwhere(pi == max(pi))
-            action = random.choice(actions)[0]  # if several states have the same prob
+            # If several actions have the same prob, pick randomly among them
+            action = random.choice(actions)[0]
         return int(action)
 
-    def take_action(self, state: State, action: int) -> (State, int):
-        new_state = state.copy()
-        new_state.apply_action(action)
 
-        done = 1 if self.cutoff(new_state) else 0
-
-        return new_state, done
-
-    def cutoff(self, state: State):
-        return False
-
-
-##############################################################################
-
-### SET all #logger_DISABLED to True to disable logging
-### WARNING: the mcts log file gets big quite quickly
-
-logger_DISABLED = {
-    'main': False
-    , 'memory': False
-    , 'tourney': False
-    , 'mcts': False
-    , 'model': False}
-
-
-# logger_mcts = setup_logger('logger_mcts', 'logs/logger_mcts.log')
-# logger_mcts.disabled = logger_DISABLED['mcts']
-
-def render(state, logger):
-    logger.info(state.pos)
-    logger.info('--------------')
-
-
-def print_breadcrumbs(bread):
-    print('Breadcrumbs:')
+def log_breadcrumbs(bread):
+    if not bread:
+        return
+    text = 'Breadcrumbs:'
     for edge in bread:
-        print(edge.in_node.state.get_advancement())
-        print('=>')
-        print(edge.out_node.state.get_advancement())
-        print('------------------------------------')
+        text += f'\n{edge}'
+    logger.debug(text)
