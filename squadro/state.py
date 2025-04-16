@@ -1,6 +1,7 @@
 import random
 from copy import deepcopy
 from functools import lru_cache
+from typing import Tuple
 
 import pygame
 
@@ -14,20 +15,20 @@ MAX_PAWNS = len(MOVES[0])
 
 
 @lru_cache
-def get_moves(n_pawns):
+def get_moves(n_pawns: int) -> list[list[int]]:
     moves = [m[:n_pawns].copy() for m in MOVES]
     return moves
 
 
 @lru_cache
-def get_moves_return(n_pawns):
+def get_moves_return(n_pawns: int) -> list[list[int]]:
     moves = [m[:n_pawns].copy() for m in MOVES_RETURN]
     return moves
 
 
 # Removing cache for now to avoid issues when modifying in place the same object
 # @lru_cache
-def get_init_pos(n_pawns):
+def get_init_pos(n_pawns: int) -> list[list[int]]:
     init_pos = [[n_pawns + 1] * n_pawns for _ in range(2)]
     return init_pos
 
@@ -53,7 +54,11 @@ class State:
     Example pos after one move action = 2 from P1: [[4, 4, 4], [4, 4, 3]]
     """
 
-    def __init__(self, n_pawns=None, first=None):
+    def __init__(
+        self,
+        n_pawns: int = None,
+        first: int = None,
+    ):
         self.cur_player = 0
         self.winner = None
         self.timeout_player = None
@@ -76,12 +81,12 @@ class State:
 
     def __repr__(self):
         # return f'turn: {self.cur_player}, winner: {self.winner}'
-        return f'{self.pos}'
+        return f'{self.get_advancement()}'
 
-    def __eq__(self, other):
+    def __eq__(self, other: 'State') -> bool:
         return self.cur_player == other.cur_player and self.pos == other.pos
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'cur_player': self.cur_player,
             'pos': self.pos,
@@ -90,25 +95,25 @@ class State:
         }
 
     @property
-    def hash(self):
+    def hash(self) -> int:
         return hash_dict(self.to_dict())
 
     @property
-    def max_pos(self):
+    def max_pos(self) -> int:
         return self.n_pawns + 1
 
     @property
-    def n_pawns_to_win(self):
+    def n_pawns_to_win(self) -> int:
         return self.n_pawns - 1
 
-    def set_timed_out(self, player):
+    def set_timed_out(self, player: int) -> None:
         self.timeout_player = player
         self.winner = 1 - player
 
-    def set_invalid_action(self, player, action='unknown'):
+    def set_invalid_action(self, player: int, action: int | str = 'unknown') -> None:
         raise ValueError(f'Invalid action for player {player}, action: {action}')
 
-    def get_pawn_position(self, player, pawn):
+    def get_pawn_position(self, player: int, pawn: int) -> Tuple[int, int]:
         """
         Returns the position of the requested pawn ((x, y) position on the board)
         (X, Y) where Y goes downward and X goes to the right, transposed of matrices
@@ -130,7 +135,7 @@ class State:
             return self.pos[player][pawn], pawn + 1
         raise ValueError('player must be 0 or 1')
 
-    def get_pawn_advancement(self, player, pawn):
+    def get_pawn_advancement(self, player: int, pawn: int) -> int:
         """
         Returns the number of tiles the pawn has advanced, i.e., {0, ..., 2 * (n_pawns + 1)}
         """
@@ -143,25 +148,38 @@ class State:
             pos = self.max_pos - self.get_pawn_position(player, pawn)[1 - player]
             return pos
 
+    def get_advancement(self) -> list[list[int]]:
+        """
+        Returns the advancement of each player's pawns, in the same format as `self.pos`
+        """
+        advancement = [
+            [
+                self.get_pawn_advancement(player_id, pawn)
+                for pawn in range(self.n_pawns)
+            ]
+            for player_id in range(2)
+        ]
+        return advancement
+
     def set_from_advancement(self, advancement: list[list[int]]):
         self.returning = [[a >= self.max_pos for a in pa] for pa in advancement]
         self.finished = [[a == 2 * self.max_pos for a in pa] for pa in advancement]
         self.pos = [[abs(a - self.max_pos) for a in pa] for pa in advancement]
         self.game_over_check()
 
-    def is_pawn_returning(self, player, pawn):
+    def is_pawn_returning(self, player: int, pawn: int) -> bool:
         """
         Returns whether the pawn is on its return journey or not
         """
         return self.returning[player][pawn]
 
-    def is_pawn_finished(self, player, pawn):
+    def is_pawn_finished(self, player: int, pawn: int) -> bool:
         """
         Returns whether the pawn has finished its journey
         """
         return self.finished[player][pawn]
 
-    def copy(self):
+    def copy(self) -> 'State':
         """
         Return a deep copy of this state.
         """
@@ -178,13 +196,13 @@ class State:
         cp.total_moves = self.total_moves
         return cp
 
-    def get_init_args(self):
+    def get_init_args(self) -> dict:
         return {
             'first': self.first,
             'n_pawns': self.n_pawns,
         }
 
-    def game_over(self):
+    def game_over(self) -> bool:
         """
         Return true if and only if the game is over (game ended, player timed out or made invalid move).
         """
@@ -192,7 +210,7 @@ class State:
             return True
         return self.game_over_check()
 
-    def game_over_check(self):
+    def game_over_check(self) -> bool:
         """
         Checks if a player succeeded to win the game, i.e. move n_pawns - 1 pawns to the other side and back again.
         """
@@ -202,20 +220,20 @@ class State:
                 return True
         return False
 
-    def get_cur_player(self):
+    def get_cur_player(self) -> int:
         """
         Return the index of the current player.
         """
         return self.cur_player
 
-    def is_action_valid(self, action):
+    def is_action_valid(self, action: int) -> bool:
         """
         Checks if a given action is valid.
         """
         actions = self.get_current_player_actions()
         return action in actions
 
-    def get_current_player_actions(self):
+    def get_current_player_actions(self) -> list[int]:
         """
         Get all the actions that the current player can perform.
         """
@@ -225,14 +243,15 @@ class State:
         ]
         return actions
 
-    def get_random_action(self):
+    def get_random_action(self) -> int:
         actions = self.get_current_player_actions()
         return random.choice(actions)
 
-    def apply_action(self, action):
+    def apply_action(self, action: int) -> None:
         """
         Applies a given action to this state. It assumes that the actions is
         valid. This must be checked with is_action_valid.
+        Note that it modifies the object in place.
         """
         if not self.is_action_valid(action):
             self.set_invalid_action(player=self.cur_player, action=action)
@@ -254,7 +273,7 @@ class State:
         self.total_moves += 1
         self.cur_player = 1 - self.cur_player
 
-    def move_1(self, player, pawn):
+    def move_1(self, player: int, pawn: int) -> None:
         """
         Moves the pawn one tile forward in the correct direction
         """
@@ -296,13 +315,13 @@ class State:
 
         return crossed
 
-    def get_winner(self):
+    def get_winner(self) -> int:
         """
         Get the winner of the game. Call only if the game is over.
         """
         return self.winner
 
-    def anim(self, blocking=True):
+    def anim(self, blocking: bool = True) -> None:
         # Avoid circular import, might need to refactor
         from squadro.animation.board import Board, handle_events
 
