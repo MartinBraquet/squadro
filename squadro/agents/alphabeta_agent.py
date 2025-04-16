@@ -5,6 +5,7 @@ from time import time
 from squadro import minimax
 from squadro.agents.agent import Agent
 from squadro.state import State, get_next_state
+from squadro.tools.constants import DefaultParams
 from squadro.tools.evaluation import evaluate_advancement
 
 
@@ -122,7 +123,7 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
     def __init__(self, max_depth=9, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.max_depth = max_depth
-        self.max_time = .005  # use fixed time for now
+        self.max_time = DefaultParams.max_time_per_move  # use fixed time for now
         self.start_time = None
         # self.total_time = None
 
