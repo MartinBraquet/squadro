@@ -13,8 +13,8 @@ class DefaultParams:
     first = -1
     n_pawns = 5
     max_time_per_move = .005
-    uct = 1.2
-    mcts_method = 'p_uct'
+    uct = 1.0
+    mcts_method = 'biased_uct'
 
     @classmethod
     def get_uct(cls, n_pawns=None):
