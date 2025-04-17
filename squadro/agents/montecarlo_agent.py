@@ -231,7 +231,6 @@ class MCTS:
     def _get_heuristic(self, edge):
         """
         Heuristic for biased UCT, must have the same bounds as Q.
-        TODO: switch both Q and H to -1, 1
         """
         value = evaluate_advancement(
             state=edge.out_node.state,
@@ -337,8 +336,6 @@ class MonteCarloAgent(Agent):
     def evaluate(state: State):
         """
         Evaluate the current state (Q value), according to the current player.
-        Currently between -48 and 48 for 5 pawns.
-        TODO: Value must be between -1 and 1 to match the scale of the U value
         """
         p = .2 * np.ones(state.n_pawns)
         value = evaluate_advancement(
