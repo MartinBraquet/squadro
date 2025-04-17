@@ -39,6 +39,10 @@ def setup_logger(name: str = 'squadro', loglevel: str = None):
         logger.client.setLevel(loglevel)
 
 
+def stop_logger():
+    logger.client = None
+
+
 class logger:  # noqa
     client = None
     reported = {}
