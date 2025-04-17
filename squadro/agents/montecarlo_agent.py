@@ -20,7 +20,7 @@ import numpy as np
 
 from squadro.agents.agent import Agent
 from squadro.state import State, get_next_state
-from squadro.tools.constants import DefaultParams
+from squadro.tools.constants import DefaultParams, inf
 from squadro.tools.evaluation import evaluate_advancement
 from squadro.tools.log import logger
 from squadro.tools.probabilities import get_random_sample
@@ -177,34 +177,67 @@ class MCTS:
     https://github.com/AppliedDataSciencePartners/DeepReinforcementLearning/blob/master/MCTS.py
     """
 
-    def __init__(self, root: Node, method: str = 'P'):
+    def __init__(self, root: Node, method: str = None):
         self.root = root
-        self.method = method
-        self.uct = 0.1  # Upper Confidence Bound for Trees (measure of exploration)
-        self.epsilon_mcts = .2  # Probability to choose randomly the root edge
+        self.method = method or DefaultParams.mcts_method
+        if self.method not in self.get_available_methods():
+            raise self._method_error()
+
+        # Upper Confidence Bound for Trees (exploration constant)
+        self.uct = DefaultParams.get_uct(n_pawns=self.root.state.n_pawns)
+
+        # Probability to choose randomly the root edge during training
+        self.epsilon_mcts = .2
+
         self.is_training = False
 
+        logger.info(f"Using MCTS method '{self.method}', uct={self.uct}")
+
+    @staticmethod
+    def get_available_methods():
+        return ['p_uct', 'uct', 'biased_uct']
+
+    def _method_error(self):
+        return ValueError(
+            f"Unknown method '{self.method}', must be one of {self.get_available_methods()}"
+        )
+
     def _get_sim_edge_values(self, node) -> list[float]:
-        # Introduce slight incentives for the root node to explore different edges (ONLY for training)
+        # Introduce slight incentives for the root node to explore different edges (for training)
         epsilon = self.epsilon_mcts if node == self.root and self.is_training else 0
         nu = np.random.dirichlet([0.8] * len(node.edges))
         nb = sum(edge.stats.N for edge in node.edges)
 
         values = []
         for i, edge in enumerate(node.edges):
-            edge_frequency = np.sqrt(nb) / (1 + edge.stats.N)
-            if self.method == 'P':
-                u = self.uct * edge_frequency * ((1 - epsilon) * edge.stats.P + epsilon * nu[i])
-            elif self.method == 'random':
-                u = self.uct * edge_frequency * ((1 - epsilon) + epsilon * nu[i])
-            elif self.method == 'N':
-                u = self.uct * edge_frequency
+            if self.method == 'p_uct':
+                p_stochastic = (1 - epsilon) * edge.stats.P + epsilon * nu[i]
+                u = self.uct * p_stochastic * np.sqrt(nb) / (1 + edge.stats.N)
+            elif self.method == 'uct':
+                if edge.stats.N == 0:
+                    u = inf
+                else:
+                    # constant typically between 1 and 2
+                    u = self.uct * np.sqrt(np.log(nb) / edge.stats.N)
+            elif self.method == 'biased_uct':
+                u = self.uct * self._get_heuristic(edge) / (1 + edge.stats.N)
             else:
-                raise ValueError(f'Unknown method {self.method}')
+                raise self._method_error()
             qu = edge.stats.Q + u
             values.append(qu)
 
         return values
+
+    def _get_heuristic(self, edge):
+        """
+        Heuristic for biased UCT, must have the same bounds as Q.
+        TODO: switch both Q and H to -1, 1
+        """
+        value = evaluate_advancement(
+            state=edge.out_node.state,
+            player_id=edge.in_node.player_turn,
+        )
+        return value
 
     def _pick_sim_edge(self, node: Node) -> Edge:
         qu_all = self._get_sim_edge_values(node)
@@ -242,14 +275,14 @@ class MonteCarloAgent(Agent):
     Class that represents an agent performing Monte-Carlo tree search.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, max_time=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.max_time = DefaultParams.max_time_per_move  # use fixed time for now
+        self.max_time = max_time or DefaultParams.max_time_per_move  # use fixed time for now
         self.start_time = None
 
         self.mcts = None
         self.is_training = False
-        self.mc_steps = 200  # Number of steps in MCTS
+        self.mc_steps = 10_000  # Number of steps in MCTS
         self.epsilon_move = 0.03  # Probability to sample the move from pi
         self.tau = 1  # If MCTS stochastic: select action with distribution pi^(1/tau)
 
@@ -303,7 +336,9 @@ class MonteCarloAgent(Agent):
     @staticmethod
     def evaluate(state: State):
         """
-        Evaluate the current state, according to the current player
+        Evaluate the current state (Q value), according to the current player.
+        Currently between -48 and 48 for 5 pawns.
+        TODO: Value must be between -1 and 1 to match the scale of the U value
         """
         p = .2 * np.ones(state.n_pawns)
         value = evaluate_advancement(
