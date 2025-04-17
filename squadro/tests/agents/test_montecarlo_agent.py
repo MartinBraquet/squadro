@@ -32,14 +32,38 @@ class TestMonteCarlo(TestCase):
         game.run()
         self.assertEqual(game.winner, 0)
 
-    def test_game(self):
-        game = Game(n_pawns=3, agent_0='mcts', agent_1='random', first=0)
-        game.agents[0].mc_steps = 50
-        game.agents[0].max_time = 1e9
-        with DefaultParams.update(uct=.1):
+    def test_p_uct(self):
+        with DefaultParams.update(uct=1, mcts_method='p_uct'):
+            game = Game(n_pawns=3, agent_0='mcts', agent_1='random', first=0)
+            game.agents[0].mc_steps = 50
+            game.agents[0].max_time = 1e9
             action_history = game.run()
+        self.assertEqual(game.winner, 0)
         self.assertEqual(
-            [2, 2, 2, 0, 1, 1, 0, 0, 1, 2, 0, 1, 0, 2, 2, 0, 1, 0, 0, 0, 1, 1, 0, 2, 2, 1, 2],
+            [0, 2, 1, 0, 1, 0, 1, 2, 2, 1, 1, 2, 2, 0, 2, 1, 2, 0, 2],
             action_history
         )
+
+    def test_uct(self):
+        with DefaultParams.update(uct=1, mcts_method='uct'):
+            game = Game(n_pawns=3, agent_0='mcts', agent_1='random', first=0)
+            game.agents[0].mc_steps = 50
+            game.agents[0].max_time = 1e9
+            action_history = game.run()
         self.assertEqual(game.winner, 0)
+        self.assertEqual(
+            [1, 2, 1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 1, 0, 1, 1, 1],
+            action_history
+        )
+
+    def test_biased_uct(self):
+        with DefaultParams.update(uct=1, mcts_method='biased_uct'):
+            game = Game(n_pawns=3, agent_0='mcts', agent_1='random', first=0)
+            game.agents[0].mc_steps = 50
+            game.agents[0].max_time = 1e9
+            action_history = game.run()
+        self.assertEqual(game.winner, 0)
+        self.assertEqual(
+            [2, 2, 2, 1, 2, 1, 1, 1, 2, 0, 1, 2, 1, 1, 1, 2, 0, 1, 1, 2, 1],
+            action_history
+        )
