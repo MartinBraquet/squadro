@@ -124,7 +124,7 @@ class TestAdvancementDeep(TestCase):
         self.state.returning[0] = [True, False, False]
         self.state.finished[0] = [True, False, False]
         self.state.pos[1] = [4, 4, 0]
-        self.assertEqual(8 + 3 - 4, self.agent.evaluate(self.state))
+        self.assertEqual((8 + 3 - 4) / 16, self.agent.evaluate(self.state))
 
     def test_get_action(self):
         action = self.agent.get_action(self.state)
@@ -184,7 +184,7 @@ class TestAdvancementDeep(TestCase):
         state = State(first=0, n_pawns=5)
         zero = [0, 0, 0, 0, 0]
         winning = [12, 12, 12, 12, 0]
-        max_value = 48
+        max_value = 1
 
         state.set_from_advancement([winning, zero])
         value = self.agent.evaluate(state)
