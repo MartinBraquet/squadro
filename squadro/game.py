@@ -88,6 +88,8 @@ class GameFromState:
                 last_action = action
                 self._post_apply_action()
 
+            logger.info(f'Game over: {self}')
+
         return self.action_history.copy()
 
     def _post_apply_action(self):
