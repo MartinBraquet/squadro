@@ -1,4 +1,3 @@
-import logging
 from abc import abstractmethod
 from time import time
 
@@ -7,6 +6,7 @@ from squadro.agents.agent import Agent
 from squadro.state import State, get_next_state
 from squadro.tools.constants import DefaultParams
 from squadro.tools.evaluation import evaluate_advancement
+from squadro.tools.log import logger
 
 
 class AlphaBetaAgent(Agent):
@@ -120,7 +120,7 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
     (best move so far).
     """
 
-    def __init__(self, max_depth=9, *args, **kwargs):
+    def __init__(self, max_depth=15, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.max_depth = max_depth
         self.max_time = DefaultParams.max_time_per_move  # use fixed time for now
@@ -158,10 +158,8 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
                 best_move = minimax_action
                 minimax.Debug.save_tree(state)
             self.depth += 1
-            # print(time() - self.start_time)
-            # print('depth', self.depth)
 
-        logging.info(f'depth: {self.depth}')
+        logger.info(f'Minimax final depth: {self.depth}')
         return best_move
 
     @property
