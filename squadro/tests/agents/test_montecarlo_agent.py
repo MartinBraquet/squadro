@@ -6,6 +6,7 @@ import numpy as np
 from squadro.agents.montecarlo_agent import MonteCarloAgent
 from squadro.game import Game
 from squadro.state import State
+from squadro.tools.constants import DefaultParams
 
 
 class TestMonteCarlo(TestCase):
@@ -16,6 +17,7 @@ class TestMonteCarlo(TestCase):
     def test_get_action(self):
         agent = MonteCarloAgent(pid=0)
         agent.max_time = 1e9
+        agent.mc_steps = 50
         agent.epsilon_move = 0
 
         state = State(first=0, n_pawns=3)
@@ -34,7 +36,8 @@ class TestMonteCarlo(TestCase):
         game = Game(n_pawns=3, agent_0='mcts', agent_1='random', first=0)
         game.agents[0].mc_steps = 50
         game.agents[0].max_time = 1e9
-        action_history = game.run()
+        with DefaultParams.update(uct=.1):
+            action_history = game.run()
         self.assertEqual(
             [2, 2, 2, 0, 1, 1, 0, 0, 1, 2, 0, 1, 0, 2, 2, 0, 1, 0, 0, 0, 1, 1, 0, 2, 2, 1, 2],
             action_history
