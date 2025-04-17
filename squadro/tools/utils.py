@@ -31,10 +31,12 @@ AGENTS = {a.get_name(): a for a in AGENTS}
 AVAILABLE_AGENTS = list(AGENTS.keys())
 
 
-def get_agent(agent, **kwargs):
+def get_agent(agent, pid=None, **kwargs):
     if isinstance(agent, Agent):
+        if pid is not None:
+            agent.set_id(pid)
         return agent
     agent = agent.replace('_agent', '')
     if agent not in AGENTS:
         raise ValueError(f"Agent '{agent}' not found. Available agents: {AVAILABLE_AGENTS}")
-    return AGENTS[agent](**kwargs)
+    return AGENTS[agent](pid=pid, **kwargs)
