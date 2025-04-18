@@ -1,15 +1,13 @@
 import argparse
+
 import numpy as np
 import pandas as pd
-import time
-from ignite.metrics import Loss as MLoss
-from ignite.metrics import Accuracy as MAccuracy
 import torch
+import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import Subset
 from torch.utils.data.dataset import Dataset
-import torch.optim as optim
-import torch.nn as nn
-import torch.nn.functional as F
+
 
 def main(path, new):
         
@@ -189,7 +187,7 @@ class MetricsList():
  
 class SquadroDataset(Dataset):
     def __init__(self, path):
-        # # All the data preperation tasks can be defined here
+        # # All the data preparation tasks can be defined here
         # - Deciding the dataset split (train/test/ validate)
         # - Data Transformation methods 
         # - Reading annotation files (CSV/XML etc.)
@@ -216,7 +214,7 @@ class SquadroDataset(Dataset):
         # - Apply initiated transformations for data
         # - Push data for GPU memory
         # - better to return the data points as dictionary/ tensor 
-        return (self.x[:,index], self.z[:,index], self.pi[:,index])
+        return self.x[:, index], self.z[:, index], self.pi[:, index]
  
     def __len__(self):
         return len(self.z[0,:])
