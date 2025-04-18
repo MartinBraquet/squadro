@@ -147,8 +147,19 @@ class Stats:
             return 0
         return self.W / self.N
 
+    def dict(self) -> dict:
+        return {
+            'N': self.N,
+            'W': self.W,
+            'Q': self.Q,
+            'P': self.P,
+        }
+
     def __repr__(self) -> str:
-        return f'N={self.N}, W={self.W:.3f}, Q={self.Q:.3f}, P={self.P:.3f}'
+        text = f'N={self.N}, W={self.W:.3f}, Q={self.Q:.3f}'
+        if self.P is not None:
+            text += f'P={self.P:.3f}'
+        return text
 
 
 class Edge:
