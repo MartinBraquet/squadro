@@ -204,7 +204,7 @@ class State:
 
     def game_over(self) -> bool:
         """
-        Return true if and only if the game is over (game ended, player timed out or made invalid move).
+        Return true if and only if the game is over (game ended, player timed out or made an invalid move).
         """
         if self.winner is not None:
             return True
@@ -212,7 +212,7 @@ class State:
 
     def game_over_check(self) -> bool:
         """
-        Checks if a player succeeded to win the game, i.e. move n_pawns - 1 pawns to the other side and back again.
+        Checks if a player succeeded to win the game, i.e., move n_pawns - 1 pawns to the other side and back again.
         """
         for i in range(2):
             if sum(self.finished[i]) >= self.n_pawns_to_win:
@@ -247,9 +247,12 @@ class State:
         actions = self.get_current_player_actions()
         return random.choice(actions)
 
+    def get_next_state(self, action: int) -> 'State':
+        return get_next_state(self, action=action)
+
     def apply_action(self, action: int) -> None:
         """
-        Applies a given action to this state. It assumes that the actions is
+        Applies a given action to this state. It assumes that the action is
         valid. This must be checked with is_action_valid.
         Note that it modifies the object in place.
         """
