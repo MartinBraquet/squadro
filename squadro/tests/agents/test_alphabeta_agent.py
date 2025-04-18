@@ -127,11 +127,9 @@ class TestAdvancementDeep(TestCase):
         self.assertEqual((8 + 3 - 4) / 16, self.agent.evaluate(self.state))
 
     def test_get_action(self):
+        self.agent.max_time = 1e9
         action = self.agent.get_action(self.state)
-
-        # Hard to produce consistent test results because of the time dependence of the algorithm
         self.assertEqual(2, action)
-
         self.assertGreater(self.agent.depth, 0)
 
     @patch.object(minimax, 'search', lambda *a, **kw: sleep(.01) or 2)
