@@ -1,55 +1,38 @@
 import logging
-from logging.config import dictConfig
-
-from pydantic import BaseModel
-
-
-class LogConfig(BaseModel):
-    """Logging configuration to be set for the server"""
-
-    LOGGER_NAME: str = "squadro"
-    LOG_LEVEL: str = "INFO"
-
-    version: int = 1
-    disable_existing_loggers: bool = False
-    formatters: dict = {
-        "default": {
-            "fmt": '%(levelprefix)s | %(asctime)s | %(name)s | %(filename)s | %(funcName)s() | L%(lineno)-4d %('
-                   'message)s',
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-        }
-    }
-    handlers: dict = dict(
-        default={
-            "formatter": "default",
-            "class": "logging.StreamHandler",
-            "stream": "ext://sys.stderr",
-        }
-    )
-    loggers: dict = {
-        "squadro": {"handlers": list(handlers.keys()), "level": LOG_LEVEL},
-    }
-
-
-def setup_logger(name: str = 'squadro', loglevel: str = None):
-    dictConfig(LogConfig().model_dump())
-    logger.client = logging.getLogger(name)
-    logger.client.propagate = False
-    if loglevel is not None:
-        logger.client.setLevel(loglevel)
-
-
-def stop_logger():
-    logger.client = None
 
 
 class logger:  # noqa
     client = None
-    reported = {}
+    section = 'main'
+    ENABLED_SECTIONS = {
+        'main': True,
+        'game': True,
+        'monte_carlo': True,
+        'alpha_beta': True,
+    }
+
+    @classmethod
+    def setup(cls, name: str = None, loglevel: str = 'INFO'):
+        cls.client = logging.getLogger(name)
+        cls.client.setLevel(loglevel)
+        handler = logging.StreamHandler()
+        handler.setLevel(loglevel)
+        formatter = logging.Formatter(
+            # '%(asctime)s - '
+            # '%(name)s - '
+            # '%(levelname)s - '
+            '%(message)s'
+        )
+        handler.setFormatter(formatter)
+        cls.client.addHandler(handler)
+
+    @classmethod
+    def stop(cls):
+        cls.client = None
 
     @classmethod
     def log(cls, msg, level=logging.INFO, **kwargs):
-        if cls.client is None:
+        if cls.client is None or not cls.ENABLED_SECTIONS[cls.section]:
             return
         cls.client.log(msg=msg, level=level, stacklevel=3, **kwargs)
 
@@ -74,4 +57,13 @@ class logger:  # noqa
         cls.log(msg=msg, level=logging.CRITICAL, **kwargs)
 
 
-logger_DISABLED = {'main': False, 'memory': False, 'tourney': False, 'mcts': False, 'model': False}
+class game_logger(logger):  # noqa
+    section = 'game'
+
+
+class monte_carlo_logger(logger):  # noqa
+    section = 'monte_carlo'
+
+
+class alpha_beta_logger(logger):  # noqa
+    section = 'alpha_beta'

@@ -22,7 +22,7 @@ from squadro.agents.agent import Agent
 from squadro.state import State, get_next_state
 from squadro.tools.constants import DefaultParams, inf
 from squadro.tools.evaluation import evaluate_advancement
-from squadro.tools.log import logger
+from squadro.tools.log import monte_carlo_logger as logger
 from squadro.tools.probabilities import get_random_sample
 from squadro.tools.tree import get_nested_nodes
 

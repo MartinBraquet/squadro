@@ -6,7 +6,7 @@ from time import time
 from squadro.agents.agent import Agent
 from squadro.state import State
 from squadro.tools.constants import DefaultParams
-from squadro.tools.log import logger
+from squadro.tools.log import game_logger as logger
 from squadro.tools.utils import get_agent
 
 

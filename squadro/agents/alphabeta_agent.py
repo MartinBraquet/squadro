@@ -6,7 +6,7 @@ from squadro.agents.agent import Agent
 from squadro.state import State, get_next_state
 from squadro.tools.constants import DefaultParams
 from squadro.tools.evaluation import evaluate_advancement
-from squadro.tools.log import logger
+from squadro.tools.log import alpha_beta_logger as logger
 
 
 class AlphaBetaAgent(Agent):

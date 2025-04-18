@@ -5,7 +5,7 @@ from os.path import exists
 
 from squadro.state import State
 from squadro.tools.constants import inf
-from squadro.tools.log import logger
+from squadro.tools.log import alpha_beta_logger as logger
 from squadro.tools.tree import get_nested_nodes
 
 
