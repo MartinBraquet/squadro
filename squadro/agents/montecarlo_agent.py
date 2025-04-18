@@ -147,7 +147,7 @@ class Stats:
         return self.W / self.N
 
     def __repr__(self):
-        return f'N={self.N}, W={self.W}, Q={round(self.Q, 3)}, P={self.P}'
+        return f'N={self.N}, W={self.W:.3f}, Q={self.Q:.3f}, P={self.P:.3f}'
 
 
 class Edge:
@@ -319,9 +319,9 @@ class MonteCarloAgent(Agent):
         # - sign because it evaluates with respect to the current player of the state
         # NN_value = -self.evaluate(next_state)[1]
 
-        logger.info(f'Action probs: {pi}\n'
+        logger.info(f'Action probs: {np.round(pi, 3)}\n'
                     f'Action chosen: {action}\n'
-                    f'MCTS perceived value: {value:.4f}')
+                    f'MCTS perceived value: {value:.3f}')
 
         Debug.save_tree(root)
 
