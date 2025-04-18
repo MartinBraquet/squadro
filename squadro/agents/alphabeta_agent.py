@@ -23,7 +23,7 @@ class AlphaBetaAgent(Agent):
 
     def get_action(self, state: State, last_action: int = None, time_left: float = None):
         """This function is used to play a move according
-        to the board, player and time left provided as input.
+        to the board, player, and time left provided as input.
         It must return an action representing the move the player
         will perform.
         """

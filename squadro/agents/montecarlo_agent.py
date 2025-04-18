@@ -10,6 +10,7 @@ Most of the time for MCTS is spent on the random playouts (function to compute t
 Most of the time for Minimax is spent on state copies, keeping them in memory, and their evaluation
 """
 import random
+from abc import ABC
 from time import time
 from typing import Optional
 
@@ -284,13 +285,14 @@ class MCTS:
         return int(action)
 
 
-class MonteCarloAgent(Agent):
+class _MonteCarloAgent(Agent, ABC):
     """
     Class that represents an agent performing Monte-Carlo tree search.
     """
 
     def __init__(
         self,
+        evaluator: Evaluator,
         max_time: Optional[float] = None,
         max_steps: Optional[int] = None,
         uct: Optional[float] = None,
@@ -302,11 +304,7 @@ class MonteCarloAgent(Agent):
         self.max_steps = max_steps
         self.uct = uct
         self.method = method
-        self.evaluator = AdvancementEvaluator()
-
-    @classmethod
-    def get_name(cls) -> str:
-        return "mcts_advancement"
+        self.evaluator = evaluator
 
     def get_action(
         self,
@@ -327,14 +325,21 @@ class MonteCarloAgent(Agent):
         return action
 
 
-class MonteCarloRolloutAgent(MonteCarloAgent):
-    def __init__(
-        self,
-        *args, **kwargs
-    ):
-        kwargs.setdefault('method', 'uct')
+class MonteCarloAdvancementAgent(_MonteCarloAgent):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('evaluator', AdvancementEvaluator())
         super().__init__(*args, **kwargs)
-        self.evaluator = RolloutEvaluator()
+
+    @classmethod
+    def get_name(cls) -> str:
+        return "mcts_advancement"
+
+
+class MonteCarloRolloutAgent(_MonteCarloAgent):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('method', 'uct')
+        kwargs.setdefault('evaluator', RolloutEvaluator())
+        super().__init__(*args, **kwargs)
 
     @classmethod
     def get_name(cls) -> str:

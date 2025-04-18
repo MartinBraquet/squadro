@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-from squadro.agents.montecarlo_agent import MonteCarloAgent, MCTS, MonteCarloRolloutAgent
+from squadro.agents.montecarlo_agent import MonteCarloAdvancementAgent, MCTS, MonteCarloRolloutAgent
 from squadro.evaluators.evaluator import AdvancementEvaluator, ConstantEvaluator
 from squadro.game import Game
 from squadro.state import State
@@ -20,7 +20,7 @@ class TestMonteCarlo(TestCase):
 
     def test_get_action_tricky(self):
         self.state.set_from_advancement([[0, 4, 8], [5, 2, 8]])
-        agent = MonteCarloAgent(
+        agent = MonteCarloAdvancementAgent(
             pid=0,
             max_time=1e9,
             max_steps=50,
@@ -29,7 +29,7 @@ class TestMonteCarlo(TestCase):
         self.assertEqual(0, action)
 
     def test_get_action(self):
-        agent = MonteCarloAgent(
+        agent = MonteCarloAdvancementAgent(
             pid=0,
             max_time=1e9,
             max_steps=50,
@@ -40,13 +40,13 @@ class TestMonteCarlo(TestCase):
             self.assertEqual(3 - i, action)
 
     def test_game_ab(self):
-        agent = MonteCarloAgent(max_steps=200)
+        agent = MonteCarloAdvancementAgent(max_steps=200)
         game = Game(n_pawns=4, agent_0=agent, agent_1='ab_relative_advancement', first=0)
         game.run()
         self.assertEqual(game.winner, 0)
 
     def test_p_uct(self):
-        agent = MonteCarloAgent(
+        agent = MonteCarloAdvancementAgent(
             uct=1,
             method='p_uct',
             max_steps=50,
@@ -61,7 +61,7 @@ class TestMonteCarlo(TestCase):
         )
 
     def test_uct(self):
-        agent = MonteCarloAgent(
+        agent = MonteCarloAdvancementAgent(
             uct=1,
             method='uct',
             max_steps=50,
@@ -76,7 +76,7 @@ class TestMonteCarlo(TestCase):
         )
 
     def test_biased_uct(self):
-        agent = MonteCarloAgent(
+        agent = MonteCarloAdvancementAgent(
             uct=1,
             method='biased_uct',
             max_steps=50,
