@@ -221,8 +221,8 @@ class MCTS:
         self.max_steps = max_steps or 10_000
         assert self.max_steps > 0
 
-        # Probability to sample the action from pi
-        self.epsilon_action = epsilon_action if epsilon_action is not None else 0.03
+        # Probability to sample the action from pi instead of arg max pi during training
+        self.epsilon_action = epsilon_action if epsilon_action is not None else 0.3
         assert 0 <= self.epsilon_action <= 1
 
         # If MCTS stochastic: select action with distribution pi^(1/tau)
