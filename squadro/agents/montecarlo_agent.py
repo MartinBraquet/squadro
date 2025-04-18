@@ -28,7 +28,7 @@ from squadro.tools.tree import get_nested_nodes
 
 
 class Node:
-    def __init__(self, state: State, depth: int = None):
+    def __init__(self, state: State, depth: int = 0):
         self.state = state
         self.edges = []
         self.depth = depth
@@ -155,8 +155,8 @@ class Edge:
         self,
         in_node: Node,
         out_node: Node,
-        prior: float,
         action: int,
+        prior: float = None,
     ):
         self.in_node = in_node
         self.out_node = out_node
@@ -228,9 +228,10 @@ class MCTS:
 
         return values
 
-    def _get_heuristic(self, edge):
+    @staticmethod
+    def _get_heuristic(edge):
         """
-        Heuristic for biased UCT, must have the same bounds as Q.
+        Heuristic for biased UCT (must have the same bounds as Q)
         """
         value = evaluate_advancement(
             state=edge.out_node.state,
@@ -297,7 +298,7 @@ class MonteCarloAgent(Agent):
     ) -> int:
         self.start_time = time()
 
-        root = Node(state, depth=0)
+        root = Node(state)
         self.mcts = MCTS(root)
         Debug.clear(root)
 
@@ -344,25 +345,28 @@ class MonteCarloAgent(Agent):
         )
         return p, value
 
-    def _expand_leaf(self, leaf: Node, probs: np.ndarray[float]) -> None:
+    def _expand_leaf(self, leaf: Node, probs: np.ndarray) -> None:
         if leaf.state.game_over():
             return
         allowed_actions = leaf.state.get_current_player_actions()
         probs = probs[allowed_actions]
         for idx, action in enumerate(allowed_actions):
-            state = get_next_state(state=leaf.state, action=action)
-            node = Node(state, depth=leaf.depth + 1)
-
+            edge = self.get_edge(parent=leaf, action=action, prior=probs[idx])
             # if state.id not in self.mcts.tree:
-            Debug.save_node(node=node)
-            Debug.save_edge(parent=leaf, child=node)
             # logger.info('added node......p = %f', probs[idx])
             # else:
             #    node = self.mcts.tree[state.id]
             #   logger.info('existing node...%s...', node.id)
-
-            edge = Edge(in_node=leaf, out_node=node, prior=probs[idx], action=action)
             leaf.edges.append(edge)
+
+    @staticmethod
+    def get_edge(parent: Node, action: int, prior: float = None):
+        state = get_next_state(state=parent.state, action=action)
+        child = Node(state, depth=parent.depth + 1)
+        edge = Edge(in_node=parent, out_node=child, prior=prior, action=action)
+        Debug.save_node(node=child)
+        Debug.save_edge(parent=parent, child=child)
+        return edge
 
     def evaluate_leaf(self, leaf: Node):
         logger.debug('Sim step 2: EVALUATING LEAF')
