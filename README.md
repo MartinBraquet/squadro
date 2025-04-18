@@ -115,7 +115,7 @@ An algorithm can explore that space of possibilities to infer the best move to p
   * The simplest algorithm to estimate the state is to randomly let the game play until it is over (i.e., pick random actions for both players). When played enough times, it can give the probability to win in that state.
   * More complex, and hence accurate, algorithms are using reinforcement learning (AI). They learn from experience by storing information about each state/action in one of:
     * Q value function, a lookup table for each state and action;
-    * deep Q network (DQN), a neural network that approximates the Q value function, which is necessary when the state space is very large (i.e., cannot be stored in memory).
+    * deep Q network (DQN), a neural network that approximates the Q value function, which is necessary when the state space is huge (i.e., cannot be stored in memory).
 
 List of available agents:
 
