@@ -34,28 +34,28 @@ class Node:
         self.edges = []
         self.depth = depth
 
-    def is_leaf(self):
+    def is_leaf(self) -> bool:
         return len(self.edges) == 0
 
     @property
-    def player_turn(self):
+    def player_turn(self) -> int:
         return self.state.get_cur_player()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self.state)
 
-    def get_edge_stats(self, to_string=False):
+    def get_edge_stats(self, to_string: bool = False) -> list | str:
         stats = [edge.stats for edge in self.edges]
         if to_string:
             stats = '\n'.join(str(s) for s in stats)
         return stats
 
     @property
-    def children(self):
+    def children(self) -> list['Node']:
         return [edge.out_node for edge in self.edges]
 
 
-def save_edge_values(d: dict, node: Node):
+def save_edge_values(d: dict, node: Node) -> None:
     for edge in node.edges:
         value = edge.stats.N
         idx = (edge.in_node.tree_index, edge.out_node.tree_index)
@@ -69,7 +69,7 @@ class Debug:
     node_counter = 0
 
     @classmethod
-    def save_tree(cls, node: Node):
+    def save_tree(cls, node: Node) -> None:
         if not cls.tree_wanted:
             return
         if not os.path.exists('results'):
@@ -92,7 +92,7 @@ class Debug:
             json.dump(nested_nodes, f, indent=4)
 
     @classmethod
-    def clear(cls, node: Node):
+    def clear(cls, node: Node) -> None:
         if not cls.tree_wanted:
             return
         cls.edges = []
@@ -103,7 +103,7 @@ class Debug:
         cls.save_node(node)
 
     @classmethod
-    def save_node(cls, node: Node):
+    def save_node(cls, node: Node) -> None:
         if not cls.tree_wanted:
             return
         if not hasattr(node, 'tree_index'):
@@ -118,7 +118,7 @@ class Debug:
         logger.info(f'Node index #{node.tree_index}: {cls.nodes[node.tree_index]}')
 
     @classmethod
-    def save_edge(cls, parent: Node, child: Node):
+    def save_edge(cls, parent: Node, child: Node) -> None:
         if not cls.tree_wanted:
             return
         if not hasattr(parent, 'tree_index'):
@@ -147,7 +147,7 @@ class Stats:
             return 0
         return self.W / self.N
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'N={self.N}, W={self.W:.3f}, Q={self.Q:.3f}, P={self.P:.3f}'
 
 
@@ -165,10 +165,10 @@ class Edge:
         self.stats = Stats(prior)
 
     @property
-    def player_turn(self):
+    def player_turn(self) -> int:
         return self.in_node.player_turn
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.action}, {self.in_node}->{self.out_node}"
 
 
@@ -195,15 +195,15 @@ class MCTS:
         logger.info(f"Using MCTS method '{self.method}', uct={self.uct}")
 
     @staticmethod
-    def get_available_methods():
+    def get_available_methods() -> list[str]:
         return ['p_uct', 'uct', 'biased_uct']
 
-    def _method_error(self):
+    def _method_error(self) -> ValueError:
         return ValueError(
             f"Unknown method '{self.method}', must be one of {self.get_available_methods()}"
         )
 
-    def _get_sim_edge_values(self, node) -> list[float]:
+    def _get_sim_edge_values(self, node: Node) -> list[float]:
         # Introduce slight incentives for the root node to explore different edges (for training)
         epsilon = self.epsilon_mcts if node == self.root and self.is_training else 0
         nu = np.random.dirichlet([0.8] * len(node.edges))
@@ -230,7 +230,7 @@ class MCTS:
         return values
 
     @staticmethod
-    def _get_heuristic(edge):
+    def _get_heuristic(edge: Edge) -> float:
         """
         Heuristic for biased UCT (must have the same bounds as Q)
         """
@@ -246,7 +246,7 @@ class MCTS:
         edge_best = node.edges[i]
         return edge_best
 
-    def move_to_leaf(self):
+    def move_to_leaf(self) -> tuple[Node, list[Edge]]:
         logger.debug('Sim step 1: MOVING TO LEAF')
         breadcrumbs = []
         node = self.root
@@ -262,8 +262,8 @@ class MCTS:
     def back_fill(
         leaf: Node,
         value: float,
-        breadcrumbs: list,
-    ):
+        breadcrumbs: list[Edge],
+    ) -> None:
         logger.debug('Sim step 3: DOING BACK-FILL')
         log_breadcrumbs(breadcrumbs)
         for edge in breadcrumbs:
@@ -276,7 +276,7 @@ class MonteCarloAgent(Agent):
     Class that represents an agent performing Monte-Carlo tree search.
     """
 
-    def __init__(self, max_time=None, *args, **kwargs):
+    def __init__(self, max_time: Optional[float] = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.max_time = max_time or DefaultParams.max_time_per_move  # use fixed time for now
         self.start_time = None
@@ -329,13 +329,13 @@ class MonteCarloAgent(Agent):
 
         return action
 
-    def simulate(self):
+    def simulate(self) -> None:
         leaf, breadcrumbs = self.mcts.move_to_leaf()
         value = self.evaluate_leaf(leaf)
         self.mcts.back_fill(leaf, value, breadcrumbs)
 
     @staticmethod
-    def evaluate(state: State):
+    def evaluate(state: State) -> tuple[NDArray[np.float64], float]:
         """
         Evaluate the current state (Q value), according to the current player.
         """
@@ -365,7 +365,7 @@ class MonteCarloAgent(Agent):
             leaf.edges.append(edge)
 
     @staticmethod
-    def get_edge(parent: Node, action: int, prior: float | np.float64 = None):
+    def get_edge(parent: Node, action: int, prior: float | np.float64 = None) -> Edge:
         state = get_next_state(state=parent.state, action=action)
         child = Node(state, depth=parent.depth + 1)
         edge = Edge(in_node=parent, out_node=child, prior=prior, action=action)
@@ -373,7 +373,7 @@ class MonteCarloAgent(Agent):
         Debug.save_edge(parent=parent, child=child)
         return edge
 
-    def evaluate_leaf(self, leaf: Node):
+    def evaluate_leaf(self, leaf: Node) -> float:
         logger.debug('Sim step 2: EVALUATING LEAF')
 
         # if stop_sim:
@@ -386,7 +386,7 @@ class MonteCarloAgent(Agent):
 
         return value
 
-    def get_av(self):
+    def get_av(self) -> tuple[np.ndarray, np.ndarray]:
         """
         Get Action-Value pairs for each edge of the root node
         """
@@ -416,7 +416,7 @@ class MonteCarloAgent(Agent):
         return int(action)
 
 
-def log_breadcrumbs(bread):
+def log_breadcrumbs(bread: list[Edge]) -> None:
     if not bread:
         return
     text = 'Breadcrumbs:'
