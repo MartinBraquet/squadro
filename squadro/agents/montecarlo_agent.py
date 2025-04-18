@@ -17,7 +17,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from squadro.agents.agent import Agent
-from squadro.evaluators.evaluator import Evaluator, AdvancementEvaluator, RandomPlayoutEvaluator
+from squadro.evaluators.evaluator import Evaluator, AdvancementEvaluator, RolloutEvaluator
 from squadro.state import State, get_next_state
 from squadro.tools.constants import DefaultParams, inf
 from squadro.tools.evaluation import evaluate_advancement
@@ -105,7 +105,7 @@ class MCTS:
         for i, edge in enumerate(node.edges):
             if self.method == 'p_uct':
                 if edge.stats.P is None:
-                    raise ValueError("Cannot use 'p_uct' method when prior is None")
+                    raise ValueError("Cannot use the 'p_uct' method when the prior is not provided")
                 p_stochastic = (1 - epsilon) * edge.stats.P + epsilon * nu[i]
                 u = self.uct * p_stochastic * np.sqrt(nb) / (1 + edge.stats.N)
             elif self.method == 'uct':
@@ -265,7 +265,7 @@ class MCTS:
     def choose_action(self, pi: np.ndarray) -> int:
         """
         Pick the action.
-        With probability epsilon (e.g., 3% of picks), draw a random sample from the distribution pi
+        With probability epsilon (e.g., 30% of picks), draw a random sample from the distribution pi
         (training only)
         Otherwise, pick deterministically the action with the highest probability in pi.
 
@@ -327,14 +327,15 @@ class MonteCarloAgent(Agent):
         return action
 
 
-class MonteCarloRandomPlayoutAgent(MonteCarloAgent):
+class MonteCarloRolloutAgent(MonteCarloAgent):
     def __init__(
         self,
         *args, **kwargs
     ):
+        kwargs.setdefault('method', 'uct')
         super().__init__(*args, **kwargs)
-        self.evaluator = RandomPlayoutEvaluator()
+        self.evaluator = RolloutEvaluator()
 
     @classmethod
     def get_name(cls) -> str:
-        return "mcts_random_playout"
+        return "mcts_rollout"
