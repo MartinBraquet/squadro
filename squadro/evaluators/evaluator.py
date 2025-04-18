@@ -46,3 +46,10 @@ class ConstantEvaluator(Evaluator):
     def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
         p = np.ones(state.n_pawns) / state.n_pawns
         return p, self.constant
+
+
+class RandomPlayoutEvaluator(Evaluator):
+    def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
+        p = np.ones(state.n_pawns) / state.n_pawns
+        value = ...
+        return p, value

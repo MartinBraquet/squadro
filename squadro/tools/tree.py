@@ -1,8 +1,173 @@
 import json
-from pathlib import Path
+import os
+from collections import defaultdict
 
-import plotly.graph_objects as go
-from igraph import Graph
+from squadro.state import State
+from squadro.tools.log import monte_carlo_logger as logger
+
+
+class Node:
+    def __init__(self, state: State, depth: int = 0):
+        self.state = state
+        self.edges = []
+        self.depth = depth
+
+    def is_leaf(self) -> bool:
+        return len(self.edges) == 0
+
+    @property
+    def player_turn(self) -> int:
+        return self.state.get_cur_player()
+
+    def __repr__(self) -> str:
+        return repr(self.state)
+
+    def get_edge_stats(self, to_string: bool = False) -> list | str:
+        stats = [edge.stats for edge in self.edges]
+        if to_string:
+            stats = '\n'.join(str(s) for s in stats)
+        return stats
+
+    @property
+    def children(self) -> list['Node']:
+        return [edge.out_node for edge in self.edges]
+
+
+def save_edge_values(d: dict, node: Node) -> None:
+    for edge in node.edges:
+        value = edge.stats.N
+        idx = (edge.in_node.tree_index, edge.out_node.tree_index)
+        d[idx] = value
+        save_edge_values(d, edge.out_node)
+
+
+class Debug:
+    tree_wanted = False
+    nodes = defaultdict(dict)
+    node_counter = 0
+
+    @classmethod
+    def save_tree(cls, node: Node) -> None:
+        if not cls.tree_wanted:
+            return
+        if not os.path.exists('results'):
+            os.mkdir('results')
+
+        with open('results/edges.json', 'w') as f:
+            json.dump(cls.edges, f, indent=4)
+
+        edge_values = {}
+        save_edge_values(edge_values, node)
+        edge_values = {str(key): value for key, value in edge_values.items()}
+        with open('results/edge_values.json', 'w') as f:
+            json.dump(edge_values, f, indent=4)
+
+        with open('results/nodes.json', 'w') as f:
+            json.dump(cls.nodes, f, indent=4)
+
+        nested_nodes = get_nested_nodes(node)
+        with open('results/nested_nodes.json', 'w') as f:
+            json.dump(nested_nodes, f, indent=4)
+
+    @classmethod
+    def clear(cls, node: Node) -> None:
+        if not cls.tree_wanted:
+            return
+        cls.edges = []
+        cls.nodes = defaultdict(dict)
+        cls.node_counter = 0
+        if hasattr(node, 'tree_index'):
+            del node.tree_index
+        cls.save_node(node)
+
+    @classmethod
+    def save_node(cls, node: Node) -> None:
+        if not cls.tree_wanted:
+            return
+        if not hasattr(node, 'tree_index'):
+            node.tree_index = cls.node_counter
+            cls.node_counter += 1
+        cls.nodes[node.tree_index] |= {
+            # 'eval': eval_type,
+            'state': str(node.state),
+            # 'value': value,
+            'depth': node.depth,
+        }
+        logger.info(f'Node index #{node.tree_index}: {cls.nodes[node.tree_index]}')
+
+    @classmethod
+    def save_edge(cls, parent: Node, child: Node) -> None:
+        if not cls.tree_wanted:
+            return
+        if not hasattr(parent, 'tree_index'):
+            parent.tree_index = cls.node_counter
+            cls.node_counter += 1
+        if not hasattr(child, 'tree_index'):
+            child.tree_index = cls.node_counter
+            cls.node_counter += 1
+        cls.edges.append((parent.tree_index, child.tree_index))
+
+
+class Stats:
+    def __init__(self, prior: float):
+        self.N = 0
+        self.W = .0
+        self.P = prior
+
+    def update(self, value: float):
+        self.N += 1
+        self.W += value
+        logger.debug(f'Updating edge with value {value}: {self}')
+
+    @property
+    def Q(self) -> float:  # noqa
+        if self.N == 0:
+            return 0
+        return self.W / self.N
+
+    def dict(self) -> dict:
+        return {
+            'N': self.N,
+            'W': self.W,
+            'Q': self.Q,
+            'P': self.P,
+        }
+
+    def __repr__(self) -> str:
+        text = f'N={self.N}, W={self.W:.3f}, Q={self.Q:.3f}'
+        if self.P is not None:
+            text += f'P={self.P:.3f}'
+        return text
+
+
+class Edge:
+    def __init__(
+        self,
+        in_node: Node,
+        out_node: Node,
+        action: int,
+        prior: float = None,
+    ):
+        self.in_node = in_node
+        self.out_node = out_node
+        self.action = action
+        self.stats = Stats(prior)
+
+    @property
+    def player_turn(self) -> int:
+        return self.in_node.player_turn
+
+    def __repr__(self) -> str:
+        return f"{self.action}, {self.in_node}->{self.out_node}"
+
+
+def log_trajectory(bread: list[Edge]) -> None:
+    if not bread:
+        return
+    text = 'Leaf trajectory:'
+    for edge in bread:
+        text += f'\n{edge}'
+    logger.debug(text)
 
 
 def get_nested_nodes(s):
@@ -11,141 +176,3 @@ def get_nested_nodes(s):
     return {
         s.tree_index: [get_nested_nodes(n) for n in s.children]
     }
-
-
-def plot_tree(edge_labels=True):
-    tree_directory = Path('results')
-
-    edges = json.load(open(tree_directory / 'edges.json'))
-    nodes = json.load(open(tree_directory / 'nodes.json'))
-    nodes = {int(k): v for k, v in nodes.items()}
-    # labels = list(range(max(max(e) for e in edges) + 1))
-    nested_nodes = json.load(open(tree_directory / 'nested_nodes.json'))
-    if edge_labels:
-        edge_labels = json.load(open(tree_directory / 'edge_values.json'))
-        edge_labels = {eval(key): value for key, value in edge_labels.items()}
-
-    def get_n(l: list):
-        assert isinstance(l, list)
-        n_ = len(l)
-        for i, e in enumerate(l):
-            if isinstance(e, dict):
-                assert len(e) == 1
-                n_ = max(n_, get_n(list(e.values())[0]))
-        return n_
-
-    # n = len(eval(nodes[0]["state"])[0])
-    n = get_n([nested_nodes])
-
-    n_vertices = max(max(e) for e in edges) + 1
-
-    G = Graph(edges=edges)
-
-    pos = {}
-    Y = max(n['depth'] for n in nodes.values())
-
-    def walk_nodes(l, prev_x=0, y=0):
-        assert isinstance(l, list)
-        x = prev_x
-        for i, e in enumerate(l):
-            if y != 0:
-                x = prev_x + (i - n // 2) * n ** (Y - y)
-            if isinstance(e, dict):
-                assert len(e) == 1
-                k = list(e.keys())[0]
-                pos[int(k)] = (x, Y - y)
-                walk_nodes(list(e.values())[0], x, y + 1)
-            else:
-                assert isinstance(e, int)
-                pos[int(e)] = (x, Y - y)
-
-    walk_nodes([nested_nodes])
-
-
-    # pos = {i: (x, D - y) for i, (x, y) in node_ordering.items()}
-
-    E = [e.tuple for e in G.es]  # list of edges
-
-    L = len(pos)
-    Xn = [pos[k][0] for k in range(L)]
-    Yn = [pos[k][1] for k in range(L)]
-    Xe = []
-    Ye = []
-    for edge in E:
-        Xe += [pos[edge[0]][0], pos[edge[1]][0], None]
-        Ye += [pos[edge[0]][1], pos[edge[1]][1], None]
-
-    if nodes[0].get('value') is not None:
-        labels = [nodes[k]['value'] for k in pos.keys()]
-    else:
-        labels = list(map(str, range(n_vertices)))
-
-    if len(labels) != L:
-        raise ValueError('The lists pos and text must have the same len')
-    annotations = []
-    for k in range(L):
-        annotations.append(
-            dict(
-                text=labels[k],
-                x=pos[k][0], y=pos[k][1],
-                xref='x1', yref='y1',
-                font=dict(color='rgb(250,250,250)', size=10),
-                showarrow=False)
-        )
-
-    if edge_labels:
-        for edge, label in edge_labels.items():
-            x0, y0 = pos[edge[0]]
-            x1, y1 = pos[edge[1]]
-            mid_x = (x0 + x1) / 2
-            mid_y = (y0 + y1) / 2
-            annotations.append(
-                dict(
-                    x=mid_x,
-                    y=mid_y,
-                    text=label,
-                    showarrow=False,
-                    font=dict(color="red", size=12)
-                )
-            )
-
-    fig = go.Figure()
-    # fig.update_layout(
-    #     width=1600,  # Set figure width to 1000 pixels
-    #     height=700,  # Set figure height to 800 pixels
-    # )
-
-    fig.add_trace(go.Scatter(x=Xe,
-                             y=Ye,
-                             mode='lines',
-                             line=dict(color='rgb(210,210,210)', width=1),
-                             hoverinfo='none'
-                             ))
-    fig.add_trace(go.Scatter(x=Xn,
-                             y=Yn,
-                             mode='markers',
-                             name='bla',
-                             marker=dict(symbol='circle-dot',
-                                         size=25,
-                                         color='#6175c1',  # '#DB4551',
-                                         line=dict(color='rgb(50,50,50)', width=1)
-                                         ),
-                             opacity=0.8
-                             ))
-    axis = dict(showline=False,  # hide axis line, grid, ticklabels and  title
-                zeroline=False,
-                showgrid=False,
-                showticklabels=False,
-                )
-
-    fig.update_layout(title='Minimax Tree',
-                      annotations=annotations,
-                      font_size=12,
-                      showlegend=False,
-                      xaxis=axis,
-                      yaxis=axis,
-                      margin=dict(l=40, r=40, b=50, t=50),
-                      hovermode='closest',
-                      plot_bgcolor='rgb(248,248,248)'
-                      )
-    fig.show()

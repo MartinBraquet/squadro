@@ -4,11 +4,12 @@ from unittest.mock import patch
 
 import numpy as np
 
-from squadro.agents.montecarlo_agent import MonteCarloAgent, MCTS, Node
+from squadro.agents.montecarlo_agent import MonteCarloAgent, MCTS
 from squadro.evaluators.evaluator import AdvancementEvaluator, ConstantEvaluator
 from squadro.game import Game
 from squadro.state import State
 from squadro.tools.constants import inf
+from squadro.tools.tree import Node
 
 
 class TestMonteCarlo(TestCase):

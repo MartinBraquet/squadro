@@ -3,8 +3,8 @@ from unittest import TestCase
 
 import numpy as np
 
-from squadro.agents.montecarlo_agent import Node, Stats, Edge
 from squadro.state import State, get_next_state
+from squadro.tools.tree import Node, Stats, Edge
 
 
 class TestNode(TestCase):
