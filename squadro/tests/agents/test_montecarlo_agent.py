@@ -3,7 +3,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from squadro.agents.montecarlo_agent import MonteCarloAgent
+from squadro.agents.montecarlo_agent import MonteCarloAgent, MCTS, Node
 from squadro.game import Game
 from squadro.state import State
 from squadro.tools.constants import DefaultParams
@@ -67,3 +67,14 @@ class TestMonteCarlo(TestCase):
             [2, 2, 2, 1, 2, 1, 1, 1, 2, 0, 1, 2, 1, 1, 1, 2, 0, 1, 1, 2, 1],
             action_history
         )
+
+    def test_heuristic(self):
+        """
+        Test that the heuristic for biased UCT is correct.
+        """
+        action = 0
+        state = State(first=0, n_pawns=3)
+        state.set_from_advancement([[0, 1, 1], [2, 2, 2]])
+        edge = MonteCarloAgent.get_edge(parent=Node(state), action=action)
+        h = MCTS._get_heuristic(edge)
+        self.assertEqual((1 + 1 - 2 - 2) / 16, h)
