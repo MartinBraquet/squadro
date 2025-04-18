@@ -104,11 +104,11 @@ It will stop training when the evaluation loss stops improving. Once done, one c
 
 You can play against someone else or many different types of computer algorithms.
 
-Most computer algorithms discretize the game into states and actions. Here the state is the position of the pawns and the available actions are the possible moves of the pawns.
+Most computer algorithms discretize the game into states and actions. Here, the state is the position of the pawns and the available actions are the possible moves of the pawns.
 
 Squadro is a finite state machine, meaning that the next state of the game is completely determined by the current state and the action played. With this definition, one can see that the game is a Markov Decision Process (MDP). At each state, the current player can play different actions, which lead to different states. Then the next player can play different actions from any of those new states, etc. The future of the game can be represented as a tree, whose branches are the actions that lead to different states.
 
-An algorithm can explore that space of possibilities to infer the best move to play now. As the tree is very large, it is not possible to explore all the possible paths until the end of the game. Typically, they explore only a small fraction of the tree, and then use the information gathered from those states to make a decision. More precisely, those two phases are:
+An algorithm can explore that space of possibilities to infer the best move to play now. As the tree is huge, it is not possible to explore all the possible paths until the end of the game. Typically, they explore only a small fraction of the tree and then use the information gathered from those states to make a decision. More precisely, those two phases are:
 
 * **State exploration**: exploring the space of states by a careful choice of actions. The most common exploration methods are Minimax and Monte Carlo Tree Search (MCTS). Minimax explores all the states up to a specific depth, while MCTS navigates until it finds a state that has not been visited yet. Minimax can be sped up by skipping the search in the parts of the tree that won't affect the final decision; this method is called alpha-beta pruning.
 * **State evaluation**: evaluating a state. If we have a basic understanding of the game and how to win, one can design a heuristic (state evaluation function) that gives an estimate of how good it is to be in that state / position. Otherwise, it can often be better to use a computer algorithm to evaluate the state.
@@ -124,7 +124,8 @@ List of available agents:
 * _ab_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement
 * _ab_relative_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement compared to the other player
 * _ab_advancement_deep_: a computer that plays minimax with alpha-beta pruning (depth ~4), where the evaluation function is the player's advancement compared to the other player
-* _mcts_:
+* _mcts_advancement_: Monte Carlo tree search, where the evaluation function is the player's advancement compared to the other player
+* _mcts_rollout_: Monte Carlo tree search, where the evaluation function is determined by a random playout until the end of the game
 
 You can also access the most updated list of available agents with:
 
