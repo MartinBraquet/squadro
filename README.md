@@ -129,7 +129,7 @@ List of available agents:
 You can also access the most updated list of available agents with:
 
 ```python
-from squadro.tools.utils import AVAILABLE_AGENTS
+from squadro.tools.agents import AVAILABLE_AGENTS
 
 print(AVAILABLE_AGENTS)
 ```
