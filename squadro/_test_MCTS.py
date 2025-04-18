@@ -22,7 +22,7 @@ def main():
     #print(l1, l2)
 
     for i in range(2,50):
-        agents[0].MC_steps = i
+        agents[0].max_steps = i
         action = agents[0].get_action(cur_state.copy(), 0, 10)
     
     cur_state.apply_action(action)
