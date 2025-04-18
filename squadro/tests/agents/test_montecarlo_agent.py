@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-from squadro.agents.montecarlo_agent import MonteCarloAgent, MCTS
+from squadro.agents.montecarlo_agent import MonteCarloAgent, MCTS, MonteCarloRolloutAgent
 from squadro.evaluators.evaluator import AdvancementEvaluator, ConstantEvaluator
 from squadro.game import Game
 from squadro.state import State
@@ -17,6 +17,16 @@ class TestMonteCarlo(TestCase):
         random.seed(0)
         np.random.seed(0)
         self.state = State(first=0, n_pawns=3)
+
+    def test_get_action_tricky(self):
+        self.state.set_from_advancement([[0, 4, 8], [5, 2, 8]])
+        agent = MonteCarloAgent(
+            pid=0,
+            max_time=1e9,
+            max_steps=50,
+        )
+        action = agent.get_action(self.state)
+        self.assertEqual(0, action)
 
     def test_get_action(self):
         agent = MonteCarloAgent(
@@ -270,3 +280,21 @@ class TestMonteCarlo(TestCase):
         mcts.epsilon_action = .5
         action = mcts.choose_action(pi=np.array([.33, .34, .33]))
         self.assertEqual(2, action)
+
+
+class TestMonteCarloRollout(TestCase):
+    def setUp(self):
+        random.seed(0)
+        np.random.seed(0)
+        self.state = State(first=0, n_pawns=3)
+
+    def test_get_action_tricky(self):
+        self.state.set_from_advancement([[0, 4, 8], [5, 2, 8]])
+        agent = MonteCarloRolloutAgent(
+            pid=0,
+            max_time=1e9,
+            max_steps=50,
+            method='uct',
+        )
+        action = agent.get_action(self.state)
+        self.assertEqual(0, action)
