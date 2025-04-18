@@ -1,16 +1,19 @@
 from squadro.state import State
 
 
-def evaluate_advancement(state: State, player_id: int) -> int:
+def evaluate_advancement(state: State, player_id: int = None) -> int:
     """
-    Evaluate the current state (Q value), according to the current player.
+    Evaluate the current state (Q value), according to the player in player id.
     Normalized between -1 and 1.
 
     :param state: State to evaluate
-    :param player_id: Player to evaluate
+    :param player_id: Player to evaluate (default: current player)
     :return: Q value
     """
     max_value = state.n_pawns_to_win * state.max_pos * 2
+
+    if player_id is None:
+        player_id = state.cur_player
 
     def get_summed_advancement():
         if state.game_over():
