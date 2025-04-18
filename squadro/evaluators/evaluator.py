@@ -30,16 +30,19 @@ class Evaluator(ABC):
 
 
 class AdvancementEvaluator(Evaluator):
+    """
+    Evaluate a state according to the advancement heuristic.
+    """
     def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
         p = np.ones(state.n_pawns) / state.n_pawns
-        value = evaluate_advancement(
-            state=state,
-            player_id=state.cur_player,
-        )
+        value = evaluate_advancement(state=state)
         return p, value
 
 
 class ConstantEvaluator(Evaluator):
+    """
+    Evaluate a state as a constant value.
+    """
     def __init__(self, constant: float = 0):
         self.constant = constant
 
@@ -48,8 +51,19 @@ class ConstantEvaluator(Evaluator):
         return p, self.constant
 
 
-class RandomPlayoutEvaluator(Evaluator):
+class RolloutEvaluator(Evaluator):
+    """
+    Evaluate a state using random playouts until the end of the game.
+    """
     def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
         p = np.ones(state.n_pawns) / state.n_pawns
-        value = ...
+        value = self.get_value(state)
         return p, value
+
+    @staticmethod
+    def get_value(state: State) -> float:
+        cur_player = state.cur_player
+        while not state.game_over():
+            action = state.get_random_action()
+            state = state.get_next_state(action)
+        return 1 if state.winner == cur_player else -1
