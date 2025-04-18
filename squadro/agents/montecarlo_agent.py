@@ -6,7 +6,7 @@ Minimax accuracy is more like a step function
 due to iterative deepening. It makes no update on the decision weights (i.e., action to take) until it finishes exploring the
 tree all the way down to depth k, which takes many node expansions.
 
-Most of the time for MCTS is spent on the random playouts (function to compute next state from random action)
+Most of the time for MCTS is spent on the random playouts (function to compute the next state from random action)
 Most of the time for Minimax is spent on state copies, keeping them in memory, and their evaluation
 """
 import json
@@ -17,6 +17,7 @@ from time import time
 from typing import Optional
 
 import numpy as np
+from numpy.typing import NDArray
 
 from squadro.agents.agent import Agent
 from squadro.state import State, get_next_state
@@ -186,7 +187,7 @@ class MCTS:
         # Upper Confidence Bound for Trees (exploration constant)
         self.uct = DefaultParams.get_uct(n_pawns=self.root.state.n_pawns)
 
-        # Probability to choose randomly the root edge during training
+        # Probability to choose the root edge randomly during training
         self.epsilon_mcts = .2
 
         self.is_training = False
@@ -302,8 +303,8 @@ class MonteCarloAgent(Agent):
         self.mcts = MCTS(root)
         Debug.clear(root)
 
-        # Needs at least two simulations to give back-fill value to one root edge
         n = 0
+        # Needs at least two simulations to give backfill value to one root edge
         while (time() - self.start_time < self.max_time or n <= 1) and n < self.mc_steps:
             logger.debug(f'\nSIMULATION {n}')
             self.simulate()
@@ -345,13 +346,17 @@ class MonteCarloAgent(Agent):
         )
         return p, value
 
-    def _expand_leaf(self, leaf: Node, probs: np.ndarray) -> None:
+    def _expand_leaf(self, leaf: Node, probs: NDArray[np.float64]) -> None:
         if leaf.state.game_over():
             return
         allowed_actions = leaf.state.get_current_player_actions()
         probs = probs[allowed_actions]
         for idx, action in enumerate(allowed_actions):
-            edge = self.get_edge(parent=leaf, action=action, prior=probs[idx])
+            edge = self.get_edge(
+                parent=leaf,
+                action=action,
+                prior=probs[idx],  # noqa
+            )
             # if state.id not in self.mcts.tree:
             # logger.info('added node......p = %f', probs[idx])
             # else:
@@ -360,7 +365,7 @@ class MonteCarloAgent(Agent):
             leaf.edges.append(edge)
 
     @staticmethod
-    def get_edge(parent: Node, action: int, prior: float = None):
+    def get_edge(parent: Node, action: int, prior: float | np.float64 = None):
         state = get_next_state(state=parent.state, action=action)
         child = Node(state, depth=parent.depth + 1)
         edge = Edge(in_node=parent, out_node=child, prior=prior, action=action)
