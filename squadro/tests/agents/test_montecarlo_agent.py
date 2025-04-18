@@ -288,6 +288,21 @@ class TestMonteCarloRollout(TestCase):
         np.random.seed(0)
         self.state = State(first=0, n_pawns=3)
 
+    def test_game(self):
+        agent = MonteCarloRolloutAgent(
+            uct=1,
+            method='uct',
+            max_steps=50,
+            max_time=1e9,
+        )
+        game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
+        action_history = game.run()
+        self.assertEqual(game.winner, 0)
+        self.assertEqual(
+            [0, 2, 2, 0, 1, 0, 2, 0, 0, 0, 1, 2, 1, 0, 0, 1, 2, 0, 0, 0, 0, 1, 1, 2, 1, 0, 1],
+            action_history
+        )
+
     def test_get_action_tricky(self):
         self.state.set_from_advancement([[0, 4, 8], [5, 2, 8]])
         agent = MonteCarloRolloutAgent(
