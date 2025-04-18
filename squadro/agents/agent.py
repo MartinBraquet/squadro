@@ -24,11 +24,11 @@ class Agent(ABC):
     ):
         """
         Compute the action to perform on the current state
-        of the game. The must be computed in at most time_left
+        of the game. This must be computed in at most time_left
         seconds.
 
         state: the current state
-        time_left: the number of second left
+        time_left: the number of seconds left
         """
         pass
 
@@ -39,8 +39,8 @@ class Agent(ABC):
 
     def set_id(self, _id):
         """
-        Set the id of the agent in the game. In a two player
-        game it will be either 0 if we play first of 1 otherwise.
+        Set the id of the agent in the game. In a two-player
+        game, it will be either 0 if we play first or 1 otherwise.
         """
         self.id = _id
 
