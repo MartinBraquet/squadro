@@ -174,6 +174,17 @@ from squadro.animation.animated_game import RealTimeAnimatedGame
 RealTimeAnimatedGame(n_pawns=5, first=None, agent_1='random').run()
 ```
 
+> [!TIP]
+> To play against our best algorithm, run:
+> ```python
+> from squadro.agents.best import get_best_agent
+> from squadro.animation.animated_game import RealTimeAnimatedGame
+> 
+> best_agent = get_best_agent(max_time_per_move=.5)
+> RealTimeAnimatedGame(agent_1=best_agent).run()
+> ```
+> Let us know if you ever beat it!
+
 #### Play against your trained AI
 
 After training your AI as described in the [Training](#Training) section, you can play against her using:
