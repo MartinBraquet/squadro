@@ -127,7 +127,7 @@ class TestAdvancementDeep(TestCase):
         self.assertEqual((8 + 3 - 4) / 16, self.agent.evaluate(self.state))
 
     def test_get_action(self):
-        self.agent.max_time = 1e9
+        self.agent.max_time_per_move = 1e9
         action = self.agent.get_action(self.state)
         self.assertEqual(2, action)
         self.assertGreater(self.agent.depth, 0)
@@ -148,7 +148,7 @@ class TestAdvancementDeep(TestCase):
         Make sure minimax always explores at least the children of the root node, even if too long
         to finish on time. Otherwise, it can't output an action.
         """
-        with patch.object(self.agent, 'max_time', 1e-9):
+        with patch.object(self.agent, 'max_time_per_move', 1e-9):
             action = self.agent.get_action(self.state)
         self.assertTrue(self.state.is_action_valid(action))
 
@@ -157,7 +157,7 @@ class TestAdvancementDeep(TestCase):
         Make sure iterative depth search is stopped when time runs out
         """
         time_out = .001
-        self.agent.max_time = time_out
+        self.agent.max_time_per_move = time_out
         compute_time = time()
         self.agent.get_action(self.state)
         compute_time = time() - compute_time

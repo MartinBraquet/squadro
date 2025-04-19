@@ -293,14 +293,14 @@ class _MonteCarloAgent(Agent, ABC):
     def __init__(
         self,
         evaluator: Evaluator,
-        max_time: Optional[float] = None,
         max_steps: Optional[int] = None,
         uct: Optional[float] = None,
         method: Optional[str] = None,
-        *args, **kwargs
+        **kwargs
     ):
-        super().__init__(*args, **kwargs)
-        self.max_time = max_time or DefaultParams.max_time_per_move  # use fixed time for now
+        kwargs.setdefault('max_time_per_move',
+                          DefaultParams.max_time_per_move)  # use fixed time for now
+        super().__init__(**kwargs)
         self.max_steps = max_steps
         self.uct = uct
         self.method = method
@@ -316,7 +316,7 @@ class _MonteCarloAgent(Agent, ABC):
         mcts = MCTS(
             root=root,
             evaluator=self.evaluator,
-            max_time=self.max_time,
+            max_time=self.max_time_per_move,
             max_steps=self.max_steps,
             uct=self.uct,
             method=self.method,

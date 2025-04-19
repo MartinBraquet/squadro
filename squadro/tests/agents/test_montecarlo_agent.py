@@ -22,7 +22,7 @@ class TestMonteCarlo(TestCase):
         self.state.set_from_advancement([[0, 4, 8], [5, 2, 8]])
         agent = MonteCarloAdvancementAgent(
             pid=0,
-            max_time=1e9,
+            max_time_per_move=1e9,
             max_steps=50,
         )
         action = agent.get_action(self.state)
@@ -31,7 +31,7 @@ class TestMonteCarlo(TestCase):
     def test_get_action(self):
         agent = MonteCarloAdvancementAgent(
             pid=0,
-            max_time=1e9,
+            max_time_per_move=1e9,
             max_steps=50,
         )
         for i in range(1, 4):
@@ -50,7 +50,7 @@ class TestMonteCarlo(TestCase):
             uct=1,
             method='p_uct',
             max_steps=50,
-            max_time=1e9,
+            max_time_per_move=1e9,
         )
         game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
         action_history = game.run()
@@ -65,7 +65,7 @@ class TestMonteCarlo(TestCase):
             uct=1,
             method='uct',
             max_steps=50,
-            max_time=1e9,
+            max_time_per_move=1e9,
         )
         game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
         action_history = game.run()
@@ -80,7 +80,7 @@ class TestMonteCarlo(TestCase):
             uct=1,
             method='biased_uct',
             max_steps=50,
-            max_time=1e9,
+            max_time_per_move=1e9,
         )
         game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
         action_history = game.run()
@@ -293,7 +293,7 @@ class TestMonteCarloRollout(TestCase):
             uct=1,
             method='uct',
             max_steps=50,
-            max_time=1e9,
+            max_time_per_move=1e9,
         )
         game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
         action_history = game.run()
@@ -307,7 +307,7 @@ class TestMonteCarloRollout(TestCase):
         self.state.set_from_advancement([[0, 4, 8], [5, 2, 8]])
         agent = MonteCarloRolloutAgent(
             pid=0,
-            max_time=1e9,
+            max_time_per_move=1e9,
             max_steps=50,
             method='uct',
         )

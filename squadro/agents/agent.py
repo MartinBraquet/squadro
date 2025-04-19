@@ -9,8 +9,9 @@ class Agent(ABC):
     Abstract class that represents an agent.
     """
 
-    def __init__(self, pid=None):
+    def __init__(self, pid=None, max_time_per_move=None):
         self.id = pid
+        self.max_time_per_move = max_time_per_move
 
     def __repr__(self):
         return self.get_name()

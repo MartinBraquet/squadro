@@ -120,10 +120,11 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
     (best move so far).
     """
 
-    def __init__(self, max_depth=15, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, max_depth=15, **kwargs):
+        kwargs.setdefault('max_time_per_move',
+                          DefaultParams.max_time_per_move)  # use fixed time for now
+        super().__init__(**kwargs)
         self.max_depth = max_depth
-        self.max_time = DefaultParams.max_time_per_move  # use fixed time for now
         self.start_time = None
         # self.total_time = None
 
@@ -148,11 +149,11 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
 
         # Iterative deepening
         best_move = state.get_random_action()
-        while time() - self.start_time < self.max_time and self.depth < self.max_depth:
+        while time() - self.start_time < self.max_time_per_move and self.depth < self.max_depth:
             minimax_action = minimax.search(state, self)
             if minimax_action is None:
                 raise ValueError('No best move found, check cutoff function')
-            if time() - self.start_time < self.max_time:
+            if time() - self.start_time < self.max_time_per_move:
                 # Only keep the minimax action computed for the deepest depth if it got time to
                 # explore all the leaf nodes at that depth
                 best_move = minimax_action
@@ -164,14 +165,14 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
 
     @property
     def time_is_limited(self):
-        return self.max_time
+        return self.max_time_per_move
 
     def cutoff(self, state, depth):
         # Should not cut off at zero depth, otherwise search will not compute
         # the best action, returning ac = None
         return (
             super().cutoff(state, depth)
-            or self.time_is_limited and time() - self.start_time > self.max_time and depth > 0
+            or self.time_is_limited and time() - self.start_time > self.max_time_per_move and depth > 0
         )
 
     def evaluate(self, state):
