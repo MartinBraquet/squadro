@@ -24,7 +24,7 @@ from squadro.state import State, get_next_state
 from squadro.tools.constants import DefaultParams, inf
 from squadro.tools.evaluation import evaluate_advancement
 from squadro.tools.log import monte_carlo_logger as logger
-from squadro.tools.probabilities import get_random_sample
+from squadro.tools.probabilities import get_random_index
 from squadro.tools.tree import Node, Debug, Edge, log_trajectory
 
 
@@ -110,7 +110,7 @@ class MCTS:
                     u = inf
                 else:
                     # constant typically between 1 and 2
-                    u = self.uct * np.sqrt(np.log(nb) / edge.stats.N)
+                    u = self.uct * np.sqrt(np.log(nb) / edge.stats.N) + epsilon * nu[i]
             elif self.method == 'p_uct':
                 if edge.stats.P is None:
                     raise ValueError("Cannot use the 'p_uct' method when the prior is not provided")
@@ -270,7 +270,7 @@ class MCTS:
         Pick the action.
         With probability epsilon (e.g., 30% of picks), draw a random sample from the distribution pi
         (training only)
-        Otherwise, pick deterministically the action with the highest probability in pi.
+        Otherwise, deterministically pick the action with the highest probability in pi.
 
         Args:
             pi: Probability distribution over actions
@@ -279,7 +279,7 @@ class MCTS:
             int: The chosen action index
         """
         if self.is_training and random.uniform(0, 1) < self.epsilon_action:
-            action = get_random_sample(pi)
+            action = get_random_index(pi)
         else:
             actions = np.argwhere(pi == max(pi))
             # If several actions have the same prob, pick randomly among them
@@ -298,6 +298,7 @@ class _MonteCarloAgent(Agent, ABC):
         max_steps: Optional[int] = None,
         uct: Optional[float] = None,
         method: Optional[str] = None,
+        is_training: bool = False,
         **kwargs
     ):
         kwargs.setdefault('max_time_per_move',
@@ -307,6 +308,7 @@ class _MonteCarloAgent(Agent, ABC):
         self.uct = uct
         self.method = method
         self.evaluator = evaluator
+        self.is_training = is_training
 
     def get_action(
         self,
@@ -322,6 +324,7 @@ class _MonteCarloAgent(Agent, ABC):
             max_steps=self.max_steps,
             uct=self.uct,
             method=self.method,
+            is_training=self.is_training,
         )
         action = mcts.get_action()
         return action
