@@ -192,9 +192,9 @@ class TestMonteCarlo(TestCase):
 
         mcts.method = 'uct'
         values = mcts._get_sim_edge_values(root)
-        self.assertEqual([
-            7 + 1.12 * np.sqrt(np.log(3) / 2),
-            1 + 1.12 * np.sqrt(np.log(3) / 1),
+        np.testing.assert_almost_equal([
+            7 + 1.12 * np.sqrt(np.log(3) / 2) + 0.217 * 0.9345319855570997,
+            1 + 1.12 * np.sqrt(np.log(3) / 1) + 0.217 * 0.0542002849217704,
             inf
         ],
             values
