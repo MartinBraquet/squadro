@@ -130,9 +130,9 @@ List of available agents:
 You can also access the most updated list of available agents with:
 
 ```python
-from squadro.tools.agents import AVAILABLE_AGENTS
+import squadro
 
-print(AVAILABLE_AGENTS)
+print(squadro.AVAILABLE_AGENTS)
 ```
 
 > [!TIP]
@@ -149,17 +149,13 @@ print(AVAILABLE_AGENTS)
 To play the game with someone else, run the following command:
 
 ```python
-from squadro.animation.animated_game import RealTimeAnimatedGame
-
-RealTimeAnimatedGame(n_pawns=5, first=None).run()
+squadro.RealTimeAnimatedGame(n_pawns=5, first=None).run()
 ```
 
 To access all the parameters to play, see the doc:
 
 ```python
-from squadro.animation.animated_game import RealTimeAnimatedGame
-
-help(RealTimeAnimatedGame.__init__)  # for the arguments to RealTimeAnimatedGame
+help(squadro.RealTimeAnimatedGame.__init__)  # for the arguments to RealTimeAnimatedGame
 ```
 
 #### Play against the computer
@@ -169,19 +165,13 @@ To play against the computer, set `agent_1` to one of the `AVAILABLE_AGENTS` abo
 For instance:
 
 ```python
-from squadro.animation.animated_game import RealTimeAnimatedGame
-
-RealTimeAnimatedGame(n_pawns=5, first=None, agent_1='random').run()
+squadro.RealTimeAnimatedGame(n_pawns=5, first=None, agent_1='random').run()
 ```
 
 > [!TIP]
 > To play against our best algorithm, run:
 > ```python
-> from squadro.agents.best import get_best_agent
-> from squadro.animation.animated_game import RealTimeAnimatedGame
-> 
-> best_agent = get_best_agent(max_time_per_move=.5)
-> RealTimeAnimatedGame(agent_1=best_agent).run()
+> squadro.RealTimeAnimatedGame(agent_1='best').run()
 > ```
 > Let us know if you ever beat it!
 
@@ -213,9 +203,7 @@ Example:
 You can simulate a game between two computer algorithms. Set `agent_0` and `agent_1` to any of the `AVAILABLE_AGENTS` above and run:
 
 ```python
-from squadro.game import Game
-
-game = Game(agent_0='basic', agent_1='random')
+game = squadro.Game(agent_0='basic', agent_1='random')
 game.run()
 print(game)
 game.save_results('game_results.json')
@@ -226,11 +214,8 @@ game.save_results('game_results.json')
 You can render an animation of a game between two computer algorithms. Press the left and right keys to navigate through the game.
 
 ```python
-from squadro.game import Game
-from squadro.animation.animated_game import GameAnimation
-
-game = Game(agent_0='basic', agent_1='random')
-GameAnimation(game).show()
+game = squadro.Game(agent_0='basic', agent_1='random')
+squadro.GameAnimation(game).show()
 ```
 
 ### Profiling
