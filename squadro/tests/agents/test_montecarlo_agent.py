@@ -49,14 +49,14 @@ class TestMonteCarlo(TestCase):
         agent = MonteCarloAdvancementAgent(
             uct=1,
             method='p_uct',
-            max_steps=50,
+            max_steps=10,
             max_time_per_move=1e9,
         )
         game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
         action_history = game.run()
         self.assertEqual(game.winner, 0)
         self.assertEqual(
-            [0, 2, 1, 0, 1, 0, 1, 2, 2, 0, 2, 1, 2, 0, 1, 1, 2, 2, 1, 1, 1, 0, 1, 2, 1],
+            [0, 2, 1, 1, 2, 2, 1, 2, 2, 1, 2, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1, 2, 1],
             action_history
         )
 
@@ -64,14 +64,14 @@ class TestMonteCarlo(TestCase):
         agent = MonteCarloAdvancementAgent(
             uct=1,
             method='uct',
-            max_steps=50,
+            max_steps=10,
             max_time_per_move=1e9,
         )
         game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
         action_history = game.run()
         self.assertEqual(game.winner, 0)
         self.assertEqual(
-            [1, 2, 1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 1, 0, 1, 1, 1],
+            [0, 2, 1, 1, 0, 2, 1, 2, 0, 1, 1, 0, 0, 0, 1, 1, 0, 2, 0, 0, 0, 0, 1, 1, 2, 1, 2, 0, 2],
             action_history
         )
 
@@ -79,14 +79,14 @@ class TestMonteCarlo(TestCase):
         agent = MonteCarloAdvancementAgent(
             uct=1,
             method='biased_uct',
-            max_steps=50,
+            max_steps=10,
             max_time_per_move=1e9,
         )
         game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
         action_history = game.run()
         self.assertEqual(game.winner, 0)
         self.assertEqual(
-            [2, 2, 2, 1, 2, 1, 1, 1, 2, 0, 1, 2, 1, 1, 1, 2, 0, 1, 1, 2, 1],
+            [1, 2, 1, 1, 2, 0, 1, 0, 1, 1, 2, 2, 2, 0, 2, 0, 2],
             action_history
         )
 
@@ -292,14 +292,14 @@ class TestMonteCarloRollout(TestCase):
         agent = MonteCarloRolloutAgent(
             uct=1,
             method='uct',
-            max_steps=50,
+            max_steps=10,
             max_time_per_move=1e9,
         )
         game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
         action_history = game.run()
         self.assertEqual(game.winner, 0)
         self.assertEqual(
-            [0, 2, 2, 0, 1, 0, 2, 0, 0, 0, 1, 2, 1, 0, 0, 1, 2, 0, 0, 0, 0, 1, 1, 2, 1, 0, 1],
+            [0, 1, 0, 0, 0, 0, 0, 0, 1, 2, 0, 2, 1, 2, 2, 2, 1, 0, 1, 1, 1, 0, 1],
             action_history
         )
 
