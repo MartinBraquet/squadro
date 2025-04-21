@@ -18,7 +18,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from squadro.agents.agent import Agent
-from squadro.evaluators.evaluator import Evaluator, AdvancementEvaluator, RolloutEvaluator
+from squadro.evaluators.evaluator import Evaluator, AdvancementEvaluator, RolloutEvaluator, \
+    QLearningEvaluator
 from squadro.state import State, get_next_state
 from squadro.tools.constants import DefaultParams, inf
 from squadro.tools.evaluation import evaluate_advancement
@@ -51,7 +52,7 @@ class MCTS:
 
         self.method = method or DefaultParams.mcts_method
         if self.method not in self.get_available_methods():
-            raise self._method_error()
+            raise self._unknown_method_error()
 
         self.evaluator = evaluator
 
@@ -61,7 +62,7 @@ class MCTS:
         self.is_training = is_training if is_training is not None else False
 
         # Max number of steps
-        self.max_steps = max_steps or 10_000
+        self.max_steps = max_steps or DefaultParams.max_mcts_steps
         assert self.max_steps > 0
 
         # Probability to sample the action from pi instead of arg max pi during training
@@ -89,9 +90,9 @@ class MCTS:
 
     @staticmethod
     def get_available_methods() -> list[str]:
-        return ['p_uct', 'uct', 'biased_uct']
+        return ['uct', 'p_uct', 'biased_uct']
 
-    def _method_error(self) -> ValueError:
+    def _unknown_method_error(self) -> ValueError:
         return ValueError(
             f"Unknown method '{self.method}', must be one of {self.get_available_methods()}"
         )
@@ -104,21 +105,21 @@ class MCTS:
 
         values = []
         for i, edge in enumerate(node.edges):
-            if self.method == 'p_uct':
-                if edge.stats.P is None:
-                    raise ValueError("Cannot use the 'p_uct' method when the prior is not provided")
-                p_stochastic = (1 - epsilon) * edge.stats.P + epsilon * nu[i]
-                u = self.uct * p_stochastic * np.sqrt(nb) / (1 + edge.stats.N)
-            elif self.method == 'uct':
+            if self.method == 'uct':
                 if edge.stats.N == 0:
                     u = inf
                 else:
                     # constant typically between 1 and 2
                     u = self.uct * np.sqrt(np.log(nb) / edge.stats.N)
+            elif self.method == 'p_uct':
+                if edge.stats.P is None:
+                    raise ValueError("Cannot use the 'p_uct' method when the prior is not provided")
+                p_stochastic = (1 - epsilon) * edge.stats.P + epsilon * nu[i]
+                u = self.uct * p_stochastic * np.sqrt(nb) / (1 + edge.stats.N)
             elif self.method == 'biased_uct':
                 u = self.uct * self._get_heuristic(edge) / (1 + edge.stats.N)
             else:
-                raise self._method_error()
+                raise self._unknown_method_error()
             qu = edge.stats.Q + u
             values.append(qu)
 
@@ -172,6 +173,7 @@ class MCTS:
                 action=action,
                 prior=prior,  # noqa
             )
+            # TODO: consider handling transposition table here for faster convergence and less memory usage
             # if state.id not in self.mcts.tree:
             # logger.info('added node......p = %f', probs[idx])
             # else:
@@ -344,3 +346,14 @@ class MonteCarloRolloutAgent(_MonteCarloAgent):
     @classmethod
     def get_name(cls) -> str:
         return "mcts_rollout"
+
+
+class MonteCarloQLearningAgent(_MonteCarloAgent):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('method', 'uct')
+        kwargs.setdefault('evaluator', QLearningEvaluator())
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def get_name(cls) -> str:
+        return "mcts_q_learning"
