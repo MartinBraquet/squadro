@@ -4,7 +4,8 @@ from unittest.mock import patch
 
 import numpy as np
 
-from squadro.agents.montecarlo_agent import MonteCarloAdvancementAgent, MCTS, MonteCarloRolloutAgent
+from squadro.agents.montecarlo_agent import MonteCarloAdvancementAgent, MCTS, \
+    MonteCarloRolloutAgent, MonteCarloQLearningAgent
 from squadro.evaluators.evaluator import AdvancementEvaluator, ConstantEvaluator
 from squadro.game import Game
 from squadro.state import State
@@ -313,3 +314,20 @@ class TestMonteCarloRollout(TestCase):
         )
         action = agent.get_action(self.state)
         self.assertEqual(0, action)
+
+
+class TestMonteCarloQLearning(TestCase):
+    def setUp(self):
+        random.seed(0)
+        np.random.seed(0)
+        self.state = State(first=0, n_pawns=3)
+
+    def test_game(self):
+        agent = MonteCarloQLearningAgent(
+            uct=1,
+            method='uct',
+            max_steps=10,
+            max_time_per_move=1e9,
+        )
+        game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
+        game.run()
