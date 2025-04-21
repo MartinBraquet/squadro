@@ -22,45 +22,19 @@ Click [here](https://martinbraquet.com/index.php/research/#Squadro) for a full d
 
 ## Installation
 
-### From PyPI
-
-The most straightforward way is to simply install it via:
-```
-pip install squadro
-```
-
-### From source
-
-Alternatively, you can install it from source, which is necessary for development.
-
-First, download the project locally:
-```shell
-git clone git@github.com:MartinBraquet/squadro.git
-cd squadro
-```
-
-#### Environment
-
-If not already done, create a virtual environment using your favorite environment manager. For instance using conda:
-
-```shell
-conda create -n squadro python=3.12
-conda activate squadro
-```
-
-#### Main Installation
-
 > [!TIP]
 > If running on a Linux machine without intent to use a GPU, run this beforehand to install only the CPU version of the `pytorch` library:
 > ```shell
 > pip install torch --index-url https://download.pytorch.org/whl/cpu
 > ```
 
-Install the package and its dependencies in editable mode:
 
-```shell
-pip install -e .
+The most straightforward way is to simply install it from PyPI via:
 ```
+pip install squadro
+```
+
+If you want to install it from source, which is necessary for development, follow the instructions [here](docs/installation.md).
 
 ## Usage
 
@@ -95,7 +69,7 @@ help(squadro.RealTimeAnimatedGame.__init__)  # for the arguments to RealTimeAnim
 
 #### Play against the computer
 
-To play against the computer, set `agent_1` to one of the `AVAILABLE_AGENTS` above.
+To play against the computer, set `agent_1` to one of the `squadro.AVAILABLE_AGENTS`.
 
 For instance:
 
