@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from squadro.training import training
+from squadro.training_dnn import training
 
 if __name__ == "__main__":
 

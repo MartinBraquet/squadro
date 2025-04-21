@@ -1,17 +1,15 @@
-import numpy as np
-#from contest_agent import DeepNetwork
-#from dummyDNN import DeepNetwork
-import pandas as pd
-#from ignite.metrics import Loss as MLoss
-#from ignite.metrics import Accuracy as MAccuracy
-import torch
-from torch.utils.data import Subset
-from torch.utils.data.dataset import Dataset
-import torch.optim as optim
-import torch.nn as nn
-import torch.nn.functional as F
 from shutil import copyfile
 
+import numpy as np
+# from contest_agent import DeepNetwork
+# from dummyDNN import DeepNetwork
+import pandas as pd
+# from ignite.metrics import Loss as MLoss
+# from ignite.metrics import Accuracy as MAccuracy
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data.dataset import Dataset
 
 
 def training(data, model_path, new_model_path, agent):

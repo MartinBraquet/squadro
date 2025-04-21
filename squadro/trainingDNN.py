@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 
 from squadro.state import State
-from squadro.training import training, save_new_model, print_network
+from squadro.training_dnn import training, save_new_model, print_network
 
 n_train = 60
 n_valid = 60
