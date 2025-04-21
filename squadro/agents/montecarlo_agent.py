@@ -349,10 +349,10 @@ class MonteCarloRolloutAgent(_MonteCarloAgent):
 
 
 class MonteCarloQLearningAgent(_MonteCarloAgent):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, model_path: str = None, **kwargs):
         kwargs.setdefault('method', 'uct')
-        kwargs.setdefault('evaluator', QLearningEvaluator())
-        super().__init__(*args, **kwargs)
+        kwargs.setdefault('evaluator', QLearningEvaluator(model_path=model_path))
+        super().__init__(**kwargs)
 
     @classmethod
     def get_name(cls) -> str:
