@@ -1,9 +1,12 @@
+import json
+import os
 from abc import ABC, abstractmethod
 
 import numpy as np
 from numpy.typing import NDArray
 
 from squadro.state import State
+from squadro.tools.constants import DATA_PATH
 from squadro.tools.evaluation import evaluate_advancement
 
 
@@ -28,13 +31,21 @@ class Evaluator(ABC):
         """
         ...
 
+    @staticmethod
+    def get_policy(state: State) -> np.ndarray:
+        """
+        Get the policy for the given state.
+        """
+        return np.ones(state.n_pawns) / state.n_pawns
+
 
 class AdvancementEvaluator(Evaluator):
     """
     Evaluate a state according to the advancement heuristic.
     """
+
     def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
-        p = np.ones(state.n_pawns) / state.n_pawns
+        p = self.get_policy(state)
         value = evaluate_advancement(state=state)
         return p, value
 
@@ -43,11 +54,12 @@ class ConstantEvaluator(Evaluator):
     """
     Evaluate a state as a constant value.
     """
+
     def __init__(self, constant: float = 0):
         self.constant = constant
 
     def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
-        p = np.ones(state.n_pawns) / state.n_pawns
+        p = self.get_policy(state)
         return p, self.constant
 
 
@@ -55,8 +67,9 @@ class RolloutEvaluator(Evaluator):
     """
     Evaluate a state using random playouts until the end of the game.
     """
+
     def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
-        p = np.ones(state.n_pawns) / state.n_pawns
+        p = self.get_policy(state)
         value = self.get_value(state)
         return p, value
 
@@ -67,3 +80,43 @@ class RolloutEvaluator(Evaluator):
             action = state.get_random_action()
             state = state.get_next_state(action)
         return 1 if state.winner == cur_player else -1
+
+
+class QLearningEvaluator(Evaluator):
+    """
+    Evaluate a state using a Q-lookup table.
+    """
+    _Q = {}
+
+    def __init__(self, filepath=None):
+        self.filepath = filepath or DATA_PATH / "q_table_3.json"
+
+    @property
+    def Q(self):  # noqa
+        key = str(self.filepath)
+        if self._Q.get(key) is None:
+            if os.path.exists(self.filepath):
+                self._Q[key] = json.load(open(self.filepath, 'r'))
+            else:
+                self._Q[key] = {}
+        return self._Q[key]
+
+    def dump(self, filepath=None):
+        filepath = filepath or self.filepath
+        json.dump(self.Q, open(filepath, 'w'), indent=4)
+
+    def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
+        p = self.get_policy(state)
+        value = self.get_value(state)
+        return p, value
+
+    def get_value(self, state: State) -> float:
+        if state.game_over():
+            return 1 if state.winner == state.cur_player else -1
+
+        state_id = self.get_id(state)
+        return self.Q.get(state_id, 0)
+
+    @classmethod
+    def get_id(cls, state: State):
+        return f'{state.get_advancement()}, {state.cur_player}'
