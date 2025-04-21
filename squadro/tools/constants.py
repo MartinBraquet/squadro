@@ -16,6 +16,7 @@ class DefaultParams:
     max_time_per_move_real_time = .5
     uct = 1.0
     mcts_method = 'biased_uct'
+    max_mcts_steps = 10_000
 
     @classmethod
     def get_uct(cls, n_pawns=None):
@@ -50,5 +51,6 @@ class DefaultParams:
                 setattr(cls, key, value)
 
 RESOURCE_PATH = Path(squadro.__file__).parent / 'resources'
+DATA_PATH = Path(squadro.__file__).parent / 'data'
 MAX_INT = sys.maxsize
 inf = float("inf")
