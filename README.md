@@ -58,6 +58,8 @@ You can play against someone else or many different types of computer algorithms
 To play the game with someone else, run the following command:
 
 ```python
+import squadro
+
 squadro.RealTimeAnimatedGame(n_pawns=5, first=None).run()
 ```
 
@@ -180,7 +182,7 @@ It will stop training when the evaluation loss stops improving. Once done, one c
 You can simulate a game between two computer algorithms. Set `agent_0` and `agent_1` to any of the `AVAILABLE_AGENTS` above and run:
 
 ```python
-game = squadro.Game(agent_0='basic', agent_1='random')
+game = squadro.Game(agent_0='random', agent_1='random')
 game.run()
 print(game)
 game.save_results('game_results.json')
@@ -191,7 +193,7 @@ game.save_results('game_results.json')
 You can render an animation of a game between two computer algorithms. Press the left and right keys to navigate through the game.
 
 ```python
-game = squadro.Game(agent_0='basic', agent_1='random')
+game = squadro.Game(agent_0='random', agent_1='random')
 squadro.GameAnimation(game).show()
 ```
 
