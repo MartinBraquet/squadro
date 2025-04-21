@@ -9,10 +9,13 @@ class logger:  # noqa
         'game': True,
         'monte_carlo': True,
         'alpha_beta': True,
+        'training': True,
     }
 
     @classmethod
     def setup(cls, name: str = None, loglevel: str = 'INFO'):
+        if cls.client is not None and cls.client.level == logging.INFO:
+            return
         cls.client = logging.getLogger(name)
         cls.client.setLevel(loglevel)
         handler = logging.StreamHandler()
@@ -67,3 +70,7 @@ class monte_carlo_logger(logger):  # noqa
 
 class alpha_beta_logger(logger):  # noqa
     section = 'alpha_beta'
+
+
+class training_logger(logger):  # noqa
+    section = 'training'
