@@ -156,11 +156,16 @@ class QLearningTrainer:
         if vs == 'initial':
             vs = MonteCarloQLearningAgent(evaluator=self.evaluator_old)
 
+        agent = MonteCarloQLearningAgent(
+            evaluator=self.evaluator,
+            is_training=False,
+        )
+
         v = 0
         for n in range(self.eval_steps):
             g = Game(
                 n_pawns=self.n_pawns,
-                agent_0=self.agent,
+                agent_0=agent,
                 agent_1=vs,
             )
             g.run()
