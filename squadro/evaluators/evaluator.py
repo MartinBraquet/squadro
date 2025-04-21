@@ -38,6 +38,10 @@ class Evaluator(ABC):
         """
         return np.ones(state.n_pawns) / state.n_pawns
 
+    @classmethod
+    def reload(cls):
+        ...
+
 
 class AdvancementEvaluator(Evaluator):
     """
@@ -88,22 +92,26 @@ class QLearningEvaluator(Evaluator):
     """
     _Q = {}
 
-    def __init__(self, filepath=None):
-        self.filepath = filepath or DATA_PATH / "q_table_3.json"
+    def __init__(self, model_path=None):
+        self.model_path = model_path or DATA_PATH / "q_table_3.json"
+
+    @classmethod
+    def reload(cls):
+        cls._Q = {}
 
     @property
     def Q(self):  # noqa
-        key = str(self.filepath)
+        key = str(self.model_path)
         if self._Q.get(key) is None:
-            if os.path.exists(self.filepath):
-                self._Q[key] = json.load(open(self.filepath, 'r'))
+            if os.path.exists(self.model_path):
+                self._Q[key] = json.load(open(self.model_path, 'r'))
             else:
                 self._Q[key] = {}
         return self._Q[key]
 
-    def dump(self, filepath=None):
-        filepath = filepath or self.filepath
-        json.dump(self.Q, open(filepath, 'w'), indent=4)
+    def dump(self, model_path=None):
+        model_path = model_path or self.model_path
+        json.dump(self.Q, open(model_path, 'w'), indent=4)
 
     def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
         p = self.get_policy(state)
