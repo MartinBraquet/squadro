@@ -252,7 +252,7 @@ class MCTS:
                 - np.ndarray: Q-values for each action
         """
         n_pawns = self.root.state.n_pawns
-        pi = np.zeros(n_pawns, dtype=np.integer)
+        pi = np.zeros(n_pawns, dtype=np.float32)
         values = np.zeros(n_pawns, dtype=np.float32)
 
         for edge in self.root.edges:

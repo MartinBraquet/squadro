@@ -265,7 +265,7 @@ class TestMonteCarlo(TestCase):
             edge.stats.W = i ** 3
 
         pi, values = mcts.get_av()
-        self.assertEqual([0.0, 1 / 3, 2 / 3], pi.tolist())
+        np.testing.assert_almost_equal(np.array([0.0, 1 / 3, 2 / 3]), pi, decimal=7)
         self.assertEqual([0.0, 1.0, 4.0], values.tolist())
 
     @patch('random.uniform', lambda *a, **kw: 0)
