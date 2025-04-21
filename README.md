@@ -45,7 +45,7 @@ This package can be used in the following ways:
 You can play against someone else or many different types of computer algorithms. See the [Agents](#Agents) section below for more details.
 
 > [!TIP]
-> If you run into the following error when launching the game:
+> If you run into the following error on a Linux machine when launching the game:
 > > libGL error: failed to load driver
 > 
 > Then try setting the following environment variable beforehand:
@@ -76,7 +76,7 @@ To play against the computer, set `agent_1` to one of the `squadro.AVAILABLE_AGE
 For instance:
 
 ```python
-squadro.RealTimeAnimatedGame(n_pawns=5, first=None, agent_1='random').run()
+squadro.RealTimeAnimatedGame(agent_1='random').run()
 ```
 
 > [!TIP]
