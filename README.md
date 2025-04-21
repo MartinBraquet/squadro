@@ -66,74 +66,9 @@ pip install -e .
 
 This package can be used in the following ways:
 
-### Training
-
-One can train a model from scratch via:
-
-```python
-from squadro.train import Trainer
-
-trainer = Trainer(
-    model_path='results/tolstoy',  # output directory where the model will be saved
-    training_data_path='https://www.gutenberg.org/cache/epub/2600/pg2600.txt',  # dataset URL or local path
-    eval_interval=10,  # when to evaluate the model
-    batch_size=4,  # batch size
-    block_size=16,  # block size (aka context length)
-    n_layer=2,  # number of layers
-    n_head=4,  # number of attention heads per layer
-    n_embd=32,  # embedding dimension
-    dropout=0.2,  # dropout rate
-    learning_rate=0.05,  # learning rate
-    min_lr=0.005,  # minimum learning rate
-    beta2=0.99,  # adam beta2 (should be reduced for larger models / datasets)
-)
-trainer.run()
-```
-
-It should take a few minutes to train on a typical CPU (8-16 cores), and it is much faster on a GPU.
-
-Note that there are many more parameters to tweak, if desired. See all of them in the doc:
-
-```python
-help(Trainer)
-```
-
-It will stop training when the evaluation loss stops improving. Once done, one can use the model; see the next section below (setting the appropriate value for `model_path`, e.g., `'...'`).
-
 ### Play
 
-You can play against someone else or many different types of computer algorithms.
-
-Most computer algorithms discretize the game into states and actions. Here, the state is the position of the pawns and the available actions are the possible moves of the pawns.
-
-Squadro is a finite state machine, meaning that the next state of the game is completely determined by the current state and the action played. With this definition, one can see that the game is a Markov Decision Process (MDP). At each state, the current player can play different actions, which lead to different states. Then the next player can play different actions from any of those new states, etc. The future of the game can be represented as a tree, whose branches are the actions that lead to different states.
-
-An algorithm can explore that space of possibilities to infer the best move to play now. As the tree is huge, it is not possible to explore all the possible paths until the end of the game. Typically, they explore only a small fraction of the tree and then use the information gathered from those states to make a decision. More precisely, those two phases are:
-
-* **State exploration**: exploring the space of states by a careful choice of actions. The most common exploration methods are Minimax and Monte Carlo Tree Search (MCTS). Minimax explores all the states up to a specific depth, while MCTS navigates until it finds a state that has not been visited yet. Minimax can be sped up by skipping the search in the parts of the tree that won't affect the final decision; this method is called alpha-beta pruning.
-* **State evaluation**: evaluating a state. If we have a basic understanding of the game and how to win, one can design a heuristic (state evaluation function) that gives an estimate of how good it is to be in that state / position. Otherwise, it can often be better to use a computer algorithm to evaluate the state.
-  * The simplest algorithm to estimate the state is to randomly let the game play until it is over (i.e., pick random actions for both players). When played enough times, it can give the probability to win in that state.
-  * More complex, and hence accurate, algorithms are using reinforcement learning (AI). They learn from experience by storing information about each state/action in one of:
-    * Q value function, a lookup table for each state and action;
-    * deep Q network (DQN), a neural network that approximates the Q value function, which is necessary when the state space is huge (i.e., cannot be stored in memory).
-
-List of available agents:
-
-* _human_: another local human player (i.e., both playing on the same computer)
-* _random_: a computer that plays randomly among all available moves
-* _ab_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement
-* _ab_relative_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement compared to the other player
-* _ab_advancement_deep_: a computer that plays minimax with alpha-beta pruning (depth ~4), where the evaluation function is the player's advancement compared to the other player
-* _mcts_advancement_: Monte Carlo tree search, where the evaluation function is the player's advancement compared to the other player
-* _mcts_rollout_: Monte Carlo tree search, where the evaluation function is determined by a random playout until the end of the game
-
-You can also access the most updated list of available agents with:
-
-```python
-import squadro
-
-print(squadro.AVAILABLE_AGENTS)
-```
+You can play against someone else or many different types of computer algorithms. See the [Agents](#Agents) section below for more details.
 
 > [!TIP]
 > If you run into the following error when launching the game:
@@ -197,6 +132,74 @@ Example:
 ```python
 ...
 ```
+
+#### Agents
+
+Most computer algorithms discretize the game into states and actions. Here, the state is the position of the pawns and the available actions are the possible moves of the pawns.
+
+Squadro is a finite state machine, meaning that the next state of the game is completely determined by the current state and the action played. With this definition, one can see that the game is a Markov Decision Process (MDP). At each state, the current player can play different actions, which lead to different states. Then the next player can play different actions from any of those new states, etc. The future of the game can be represented as a tree, whose branches are the actions that lead to different states.
+
+An algorithm can explore that space of possibilities to infer the best move to play now. As the tree is huge, it is not possible to explore all the possible paths until the end of the game. Typically, they explore only a small fraction of the tree and then use the information gathered from those states to make a decision. More precisely, those two phases are:
+
+* **State exploration**: exploring the space of states by a careful choice of actions. The most common exploration methods are Minimax and Monte Carlo Tree Search (MCTS). Minimax explores all the states up to a specific depth, while MCTS navigates until it finds a state that has not been visited yet. Minimax can be sped up by skipping the search in the parts of the tree that won't affect the final decision; this method is called alpha-beta pruning.
+* **State evaluation**: evaluating a state. If we have a basic understanding of the game and how to win, one can design a heuristic (state evaluation function) that gives an estimate of how good it is to be in that state / position. Otherwise, it can often be better to use a computer algorithm to evaluate the state.
+  * The simplest algorithm to estimate the state is to randomly let the game play until it is over (i.e., pick random actions for both players). When played enough times, it can give the probability to win in that state.
+  * More complex, and hence accurate, algorithms are using reinforcement learning (AI). They learn from experience by storing information about each state/action in one of:
+    * Q value function, a lookup table for each state and action;
+    * deep Q network (DQN), a neural network that approximates the Q value function, which is necessary when the state space is huge (i.e., cannot be stored in memory).
+
+List of available agents:
+
+* _human_: another local human player (i.e., both playing on the same computer)
+* _random_: a computer that plays randomly among all available moves
+* _ab_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement
+* _ab_relative_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement compared to the other player
+* _ab_advancement_deep_: a computer that plays minimax with alpha-beta pruning (depth ~4), where the evaluation function is the player's advancement compared to the other player
+* _mcts_advancement_: Monte Carlo tree search, where the evaluation function is the player's advancement compared to the other player
+* _mcts_rollout_: Monte Carlo tree search, where the evaluation function is determined by a random playout until the end of the game
+
+You can also access the most updated list of available agents with:
+
+```python
+import squadro
+
+print(squadro.AVAILABLE_AGENTS)
+```
+
+
+### Training
+
+One can train a model from scratch via:
+
+```python
+from squadro.train import Trainer
+
+trainer = Trainer(
+    model_path='results/tolstoy',  # output directory where the model will be saved
+    training_data_path='https://www.gutenberg.org/cache/epub/2600/pg2600.txt',  # dataset URL or local path
+    eval_interval=10,  # when to evaluate the model
+    batch_size=4,  # batch size
+    block_size=16,  # block size (aka context length)
+    n_layer=2,  # number of layers
+    n_head=4,  # number of attention heads per layer
+    n_embd=32,  # embedding dimension
+    dropout=0.2,  # dropout rate
+    learning_rate=0.05,  # learning rate
+    min_lr=0.005,  # minimum learning rate
+    beta2=0.99,  # adam beta2 (should be reduced for larger models / datasets)
+)
+trainer.run()
+```
+
+It should take a few minutes to train on a typical CPU (8-16 cores), and it is much faster on a GPU.
+
+Note that there are many more parameters to tweak, if desired. See all of them in the doc:
+
+```python
+help(Trainer)
+```
+
+It will stop training when the evaluation loss stops improving. Once done, one can use the model; see the next section below (setting the appropriate value for `model_path`, e.g., `'...'`).
 
 ### Simulations
 
