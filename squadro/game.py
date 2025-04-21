@@ -17,6 +17,7 @@ class GameFromState:
         agent_0: Agent | str = None,
         agent_1: Agent | str = None,
         time_out=None,
+        save_states: bool = None,
     ):
         agent_0 = agent_0 or DefaultParams.agent
         agent_1 = agent_1 or DefaultParams.agent
@@ -25,6 +26,9 @@ class GameFromState:
         self.times_left = [time_out] * 2
 
         self.state = state
+
+        self.save_states = save_states if save_states else False
+        self.state_history = []
 
         self.action_history = []
 
@@ -66,6 +70,8 @@ class GameFromState:
         """
         if not self.action_history:
             last_action = None
+            if self.save_states:
+                self.state_history.append(self.state.copy())
             while not self.state.game_over():
                 player = self.state.get_cur_player()
                 try:
@@ -86,6 +92,8 @@ class GameFromState:
                 self.action_history.append(action)
                 self.state.apply_action(action)
                 last_action = action
+                if self.save_states:
+                    self.state_history.append(self.state.copy())
                 self._post_apply_action()
 
             logger.info(f'Game over: {self}')
