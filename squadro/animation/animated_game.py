@@ -3,6 +3,7 @@ from time import sleep
 
 import pygame
 
+from squadro.agents.best import get_best_real_time_game_agent
 from squadro.animation.board import Board, handle_events, check_quit
 from squadro.game import Game
 from squadro.state import State, get_next_state
@@ -98,6 +99,10 @@ class RealTimeAnimatedGame(Game):
         time_out=None,
         **kwargs
     ):
+        if agent_0 == 'best':
+            agent_0 = get_best_real_time_game_agent()
+        if agent_1 == 'best':
+            agent_1 = get_best_real_time_game_agent()
         super().__init__(
             agent_0=agent_0 or 'human',
             agent_1=agent_1 or 'human',
@@ -112,10 +117,14 @@ class RealTimeAnimatedGame(Game):
             super().run()
             while True:
                 self.board.display_winner(self.state)
-                handle_events()
+                self._handle_game_over()
                 sleep(.5)
         except SystemExit:
             pass
+
+    @staticmethod
+    def _handle_game_over():
+        handle_events()
 
     def _post_apply_action(self):
         self.draw()
