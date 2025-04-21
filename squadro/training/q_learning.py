@@ -15,6 +15,7 @@ class QLearningTrainer:
         n_steps=None,
         eval_interval=None,
         eval_steps=None,
+        model_path=None
     ):
         """
         :param n_pawns: number of pawns in the game.
@@ -23,6 +24,7 @@ class QLearningTrainer:
         :param n_steps: number of training steps.
         :param eval_interval: interval at which to evaluate the agent.
         :param eval_steps: number of steps to evaluate the agent.
+        :param model_path: path to save the model.
         """
         self.n_pawns = n_pawns or DefaultParams.n_pawns
         self.lr = lr or .2
@@ -32,10 +34,9 @@ class QLearningTrainer:
         self.eval_steps = eval_steps or int(100)
 
         self.agent = 'mcts_q_learning'
-        self.evaluator = QLearningEvaluator(model_path=DATA_PATH / f"q_table_{self.n_pawns}.json")
-        self.evaluator_old = QLearningEvaluator(
-            model_path=DATA_PATH / f"q_table_{self.n_pawns}_old.json"
-        )
+        model_path = model_path or DATA_PATH / f"q_table_{self.n_pawns}.json"
+        self.evaluator = QLearningEvaluator(model_path=model_path)
+        self.evaluator_old = QLearningEvaluator(model_path=model_path.replace(".json", "_old.json"))
 
     def run(self) -> None:
         """
@@ -55,7 +56,7 @@ class QLearningTrainer:
             )
             game.run()
 
-            self.back_propagate(game.state_history)
+            self.back_propagate(game.state_history.copy())
 
             if (n + 1) % self.eval_interval == 0:
                 ev_random = self.evaluate_agent(vs='random')
@@ -73,7 +74,7 @@ class QLearningTrainer:
         """
         Update the Q-table based on the reward obtained at the end of the game.
 
-        :param state_history: list of states visited during the game.
+        :param state_history: List of states visited during the game.
         :return: None
         """
         state = state_history.pop()
