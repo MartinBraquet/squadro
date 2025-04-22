@@ -136,7 +136,7 @@ class Stats:
     def __repr__(self) -> str:
         text = f'N={self.N}, W={self.W:.3f}, Q={self.Q:.3f}'
         if self.P is not None:
-            text += f'P={self.P:.3f}'
+            text += f', P={self.P:.3f}'
         return text
 
 
