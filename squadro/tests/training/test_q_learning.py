@@ -25,7 +25,7 @@ class TestQLearningTrainer(TestCase):
 
     @patch.object(Game, 'run', run)
     def test_from_scratch(self):
-        with NamedTemporaryFile('w') as f:
+        with NamedTemporaryFile('w', suffix='.json') as f:
             model_path = f.name
         trainer = QLearningTrainer(
             n_pawns=3,
@@ -48,7 +48,7 @@ class TestQLearningTrainer(TestCase):
 
     @patch.object(Game, 'run', run)
     def test_from_file(self):
-        with NamedTemporaryFile('w') as f:
+        with NamedTemporaryFile('w', suffix='.json') as f:
             model_path = f.name
         key = '[[1, 2, 3], [4, 5, 6]], 0'
         value = 0.42

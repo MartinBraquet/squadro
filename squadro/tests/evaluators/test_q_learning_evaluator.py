@@ -19,7 +19,8 @@ class TestQLearningEvaluator(TestCase):
         state = State(first=0, n_pawns=3)
         state.set_from_advancement([[1, 2, 3], [1, 2, 4]])
         evaluator = QLearningEvaluator()
-        with NamedTemporaryFile('w') as f, patch.object(evaluator, 'model_path', f.name):
+        with NamedTemporaryFile('w', suffix='.json') as f, patch.object(evaluator, 'model_path',
+                                                                        f.name):
             json.dump({'[[1, 2, 3], [1, 2, 4]], 0': .14}, open(f.name, 'w'))
             p, value = evaluator.evaluate(state)
         self.assertEqual(.14, value)

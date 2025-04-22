@@ -1,15 +1,16 @@
 import json
 import os
 from abc import ABC, abstractmethod
-from multiprocessing.managers import DictProxy
+from multiprocessing.managers import DictProxy, ArrayProxy  # noqa
 from pathlib import Path
 
 import numpy as np
 from numpy.typing import NDArray
 
 from squadro.state import State
-from squadro.tools.constants import DATA_PATH, DefaultParams
+from squadro.tools.constants import DATA_PATH
 from squadro.tools.evaluation import evaluate_advancement
+from squadro.tools.log import logger
 
 
 class Evaluator(ABC):
@@ -106,7 +107,7 @@ class QLearningEvaluator(Evaluator):
     _Q = {}
 
     def __init__(self, model_path=None, n_pawns=None):
-        n_pawns = n_pawns or DefaultParams.n_pawns
+        self.n_pawns = n_pawns or 3
         self.model_path = Path(model_path or DATA_PATH / f"q_table_{n_pawns}.json")
 
     @classmethod
@@ -120,15 +121,34 @@ class QLearningEvaluator(Evaluator):
     @property
     def Q(self):  # noqa
         if self._Q.get(self.key) is None:
-            if os.path.exists(self.model_path):
-                self._Q[self.key] = json.load(open(self.model_path, 'r'))
+            if os.path.exists(self.key):
+                if self.key.endswith(".json"):
+                    self._Q[self.key] = json.load(open(self.key, 'r'))
+                elif self.key.endswith(".npy"):
+                    self._Q[self.key] = np.load(self.key, allow_pickle=True)
+                logger.debug(f"Using Q table at {self.key}")
             else:
-                self._Q[self.key] = {}
+                if self.key.endswith(".json"):
+                    self._Q[self.key] = {}
+                elif self.key.endswith(".npy"):
+                    shape = get_grid_shape(self.n_pawns)
+                    length = np.ravel_multi_index([s - 1 for s in shape], dims=shape)
+                    self._Q[self.key] = np.zeros(length, dtype=np.float32)
+                logger.warn(f"No file at {self.key}, creating new Q table")
         return self._Q[self.key]
 
     def dump(self, model_path=None):
         model_path = model_path or self.model_path
-        json.dump(dict(self.Q), open(model_path, 'w'), indent=4)
+        if isinstance(self.Q, dict | DictProxy):
+            q = self.Q
+            if isinstance(q, DictProxy):
+                q = q._getvalue()
+            json.dump(q, open(model_path, 'w'), indent=4)
+        elif isinstance(self.Q, np.ndarray | ArrayProxy):
+            q = self.Q
+            if isinstance(q, ArrayProxy):
+                q = q._getvalue()
+            np.save(model_path, q, allow_pickle=True)
 
     def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
         p = self.get_policy(state)
@@ -140,11 +160,31 @@ class QLearningEvaluator(Evaluator):
             return 1 if state.winner == state.cur_player else -1
 
         state_id = self.get_id(state)
-        return self.Q.get(state_id, 0)
+        if isinstance(self.Q, np.ndarray | ArrayProxy):
+            return self.Q[state_id]
+        else:
+            return self.Q.get(state_id, 0)
 
-    @classmethod
-    def get_id(cls, state: State) -> str:
-        return f'{state.get_advancement()}, {state.cur_player}'
+    def get_id(self, state: State):
+        if isinstance(self.Q, np.ndarray | ArrayProxy):
+            return state_to_index(state)
+        else:
+            return f'{state.get_advancement()}, {state.cur_player}'
 
-    def set_dict(self, d: DictProxy | dict) -> None:
+    def set_dict(self, d: DictProxy | dict | np.ndarray) -> None:
         self._Q[self.key] = d
+
+
+def get_grid_shape(n_pawns: int):
+    return [2 * (n_pawns + 1) + 1] * n_pawns * 2 + [2]
+
+
+def state_to_index(state: State):
+    dims = get_grid_shape(state.n_pawns)
+    x, y = state.get_advancement()
+    return np.ravel_multi_index(x + y + [state.cur_player], dims=dims)
+
+
+def index_to_state(index: int, n_pawns: int):
+    shape = get_grid_shape(n_pawns)
+    return np.unravel_index(index, shape=shape)
