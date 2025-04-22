@@ -1,11 +1,17 @@
 from contextlib import nullcontext
 from multiprocessing import Process, Manager
+from multiprocessing.managers import ArrayProxy  # noqa
+from pathlib import Path
+
+import numpy as np
 
 from squadro import Game
+from squadro.agents.agent import Agent
+from squadro.agents.alphabeta_agent import AlphaBetaAdvancementDeepAgent
 from squadro.agents.montecarlo_agent import MonteCarloQLearningAgent
 from squadro.evaluators.evaluator import QLearningEvaluator
 from squadro.state import State
-from squadro.tools.constants import DefaultParams, DATA_PATH
+from squadro.tools.constants import DefaultParams
 from squadro.tools.log import training_logger as logger
 
 
@@ -39,14 +45,17 @@ class QLearningTrainer:
         self.eval_steps = eval_steps or int(100)
         self.parallel = parallel if parallel is not None else False
 
-        model_path = model_path or DATA_PATH / f"q_table_{self.n_pawns}.json"
         self.agent = MonteCarloQLearningAgent(
-            evaluator=QLearningEvaluator(model_path=model_path),
+            evaluator=QLearningEvaluator(model_path=model_path, n_pawns=self.n_pawns),
             is_training=True,
         )
-        self.evaluator_old = QLearningEvaluator(
-            model_path=str(model_path).replace(".json", "_old.json")
-        )
+        file_path = Path(self.model_path)
+        model_path_old = file_path.with_name(file_path.stem + "_old" + file_path.suffix)
+        self.evaluator_old = QLearningEvaluator(model_path=model_path_old)
+
+    @property
+    def model_path(self):
+        return self.evaluator.model_path
 
     @property
     def evaluator(self) -> QLearningEvaluator:
@@ -63,7 +72,10 @@ class QLearningTrainer:
 
         if self.parallel:
             manager = Manager()
-            q_shared = manager.dict(self.Q)
+            if isinstance(self.Q, np.ndarray):
+                q_shared = manager.Array('f', self.Q)
+            else:
+                q_shared = manager.dict(self.Q)
             lock = manager.Lock()
 
             processes = [
@@ -105,12 +117,14 @@ class QLearningTrainer:
 
                 step = n * n_cut + i + 1
                 if step % self.eval_interval == 0 and pid == 0:
-                    ev_random = self.evaluate_agent(vs='random')
                     ev = self.evaluate_agent(vs='initial')
+                    ev_other = self.evaluate_agent(
+                        vs=AlphaBetaAdvancementDeepAgent(max_time_per_move=.005)
+                    )
                     logger.info(
                         f"{step} steps"
                         f", {ev * 100:.0f}% vs initial"
-                        f", {ev_random * 100:.0f}% vs random"
+                        f", {ev_other * 100:.0f}% vs ab_deep"
                     )
                     logger.info(f'{pid}, dump start')
                     self.evaluator.dump()
@@ -143,14 +157,15 @@ class QLearningTrainer:
             value = - value
             state = state_history.pop()
             state_id = self.evaluator.get_id(state)
-            value = (1 - self.lr) * self.Q.get(state_id, 0) + self.lr * self.gamma * value
-            self.Q[state_id] = value
+            q = self.Q[state_id] if isinstance(self.Q, np.ndarray | ArrayProxy) else self.Q.get(
+                state_id, 0)
+            self.Q[state_id] = value = (1 - self.lr) * q + self.lr * self.gamma * value
 
     @property
     def Q(self) -> dict:  # noqa
         return self.evaluator.Q
 
-    def evaluate_agent(self, vs='initial') -> float:
+    def evaluate_agent(self, vs: str | Agent = 'initial') -> float:
         """
         Evaluate the success rate of the current agent against another agent.
         """
