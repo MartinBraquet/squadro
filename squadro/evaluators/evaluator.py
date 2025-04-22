@@ -1,6 +1,7 @@
 import json
 import os
 from abc import ABC, abstractmethod
+from multiprocessing.managers import DictProxy
 from pathlib import Path
 
 import numpy as np
@@ -130,11 +131,8 @@ class QLearningEvaluator(Evaluator):
         return self.Q.get(state_id, 0)
 
     @classmethod
-    def get_id(cls, state: State):
+    def get_id(cls, state: State) -> str:
         return f'{state.get_advancement()}, {state.cur_player}'
 
-    def use_shared_dict(self, d):
-        q = self.Q
-        for k, v in q.items():
-            d[k] = v
+    def set_dict(self, d: DictProxy | dict) -> None:
         self._Q[self.key] = d
