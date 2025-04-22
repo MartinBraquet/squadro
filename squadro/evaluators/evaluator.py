@@ -103,12 +103,15 @@ class RolloutEvaluator(Evaluator):
 class QLearningEvaluator(Evaluator):
     """
     Evaluate a state using a Q-lookup table.
+
+    TODO: should an Evaluator instance be specific to n_pawns or should it be generic for any number
+     of pawns like all agents and other evaluators?
     """
     _Q = {}
 
     def __init__(self, model_path=None, n_pawns=None):
         self.n_pawns = n_pawns or 3
-        self.model_path = Path(model_path or DATA_PATH / f"q_table_{n_pawns}.json")
+        self.model_path = Path(model_path or DATA_PATH / f"q_table_{self.n_pawns}.json")
 
     @classmethod
     def reload(cls):
