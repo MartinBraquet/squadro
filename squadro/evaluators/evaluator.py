@@ -8,7 +8,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from squadro.state import State
-from squadro.tools.constants import DATA_PATH
+from squadro.tools.constants import DATA_PATH, DefaultParams
 from squadro.tools.evaluation import evaluate_advancement
 
 
@@ -40,6 +40,13 @@ class Evaluator(ABC):
         """
         return np.ones(state.n_pawns) / state.n_pawns
 
+    @staticmethod
+    def get_value(state: State) -> float:
+        """
+        Get the value for the given state.
+        """
+        raise NotImplementedError
+
     @classmethod
     def reload(cls):
         ...
@@ -52,8 +59,12 @@ class AdvancementEvaluator(Evaluator):
 
     def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
         p = self.get_policy(state)
-        value = evaluate_advancement(state=state)
+        value = self.get_value(state)
         return p, value
+
+    @staticmethod
+    def get_value(state: State) -> float:
+        return evaluate_advancement(state=state)
 
 
 class ConstantEvaluator(Evaluator):
@@ -94,8 +105,9 @@ class QLearningEvaluator(Evaluator):
     """
     _Q = {}
 
-    def __init__(self, model_path=None):
-        self.model_path = Path(model_path or DATA_PATH / "q_table_3.json")
+    def __init__(self, model_path=None, n_pawns=None):
+        n_pawns = n_pawns or DefaultParams.n_pawns
+        self.model_path = Path(model_path or DATA_PATH / f"q_table_{n_pawns}.json")
 
     @classmethod
     def reload(cls):
