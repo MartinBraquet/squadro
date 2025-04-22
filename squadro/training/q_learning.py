@@ -57,6 +57,7 @@ class QLearningTrainer:
         Run the training loop.
         """
         self.evaluator.dump(self.evaluator_old.model_path)
+        self.evaluator_old.reload()
         # Should be close to 50% as the agents are the same
         # logger.info(self.evaluate_agent())
 
@@ -115,8 +116,10 @@ class QLearningTrainer:
                     self.evaluator.dump()
                     logger.info(f'{pid}, dump end')
                     if ev > .9:
+                        logger.info(f'{pid}, Overwriting initial agent for better comparison')
                         with lock if self.parallel else nullcontext():
                             self.evaluator.dump(self.evaluator_old.model_path)
+                            self.evaluator_old.reload()
 
             with lock if self.parallel else nullcontext():
                 logger.info(f'{pid}, back_propagate start, {len(self.Q)}')
