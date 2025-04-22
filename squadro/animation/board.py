@@ -12,7 +12,7 @@ red = (150, 0, 0)
 
 class Board:
     """
-    Board used for animation purposes only.
+    Board used for animation only.
     Must not contain any logic intrinsic to the game.
     """
 
@@ -20,6 +20,9 @@ class Board:
         pygame.init()
         if title:
             pygame.display.set_caption(title)
+
+        icon_surface = pygame.image.load(RESOURCE_PATH / "red_pawn_ret.png")
+        pygame.display.set_icon(icon_surface)
 
         # Initialise screen
         self.n_pawns = n_pawns
