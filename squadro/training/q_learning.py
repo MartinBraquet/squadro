@@ -35,7 +35,7 @@ class QLearningTrainer:
         self.lr = lr or .2
         self.gamma = gamma or .95
         self.n_steps = n_steps or int(5e4)
-        self.eval_interval = eval_interval or int(500)
+        self.eval_interval = eval_interval or int(100 if parallel else 500)
         self.eval_steps = eval_steps or int(100)
         self.parallel = parallel if parallel is not None else False
 
@@ -62,11 +62,11 @@ class QLearningTrainer:
 
         if self.parallel:
             manager = Manager()
-            q_table = manager.dict()
+            q_shared = manager.dict(self.Q)
             lock = manager.Lock()
 
             processes = [
-                Process(target=self.target, args=(q_table, lock, i))
+                Process(target=self._run, args=(q_shared, lock, i))
                 for i in range(self.parallel)
             ]
 
@@ -77,18 +77,16 @@ class QLearningTrainer:
                 p.join()
 
         else:
-            self.target()
+            self._run()
 
-    def target(self, q_table=None, lock=None, pid=0):
+    def _run(self, q_shared=None, lock=None, pid=0):
         if self.parallel:
             assert lock is not None
-            assert q_table is not None
-
-        if self.parallel:
-            self.evaluator.use_shared_dict(q_table)
+            assert q_shared is not None
+            self.evaluator.set_dict(q_shared)
 
         n_cut = 50
-        if self.n_steps < n_cut:
+        if self.n_steps < n_cut or not self.parallel:
             n_cut = 1
 
         for n in range(self.n_steps // n_cut):
@@ -110,8 +108,8 @@ class QLearningTrainer:
                     ev = self.evaluate_agent(vs='initial')
                     logger.info(
                         f"{step} steps"
-                        f", {ev * 100:.2f}% vs initial"
-                        f", {ev_random * 100:.2f}% vs random"
+                        f", {ev * 100:.0f}% vs initial"
+                        f", {ev_random * 100:.0f}% vs random"
                     )
                     logger.info(f'{pid}, dump start')
                     self.evaluator.dump()
@@ -121,10 +119,10 @@ class QLearningTrainer:
                             self.evaluator.dump(self.evaluator_old.model_path)
 
             with lock if self.parallel else nullcontext():
-                logger.info(f'{pid}, back_propagate, {len(self.evaluator.Q)}')
+                logger.info(f'{pid}, back_propagate start, {len(self.Q)}')
                 for state_history in state_histories:
                     self.back_propagate(state_history)
-
+                logger.info(f'{pid}, back_propagate end,   {len(self.Q)}')
 
     def back_propagate(self, state_history: list[State]) -> None:
         """
@@ -169,6 +167,6 @@ class QLearningTrainer:
                 agent_1=vs,
             )
             g.run()
-            v += g.winner
+            v += 1 - g.winner
 
         return v / self.eval_steps
