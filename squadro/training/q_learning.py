@@ -16,16 +16,24 @@ from squadro.tools.log import training_logger as logger
 
 
 class QLearningTrainer:
+    """
+    Q-learning trainer.
+    Update a Q-table according to a discounted reward function: Q(s) = sum(gamma^t * r_t)
+    For 3 pawns, max len(Q) = 1 M. Must train up to len(Q) > 100 k for good results
+    For 4 pawns, max len(Q) = 400 M. Must train up to len(Q) > 40 M for good results
+    """
+
     def __init__(
         self,
         n_pawns=None,
         lr=None,
         gamma=None,
         n_steps=None,
+        n_cut=None,
         eval_interval=None,
         eval_steps=None,
         model_path=None,
-        parallel=None
+        parallel=None,
     ):
         """
         :param n_pawns: number of pawns in the game.
@@ -38,6 +46,7 @@ class QLearningTrainer:
         :param parallel: whether to run in parallel on multiple CPUs/GPUs.
         """
         self.n_pawns = n_pawns or DefaultParams.n_pawns
+        assert 2 <= self.n_pawns <= 4, "n_pawns must be between 2 and 4"
         self.lr = lr or .2
         self.gamma = gamma or .95
         self.n_steps = n_steps or int(5e4)
@@ -45,13 +54,15 @@ class QLearningTrainer:
         self.eval_steps = eval_steps or int(100)
         self.parallel = parallel if parallel is not None else False
 
+        self.n_cut = n_cut or 100
+        if self.n_steps < self.n_cut or not self.parallel:
+            self.n_cut = 1
+
         self.agent = MonteCarloQLearningAgent(
-            evaluator=QLearningEvaluator(model_path=model_path, n_pawns=self.n_pawns),
+            evaluator=QLearningEvaluator(model_path=model_path),
             is_training=True,
         )
-        file_path = Path(self.model_path)
-        model_path_old = file_path.with_name(file_path.stem + "_old" + file_path.suffix)
-        self.evaluator_old = QLearningEvaluator(model_path=model_path_old)
+        self.evaluator_old = QLearningEvaluator(model_path=Path(self.model_path) / "old")
 
     @property
     def model_path(self):
@@ -65,8 +76,9 @@ class QLearningTrainer:
         """
         Run the training loop.
         """
+        self.evaluator.get_Q(n_pawns=self.n_pawns)
         self.evaluator.dump(self.evaluator_old.model_path)
-        self.evaluator_old.reload()
+        self.evaluator_old.clear()
         # Should be close to 50% as the agents are the same
         # logger.info(self.evaluate_agent())
 
@@ -96,16 +108,12 @@ class QLearningTrainer:
         if self.parallel:
             assert lock is not None
             assert q_shared is not None
-            self.evaluator.set_dict(q_shared)
+            self.evaluator.set_dict(q_shared, n_pawns=self.n_pawns)
 
-        n_cut = 50
-        if self.n_steps < n_cut or not self.parallel:
-            n_cut = 1
-
-        for n in range(self.n_steps // n_cut):
+        for n in range(self.n_steps // self.n_cut):
 
             state_histories = []
-            for i in range(n_cut):
+            for i in range(self.n_cut):
                 game = Game(
                     n_pawns=self.n_pawns,
                     agent_0=self.agent,
@@ -115,25 +123,28 @@ class QLearningTrainer:
                 game.run()
                 state_histories.append(game.state_history.copy())
 
-                step = n * n_cut + i + 1
+                step = n * self.n_cut + i + 1
                 if step % self.eval_interval == 0 and pid == 0:
                     ev = self.evaluate_agent(vs='initial')
-                    ev_other = self.evaluate_agent(
-                        vs=AlphaBetaAdvancementDeepAgent(max_time_per_move=.005)
-                    )
+                    ev_random = self.evaluate_agent(vs='random')
+                    ev_other = self.evaluate_agent(vs=AlphaBetaAdvancementDeepAgent(max_depth=5))
                     logger.info(
                         f"{step} steps"
-                        f", {ev * 100:.0f}% vs initial"
-                        f", {ev_other * 100:.0f}% vs ab_deep"
+                        f", {ev * 100 :.0f}% vs initial"
+                        f", {ev_other * 100 :.0f}% vs ab_deep"
+                        f", {ev_random * 100 :.0f}% vs random"
                     )
                     logger.info(f'{pid}, dump start')
                     self.evaluator.dump()
                     logger.info(f'{pid}, dump end')
-                    if ev > .9:
-                        logger.info(f'{pid}, Overwriting initial agent for better comparison')
-                        with lock if self.parallel else nullcontext():
-                            self.evaluator.dump(self.evaluator_old.model_path)
-                            self.evaluator_old.reload()
+                    # if ev > .9:
+                    #     logger.info(f'{pid}, Overwriting initial agent for better comparison')
+                    #     with lock if self.parallel else nullcontext():
+                    #         self.evaluator.dump(self.evaluator_old.model_path)
+                    #         # Seems to create issue where Q in process 0 gets desynchronized with other
+                    #         # processes. Most likely because .reload() is clearing all Q values in
+                    #         # the evaluator (should only clear Q in evaluator_old). Try using clear instead of reload
+                    #         self.evaluator_old.clear()
 
             with lock if self.parallel else nullcontext():
                 logger.info(f'{pid}, back_propagate start, {len(self.Q)}')
@@ -156,16 +167,15 @@ class QLearningTrainer:
         while state_history:
             value = - value
             state = state_history.pop()
+            q = self.evaluator.get_value(state, check_game_over=False)
             state_id = self.evaluator.get_id(state)
-            q = self.Q[state_id] if isinstance(self.Q, np.ndarray | ArrayProxy) else self.Q.get(
-                state_id, 0)
             self.Q[state_id] = value = (1 - self.lr) * q + self.lr * self.gamma * value
 
     @property
     def Q(self) -> dict:  # noqa
-        return self.evaluator.Q
+        return self.evaluator.get_Q(n_pawns=self.n_pawns)
 
-    def evaluate_agent(self, vs: str | Agent = 'initial') -> float:
+    def evaluate_agent(self, vs: str | Agent) -> float:
         """
         Evaluate the success rate of the current agent against another agent.
         """
