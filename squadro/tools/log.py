@@ -13,7 +13,7 @@ class logger:  # noqa
     }
 
     @classmethod
-    def setup(cls, name: str = None, loglevel: str = 'INFO'):
+    def setup(cls, name: str = None, loglevel: str = 'INFO', section=None):
         if cls.client is not None and cls.client.level == logging.INFO:
             return
         cls.client = logging.getLogger(name)
@@ -28,10 +28,20 @@ class logger:  # noqa
         )
         handler.setFormatter(formatter)
         cls.client.addHandler(handler)
+        cls.set_section(section)
 
     @classmethod
     def stop(cls):
         cls.client = None
+
+    @classmethod
+    def set_section(cls, section: str | list) -> None:
+        if not section:
+            return
+        if isinstance(section, str):
+            section = [section]
+        for k, v in cls.ENABLED_SECTIONS.items():
+            cls.ENABLED_SECTIONS[k] = k in section
 
     @classmethod
     def log(cls, msg, level=logging.INFO, **kwargs):
