@@ -174,6 +174,7 @@ class MCTS:
                 prior=prior,  # noqa
             )
             # TODO: consider handling transposition table here for faster convergence and less memory usage
+            #  But possibly harder to implement backpropagation during reinforcement learning
             # if state.id not in self.mcts.tree:
             # logger.info('added node......p = %f', probs[idx])
             # else:
