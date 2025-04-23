@@ -302,8 +302,8 @@ class _MonteCarloAgent(Agent, ABC):
         is_training: bool = False,
         **kwargs
     ):
-        kwargs.setdefault('max_time_per_move',
-                          DefaultParams.max_time_per_move)  # use fixed time for now
+        # use fixed time for now
+        kwargs.setdefault('max_time_per_move', DefaultParams.max_time_per_move)
         super().__init__(**kwargs)
         self.max_steps = max_steps
         self.uct = uct
