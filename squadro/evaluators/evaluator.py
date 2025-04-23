@@ -104,78 +104,107 @@ class QLearningEvaluator(Evaluator):
     """
     Evaluate a state using a Q-lookup table.
 
-    TODO: should an Evaluator instance be specific to n_pawns or should it be generic for any number
-     of pawns like all agents and other evaluators?
+     _Q is a cache for all Q-tables.
+     _Q['/path/dir'][3] is the Q-table in '/path/dir' for 3 pawns (stared in file '/path/dir/q_table_3.json')
     """
     _Q = {}
 
-    def __init__(self, model_path=None, n_pawns=None):
-        self.n_pawns = n_pawns or 3
-        self.model_path = Path(model_path or DATA_PATH / f"q_table_{self.n_pawns}.json")
+    def __init__(self, model_path: str | Path = None, dtype='json'):
+        """
+        :param model_path: Path to the directory where the model is stored.
+        """
+        self.model_path = Path(model_path or DATA_PATH / 'q_learning')
+        self.dtype = dtype
 
     @classmethod
     def reload(cls):
         cls._Q = {}
 
+    def clear(self):
+        self._Q[self.dir_key] = {}
+
     @property
-    def key(self):
+    def dir_key(self):
         return str(self.model_path)
 
     @property
-    def Q(self):  # noqa
-        if self._Q.get(self.key) is None:
-            if os.path.exists(self.key):
-                if self.key.endswith(".json"):
-                    self._Q[self.key] = json.load(open(self.key, 'r'))
-                elif self.key.endswith(".npy"):
-                    self._Q[self.key] = np.load(self.key, allow_pickle=True)
-                logger.debug(f"Using Q table at {self.key}")
-            else:
-                if self.key.endswith(".json"):
-                    self._Q[self.key] = {}
-                elif self.key.endswith(".npy"):
-                    shape = get_grid_shape(self.n_pawns)
-                    length = np.ravel_multi_index([s - 1 for s in shape], dims=shape)
-                    self._Q[self.key] = np.zeros(length, dtype=np.float32)
-                logger.warn(f"No file at {self.key}, creating new Q table")
-        return self._Q[self.key]
+    def q_pawns(self):
+        """
+        :return: A dictionary mapping pawn numbers to Q tables.
+        """
+        if self.dir_key not in self._Q:
+            self._Q[self.dir_key] = {}
+        return self._Q[self.dir_key]
 
-    def dump(self, model_path=None):
-        model_path = model_path or self.model_path
-        if isinstance(self.Q, dict | DictProxy):
-            q = self.Q
-            if isinstance(q, DictProxy):
+    @property
+    def is_json(self):
+        return self.dtype == 'json'
+
+    def get_filepath(self, n_pawns: int, model_path=None) -> str:
+        model_path = Path(model_path or self.model_path)
+        return str(model_path / f"q_table_{n_pawns}.{self.dtype}")
+
+    def get_Q(self, n_pawns: int) -> dict:  # noqa
+        if self.q_pawns.get(n_pawns) is None:
+            filepath = self.get_filepath(n_pawns)
+            if os.path.exists(filepath):
+                if self.is_json:
+                    self.q_pawns[n_pawns] = json.load(open(filepath, 'r'))
+                else:
+                    self.q_pawns[n_pawns] = np.load(filepath, allow_pickle=True)
+                logger.debug(f"Using Q table at {filepath}")
+            else:
+                if self.is_json:
+                    self.q_pawns[n_pawns] = {}
+                else:
+                    shape = get_grid_shape(n_pawns)
+                    length = np.ravel_multi_index([s - 1 for s in shape], dims=shape)
+                    self.q_pawns[n_pawns] = np.zeros(length, dtype=np.float32)
+                logger.warn(f"No file at {filepath}, creating new Q table")
+
+        return self.q_pawns[n_pawns]
+
+    def dump(self, model_path: str | Path = None):
+        model_path = str(model_path or self.model_path)
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
+        for n_pawns, q in self.q_pawns.items():
+            filepath = self.get_filepath(n_pawns, model_path=model_path)
+            if isinstance(q, (DictProxy, ArrayProxy)):
                 q = q._getvalue()
-            json.dump(q, open(model_path, 'w'), indent=4)
-        elif isinstance(self.Q, np.ndarray | ArrayProxy):
-            q = self.Q
-            if isinstance(q, ArrayProxy):
-                q = q._getvalue()
-            np.save(model_path, q, allow_pickle=True)
+            if isinstance(q, dict):
+                json.dump(q, open(filepath, 'w'), indent=4)
+            elif isinstance(q, np.ndarray):
+                np.save(filepath, q, allow_pickle=True)
 
     def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
         p = self.get_policy(state)
         value = self.get_value(state)
         return p, value
 
-    def get_value(self, state: State) -> float:
-        if state.game_over():
+    def get_value(self, state: State, check_game_over: bool = True) -> float:
+        if check_game_over and state.game_over():
             return 1 if state.winner == state.cur_player else -1
 
+        q = self.get_Q(state.n_pawns)
         state_id = self.get_id(state)
-        if isinstance(self.Q, np.ndarray | ArrayProxy):
-            return self.Q[state_id]
+        if self.is_json:
+            return q.get(state_id, 0)
         else:
-            return self.Q.get(state_id, 0)
+            return q[state_id]
 
     def get_id(self, state: State):
-        if isinstance(self.Q, np.ndarray | ArrayProxy):
-            return state_to_index(state)
-        else:
+        if self.is_json:
             return f'{state.get_advancement()}, {state.cur_player}'
+        else:
+            return state_to_index(state)
 
-    def set_dict(self, d: DictProxy | dict | np.ndarray) -> None:
-        self._Q[self.key] = d
+    def set_dict(
+        self,
+        d: DictProxy | dict | np.ndarray | ArrayProxy,
+        n_pawns: int,
+    ) -> None:
+        self.q_pawns[n_pawns] = d
 
 
 def get_grid_shape(n_pawns: int):

@@ -1,6 +1,6 @@
 import json
 import random
-from tempfile import NamedTemporaryFile
+from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -25,44 +25,42 @@ class TestQLearningTrainer(TestCase):
 
     @patch.object(Game, 'run', run)
     def test_from_scratch(self):
-        with NamedTemporaryFile('w', suffix='.json') as f:
-            model_path = f.name
-        trainer = QLearningTrainer(
-            n_pawns=3,
-            eval_steps=2,
-            eval_interval=3,
-            n_steps=4,
-            lr=.2,
-            gamma=.95,
-            model_path=model_path,
-        )
-        trainer.run()
-        q = json.load(open(model_path))
-        self.assertEqual({
-            '[[0, 0, 0], [0, 0, 0]], 0': -0.09386000000000001,
-            '[[1, 0, 0], [0, 0, 0]], 1': 0.342,
-            '[[0, 0, 0], [8, 8, 0]], 0': -1,
-        },
-            q
-        )
+        with TemporaryDirectory() as model_path:
+            trainer = QLearningTrainer(
+                n_pawns=3,
+                eval_steps=2,
+                eval_interval=3,
+                n_steps=4,
+                lr=.2,
+                gamma=.95,
+                model_path=model_path,
+            )
+            trainer.run()
+            q = json.load(open(f"{model_path}/q_table_3.json"))
+            self.assertEqual({
+                '[[0, 0, 0], [0, 0, 0]], 0': -0.09386000000000001,
+                '[[1, 0, 0], [0, 0, 0]], 1': 0.342,
+                '[[0, 0, 0], [8, 8, 0]], 0': -1,
+            },
+                q
+            )
 
     @patch.object(Game, 'run', run)
     def test_from_file(self):
-        with NamedTemporaryFile('w', suffix='.json') as f:
-            model_path = f.name
-        key = '[[1, 2, 3], [4, 5, 6]], 0'
-        value = 0.42
-        json.dump({key: value}, open(model_path, mode='w'))
-        trainer = QLearningTrainer(
-            n_pawns=3,
-            eval_steps=2,
-            eval_interval=3,
-            n_steps=4,
-            lr=.2,
-            gamma=.95,
-            model_path=model_path,
-        )
-        trainer.run()
-        q = json.load(open(model_path))
-        self.assertEqual(value, q[key])
-        self.assertGreater(len(q), 1)
+        with TemporaryDirectory() as model_path:
+            key = '[[1, 2, 3], [4, 5, 6]], 0'
+            value = 0.42
+            json.dump({key: value}, open(f"{model_path}/q_table_3.json", mode='w'))
+            trainer = QLearningTrainer(
+                n_pawns=3,
+                eval_steps=2,
+                eval_interval=3,
+                n_steps=4,
+                lr=.2,
+                gamma=.95,
+                model_path=model_path,
+            )
+            trainer.run()
+            q = json.load(open(f"{model_path}/q_table_3.json"))
+            self.assertEqual(value, q[key])
+            self.assertGreater(len(q), 1)
