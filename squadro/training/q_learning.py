@@ -11,7 +11,7 @@ from squadro.agents.alphabeta_agent import AlphaBetaAdvancementDeepAgent
 from squadro.agents.montecarlo_agent import MonteCarloQLearningAgent
 from squadro.evaluators.evaluator import QLearningEvaluator
 from squadro.state import State
-from squadro.tools.constants import DefaultParams
+from squadro.tools.constants import DefaultParams, inf
 from squadro.tools.log import training_logger as logger
 
 
@@ -34,6 +34,7 @@ class QLearningTrainer:
         eval_steps=None,
         model_path=None,
         parallel=None,
+        max_mcts_steps=None,
     ):
         """
         :param n_pawns: number of pawns in the game.
@@ -53,6 +54,10 @@ class QLearningTrainer:
         self.eval_interval = eval_interval or int(100 if parallel else 500)
         self.eval_steps = eval_steps or int(100)
         self.parallel = parallel if parallel is not None else False
+        self.mcts_kwargs = dict(
+            max_steps=max_mcts_steps or 20,
+            max_time_per_move=inf,
+        )
 
         self.n_cut = n_cut or 100
         if self.n_steps < self.n_cut or not self.parallel:
@@ -61,6 +66,7 @@ class QLearningTrainer:
         self.agent = MonteCarloQLearningAgent(
             evaluator=QLearningEvaluator(model_path=model_path),
             is_training=True,
+            **self.mcts_kwargs,
         )
         self.evaluator_old = QLearningEvaluator(model_path=Path(self.model_path) / "old")
 
@@ -180,11 +186,12 @@ class QLearningTrainer:
         Evaluate the success rate of the current agent against another agent.
         """
         if vs == 'initial':
-            vs = MonteCarloQLearningAgent(evaluator=self.evaluator_old)
+            vs = MonteCarloQLearningAgent(evaluator=self.evaluator_old, **self.mcts_kwargs)
 
         agent = MonteCarloQLearningAgent(
             evaluator=self.evaluator,
             is_training=False,
+            **self.mcts_kwargs,
         )
 
         v = 0
