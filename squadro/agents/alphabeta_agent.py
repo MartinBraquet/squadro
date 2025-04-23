@@ -121,8 +121,8 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
     """
 
     def __init__(self, max_depth=15, **kwargs):
-        kwargs.setdefault('max_time_per_move',
-                          DefaultParams.max_time_per_move)  # use fixed time for now
+        # use fixed time for now
+        kwargs.setdefault('max_time_per_move', DefaultParams.max_time_per_move)
         super().__init__(**kwargs)
         self.max_depth = max_depth
         self.start_time = None
