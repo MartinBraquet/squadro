@@ -145,35 +145,42 @@ print(squadro.AVAILABLE_AGENTS)
 
 ### Training
 
-One can train a model from scratch via:
+One can train a model using reinforcement learning (RL) algorithms. Currently, Squadro supports two such algorithms:
+
+#### Q-Learning
+
+One needs to train a lookup table mapping each state to its value.
 
 ```python
-from squadro.train import Trainer
+import squadro
 
-trainer = Trainer(
-    model_path='results/tolstoy',  # output directory where the model will be saved
-    training_data_path='https://www.gutenberg.org/cache/epub/2600/pg2600.txt',  # dataset URL or local path
-    eval_interval=10,  # when to evaluate the model
-    batch_size=4,  # batch size
-    block_size=16,  # block size (aka context length)
-    n_layer=2,  # number of layers
-    n_head=4,  # number of attention heads per layer
-    n_embd=32,  # embedding dimension
-    dropout=0.2,  # dropout rate
-    learning_rate=0.05,  # learning rate
-    min_lr=0.005,  # minimum learning rate
-    beta2=0.99,  # adam beta2 (should be reduced for larger models / datasets)
+squadro.logger.setup(section='training')
+
+trainer = squadro.QLearningTrainer(
+    n_pawns=3,
+    lr=.3,
+    eval_steps=100,
+    eval_interval=300,
+    n_steps=100_000,
+    parallel=8,
+    model_path='path/to/model'
 )
 trainer.run()
 ```
 
-It should take a few minutes to train on a typical CPU (8-16 cores), and it is much faster on a GPU.
+It should take a few hours to train on a typical CPU (8-16 cores).
 
 Note that there are many more parameters to tweak, if desired. See all of them in the doc:
 
 ```python
-help(Trainer)
+help(squadro.QLearningTrainer)
 ```
+
+#### Deep Q-Learning
+
+Here the state-action value is approximated by a neural network.
+
+It should take a few hours to train on a typical CPU (8-16 cores), and it is much faster on a GPU.
 
 It will stop training when the evaluation loss stops improving. Once done, one can use the model; see the next section below (setting the appropriate value for `model_path`, e.g., `'...'`).
 
