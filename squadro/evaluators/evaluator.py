@@ -6,7 +6,9 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import torch.nn.functional as f
 from numpy.typing import NDArray
+from torch import nn
 
 from squadro.state import State
 from squadro.tools.constants import DATA_PATH
@@ -235,6 +237,55 @@ class QLearningEvaluator(_RLEvaluator):
             return state_to_index(state)
 
 
+class DeepNetwork(nn.Module):
+    def __init__(self, path):
+        nin = 11  # 11 inputs: player id, 5 first numbers for the player 0 and five numbers for the player 1
+        nout = 5  # 5 outputs: probability to choose one of the 5 actions
+        hidden_layers = 200  # Size of the hidden layers
+
+        self.batch_hid = nn.BatchNorm1d(num_features=hidden_layers)
+
+        self.lin = nn.Linear(nin, hidden_layers)
+
+        self.linp1 = nn.Linear(hidden_layers, hidden_layers)
+        self.linp2 = nn.Linear(hidden_layers, hidden_layers)
+        self.linp3 = nn.Linear(hidden_layers, nout)
+
+        self.linv1 = nn.Linear(hidden_layers, hidden_layers)
+        self.linv2 = nn.Linear(hidden_layers, hidden_layers)
+        self.linv3 = nn.Linear(hidden_layers, 1)
+
+        self.set_path(path)
+
+        super().__init__()
+
+    def set_path(self, path):
+        self.load_state_dict(torch.load(path))
+        self.eval()
+
+    def forward(self, x):
+        """
+       Evaluate the neural network
+        """
+        l = len(x.size())
+
+        if l == 1:
+            x = x.unsqueeze(0)
+
+        x = f.relu(self.batch_hid(self.lin(x)))
+
+        ph = f.relu(self.batch_hid(self.linp1(x)))
+        ph = f.relu(self.batch_hid(self.linp2(ph)))
+        ph = self.linp3(ph)
+        soft_ph = f.softmax(ph, dim=-1)
+
+        vh = f.relu(self.batch_hid(self.linv1(x)))
+        vh = f.relu(self.batch_hid(self.linv2(vh)))
+        vh = self.linv3(vh)
+
+        return soft_ph, vh
+
+
 class DeepQLearningEvaluator(_RLEvaluator):
     """
     Evaluate a state using a deep neural network.
@@ -254,19 +305,30 @@ class DeepQLearningEvaluator(_RLEvaluator):
         super().__init__(**kwargs)
 
     def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
-        pass
+        l0, l1 = state.get_advancement()
+        x = l0 + l1 + [state.cur_player]
+        x = torch.FloatTensor(x)
+        model = self.get_model(state.n_pawns)
+        ph, vh = model(x)
+        ph = ph.data.numpy()[0, :]
+        vh = vh.data.numpy().astype(np.float32)
+        return ph, vh
 
-    def get_model(self, n_pawns: int) -> torch.nn.Module:
+    def get_model(self, n_pawns: int) -> DeepNetwork:
         if self.models.get(n_pawns) is None:
             filepath = self.get_filepath(n_pawns)
             if os.path.exists(filepath):
                 self.models[n_pawns] = torch.load(filepath)
                 logger.info(f"Using model at {filepath}")
             else:
-                self.models[n_pawns] = ...  # TODO: create new model
+                self.models[n_pawns] = DeepNetwork(path=filepath)
                 logger.warn(f"No file at {filepath}, creating new model")
 
         return self.models[n_pawns]
+
+    def set_model_path(self, path, n_pawns: int):
+        model = self.get_model(n_pawns)
+        model.set_path(path)
 
     def _dump(self, model, filepath: str):
         torch.save(obj=model, f=filepath)
