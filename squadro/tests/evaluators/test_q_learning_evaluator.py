@@ -25,7 +25,7 @@ class TestQLearningEvaluator(TestCase):
         ):
             json.dump(
                 {'[[1, 2, 3], [1, 2, 4]], 0': .14},
-                open(f"{model_path}/q_table_3.json", 'w')
+                open(f"{model_path}/model_3.json", 'w')
             )
             p, value = evaluator.evaluate(state)
         self.assertEqual(.14, value)

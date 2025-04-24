@@ -64,7 +64,7 @@ class QLearningTrainer:
             self.n_cut = 1
 
         self.agent = MonteCarloQLearningAgent(
-            evaluator=QLearningEvaluator(model_path=model_path),
+            model_path=model_path,
             is_training=True,
             **self.mcts_kwargs,
         )
@@ -114,7 +114,7 @@ class QLearningTrainer:
         if self.parallel:
             assert lock is not None
             assert q_shared is not None
-            self.evaluator.set_dict(q_shared, n_pawns=self.n_pawns)
+            self.evaluator.set_model(q_shared, n_pawns=self.n_pawns)
 
         for n in range(self.n_steps // self.n_cut):
 

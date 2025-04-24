@@ -36,7 +36,7 @@ class TestQLearningTrainer(TestCase):
                 model_path=model_path,
             )
             trainer.run()
-            q = json.load(open(f"{model_path}/q_table_3.json"))
+            q = json.load(open(f"{model_path}/model_3.json"))
             self.assertEqual({
                 '[[0, 0, 0], [0, 0, 0]], 0': -0.09386000000000001,
                 '[[1, 0, 0], [0, 0, 0]], 1': 0.342,
@@ -50,7 +50,7 @@ class TestQLearningTrainer(TestCase):
         with TemporaryDirectory() as model_path:
             key = '[[1, 2, 3], [4, 5, 6]], 0'
             value = 0.42
-            json.dump({key: value}, open(f"{model_path}/q_table_3.json", mode='w'))
+            json.dump({key: value}, open(f"{model_path}/model_3.json", mode='w'))
             trainer = QLearningTrainer(
                 n_pawns=3,
                 eval_steps=2,
@@ -61,6 +61,6 @@ class TestQLearningTrainer(TestCase):
                 model_path=model_path,
             )
             trainer.run()
-            q = json.load(open(f"{model_path}/q_table_3.json"))
+            q = json.load(open(f"{model_path}/model_3.json"))
             self.assertEqual(value, q[key])
             self.assertGreater(len(q), 1)

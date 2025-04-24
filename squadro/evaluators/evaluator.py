@@ -5,6 +5,7 @@ from multiprocessing.managers import DictProxy, ArrayProxy  # noqa
 from pathlib import Path
 
 import numpy as np
+import torch
 from numpy.typing import NDArray
 
 from squadro.state import State
@@ -100,25 +101,38 @@ class RolloutEvaluator(Evaluator):
         return 1 if state.winner == cur_player else -1
 
 
-class QLearningEvaluator(Evaluator):
-    """
-    Evaluate a state using a Q-lookup table.
+def get_grid_shape(n_pawns: int):
+    return [2 * (n_pawns + 1) + 1] * n_pawns * 2 + [2]
 
-     _Q is a cache for all Q-tables.
-     _Q['/path/dir'][3] is the Q-table in '/path/dir' for 3 pawns (stared in file '/path/dir/q_table_3.json')
-    """
-    _Q = {}
+
+def state_to_index(state: State):
+    dims = get_grid_shape(state.n_pawns)
+    x, y = state.get_advancement()
+    return np.ravel_multi_index(x + y + [state.cur_player], dims=dims)
+
+
+def index_to_state(index: int, n_pawns: int):
+    shape = get_grid_shape(n_pawns)
+    return np.unravel_index(index, shape=shape)
+
+
+class _RLEvaluator(Evaluator, ABC):
+    _default_dir = 'default'
 
     def __init__(self, model_path: str | Path = None, dtype='json'):
         """
         :param model_path: Path to the directory where the model is stored.
         """
-        self.model_path = Path(model_path or DATA_PATH / 'q_learning')
+        self.model_path = Path(model_path or DATA_PATH / self._default_dir)
         self.dtype = dtype
 
     @classmethod
     def reload(cls):
         cls._Q = {}
+
+    def get_filepath(self, n_pawns: int, model_path=None) -> str:
+        model_path = Path(model_path or self.model_path)
+        return str(model_path / f"model_{n_pawns}.{self.dtype}")
 
     def clear(self):
         self._Q[self.dir_key] = {}
@@ -128,7 +142,7 @@ class QLearningEvaluator(Evaluator):
         return str(self.model_path)
 
     @property
-    def q_pawns(self):
+    def models(self):
         """
         :return: A dictionary mapping pawn numbers to Q tables.
         """
@@ -136,46 +150,67 @@ class QLearningEvaluator(Evaluator):
             self._Q[self.dir_key] = {}
         return self._Q[self.dir_key]
 
-    @property
-    def is_json(self):
-        return self.dtype == 'json'
-
-    def get_filepath(self, n_pawns: int, model_path=None) -> str:
-        model_path = Path(model_path or self.model_path)
-        return str(model_path / f"q_table_{n_pawns}.{self.dtype}")
-
-    def get_Q(self, n_pawns: int) -> dict:  # noqa
-        if self.q_pawns.get(n_pawns) is None:
-            filepath = self.get_filepath(n_pawns)
-            if os.path.exists(filepath):
-                if self.is_json:
-                    self.q_pawns[n_pawns] = json.load(open(filepath, 'r'))
-                else:
-                    self.q_pawns[n_pawns] = np.load(filepath, allow_pickle=True)
-                logger.debug(f"Using Q table at {filepath}")
-            else:
-                if self.is_json:
-                    self.q_pawns[n_pawns] = {}
-                else:
-                    shape = get_grid_shape(n_pawns)
-                    length = np.ravel_multi_index([s - 1 for s in shape], dims=shape)
-                    self.q_pawns[n_pawns] = np.zeros(length, dtype=np.float32)
-                logger.warn(f"No file at {filepath}, creating new Q table")
-
-        return self.q_pawns[n_pawns]
+    def set_model(
+        self,
+        d: DictProxy | dict | np.ndarray | ArrayProxy | torch.nn.Module,
+        n_pawns: int,
+    ) -> None:
+        self.models[n_pawns] = d
 
     def dump(self, model_path: str | Path = None):
         model_path = str(model_path or self.model_path)
         if not os.path.exists(model_path):
             os.makedirs(model_path)
-        for n_pawns, q in self.q_pawns.items():
+        for n_pawns, model in self.models.items():
             filepath = self.get_filepath(n_pawns, model_path=model_path)
-            if isinstance(q, (DictProxy, ArrayProxy)):
-                q = q._getvalue()
-            if isinstance(q, dict):
-                json.dump(q, open(filepath, 'w'), indent=4)
-            elif isinstance(q, np.ndarray):
-                np.save(filepath, q, allow_pickle=True)
+            self._dump(model, filepath)
+
+    @abstractmethod
+    def _dump(self, model, filepath: str):
+        ...
+
+
+class QLearningEvaluator(_RLEvaluator):
+    """
+    Evaluate a state using a Q-lookup table.
+
+     _Q is a cache for all Q-tables.
+     _Q['/path/dir'][3] is the Q-table in '/path/dir' for 3 pawns (stared in file '/path/dir/model_3.json')
+    """
+    _Q = {}
+    _default_dir = 'q_learning'
+
+    @property
+    def is_json(self):
+        return self.dtype == 'json'
+
+    def get_Q(self, n_pawns: int) -> dict:  # noqa
+        if self.models.get(n_pawns) is None:
+            filepath = self.get_filepath(n_pawns)
+            if os.path.exists(filepath):
+                if self.is_json:
+                    self.models[n_pawns] = json.load(open(filepath, 'r'))
+                else:
+                    self.models[n_pawns] = np.load(filepath, allow_pickle=True)
+                logger.info(f"Using Q table at {filepath}")
+            else:
+                if self.is_json:
+                    self.models[n_pawns] = {}
+                else:
+                    shape = get_grid_shape(n_pawns)
+                    length = np.ravel_multi_index([s - 1 for s in shape], dims=shape)
+                    self.models[n_pawns] = np.zeros(length, dtype=np.float32)
+                logger.warn(f"No file at {filepath}, creating new Q table")
+
+        return self.models[n_pawns]
+
+    def _dump(self, model, filepath: str):
+        if isinstance(model, (DictProxy, ArrayProxy)):
+            model = model._getvalue()
+        if isinstance(model, dict):
+            json.dump(model, open(filepath, 'w'), indent=4)
+        elif isinstance(model, np.ndarray):
+            np.save(filepath, model, allow_pickle=True)
 
     def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
         p = self.get_policy(state)
@@ -199,24 +234,39 @@ class QLearningEvaluator(Evaluator):
         else:
             return state_to_index(state)
 
-    def set_dict(
-        self,
-        d: DictProxy | dict | np.ndarray | ArrayProxy,
-        n_pawns: int,
-    ) -> None:
-        self.q_pawns[n_pawns] = d
 
+class DeepQLearningEvaluator(_RLEvaluator):
+    """
+    Evaluate a state using a deep neural network.
 
-def get_grid_shape(n_pawns: int):
-    return [2 * (n_pawns + 1) + 1] * n_pawns * 2 + [2]
+     _Q is a cache for all neural networks.
+     _Q['/path/dir'][3] is the neural network in '/path/dir' for 3 pawns (stared in file '/path/dir/model_3.json')
+    """
 
+    _Q = {}
+    _default_dir = 'deep_q_learning'
 
-def state_to_index(state: State):
-    dims = get_grid_shape(state.n_pawns)
-    x, y = state.get_advancement()
-    return np.ravel_multi_index(x + y + [state.cur_player], dims=dims)
+    def __init__(self, **kwargs):
+        """
+        :param model_path: Path to the directory where the model is stored.
+        """
+        kwargs.setdefault('dtype', 'pt')
+        super().__init__(**kwargs)
 
+    def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
+        pass
 
-def index_to_state(index: int, n_pawns: int):
-    shape = get_grid_shape(n_pawns)
-    return np.unravel_index(index, shape=shape)
+    def get_model(self, n_pawns: int) -> torch.nn.Module:
+        if self.models.get(n_pawns) is None:
+            filepath = self.get_filepath(n_pawns)
+            if os.path.exists(filepath):
+                self.models[n_pawns] = torch.load(filepath)
+                logger.info(f"Using model at {filepath}")
+            else:
+                self.models[n_pawns] = ...  # TODO: create new model
+                logger.warn(f"No file at {filepath}, creating new model")
+
+        return self.models[n_pawns]
+
+    def _dump(self, model, filepath: str):
+        torch.save(obj=model, f=filepath)
