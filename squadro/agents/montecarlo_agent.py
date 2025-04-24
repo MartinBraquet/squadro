@@ -19,7 +19,7 @@ from numpy.typing import NDArray
 
 from squadro.agents.agent import Agent
 from squadro.evaluators.evaluator import Evaluator, AdvancementEvaluator, RolloutEvaluator, \
-    QLearningEvaluator
+    QLearningEvaluator, DeepQLearningEvaluator
 from squadro.state import State, get_next_state
 from squadro.tools.constants import DefaultParams, inf
 from squadro.tools.evaluation import evaluate_advancement
@@ -361,3 +361,14 @@ class MonteCarloQLearningAgent(_MonteCarloAgent):
     @classmethod
     def get_name(cls) -> str:
         return "mcts_q_learning"
+
+
+class MonteCarloDeepQLearningAgent(_MonteCarloAgent):
+    def __init__(self, model_path: str = None, **kwargs):
+        kwargs.setdefault('method', 'p_uct')
+        kwargs.setdefault('evaluator', DeepQLearningEvaluator(model_path=model_path))
+        super().__init__(**kwargs)
+
+    @classmethod
+    def get_name(cls) -> str:
+        return "deep_mcts_q_learning"
