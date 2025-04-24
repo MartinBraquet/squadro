@@ -99,13 +99,15 @@ class RealTimeAnimatedGame(Game):
         time_out=None,
         **kwargs
     ):
-        if agent_0 == 'best':
-            agent_0 = get_best_real_time_game_agent()
-        if agent_1 == 'best':
-            agent_1 = get_best_real_time_game_agent()
+        agents = dict(agent_0=agent_0, agent_1=agent_1)
+        for agent_name, agent in agents.items():
+            if agent is None:
+                agents[agent_name] = 'human'
+            elif agent == 'best':
+                agents[agent_name] = get_best_real_time_game_agent(n_pawns=kwargs.get('n_pawns'))
+
         super().__init__(
-            agent_0=agent_0 or 'human',
-            agent_1=agent_1 or 'human',
+            **agents,
             time_out=time_out or DefaultParams.time_out,
             **kwargs
         )
