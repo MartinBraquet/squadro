@@ -13,7 +13,19 @@ class logger:  # noqa
     }
 
     @classmethod
-    def setup(cls, name: str = None, loglevel: str = 'INFO', section=None):
+    def setup(
+        cls,
+        name: str = None,
+        loglevel: str = 'INFO',
+        section: str | list = None,
+    ):
+        """
+        Sets up the logger.
+
+        :param name: Name of the logger
+        :param loglevel: log level (default: INFO)
+        :param section: sections of the logger to render (default: all)
+        """
         if cls.client is not None and cls.client.level == logging.INFO:
             return
         cls.client = logging.getLogger(name)
@@ -36,6 +48,11 @@ class logger:  # noqa
 
     @classmethod
     def set_section(cls, section: str | list) -> None:
+        """
+        Sets the sections of the logger.
+
+        :param section: Section of the logger to render (default: all)
+        """
         if not section:
             return
         if isinstance(section, str):
