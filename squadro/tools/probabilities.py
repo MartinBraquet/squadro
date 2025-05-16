@@ -1,11 +1,13 @@
 import random
 
 import numpy as np
+import torch
 
 
 def set_seed(seed=0):
     random.seed(seed)
     np.random.seed(seed)
+    torch.random.manual_seed(seed)
 
 
 def get_random_index(probs: np.ndarray):
