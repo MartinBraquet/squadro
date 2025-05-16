@@ -49,3 +49,6 @@ class Agent(ABC):
         return {
             'name': self.get_name(),
         }
+
+    def get_move_info(self):
+        return {}

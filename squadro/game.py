@@ -27,10 +27,11 @@ class GameFromState:
 
         self.state = state
 
+        self.action_history = []
+
         self.save_states = save_states if save_states else False
         self.state_history = []
-
-        self.action_history = []
+        self.move_info = []
 
     def __repr__(self):
         text = f'{self.agents[0]} vs {self.agents[1]}, first: {self.first}, {self.state.n_pawns} pawns'
@@ -94,6 +95,7 @@ class GameFromState:
                 last_action = action
                 if self.save_states:
                     self.state_history.append(self.state.copy())
+                    self.move_info.append(self.agents[player].get_move_info())
                 self._post_apply_action()
 
             logger.info(f'Game over: {self}')
