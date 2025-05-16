@@ -1,10 +1,7 @@
-from typing import Any
 from unittest import TestCase
 
 import numpy as np
 import torch
-
-from squadro.tools.probabilities import set_seed
 
 
 class _GradFunction:
@@ -67,7 +64,7 @@ class _Tensor:
         return self.grad_fn is None
 
     @staticmethod
-    def _to_data(obj: Any):
+    def _to_data(obj):
         if isinstance(obj, _Tensor):
             return obj.data
         return obj
@@ -77,7 +74,7 @@ class _Tensor:
         tensor.grad_fn = _AddBackward(self, other)
         return tensor
 
-    def __mul__(self, other: Any):
+    def __mul__(self, other):
         tensor = _Tensor(self.data * self._to_data(other))
         tensor.grad_fn = _MulBackward(self, other)
         return tensor
@@ -106,9 +103,6 @@ class Optimizer:
 
 
 class TestCustomTensor(TestCase):
-    def setUp(self):
-        set_seed()
-
     def test(self):
         values = 2.0, 3.0, 4.0, 5.0
 
