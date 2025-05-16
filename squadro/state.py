@@ -4,6 +4,7 @@ from functools import lru_cache
 from typing import Tuple
 
 import pygame
+import torch
 
 from squadro.tools.constants import DefaultParams
 from squadro.tools.serialize import hash_dict
@@ -24,6 +25,24 @@ def get_moves(n_pawns: int) -> list[list[int]]:
 def get_moves_return(n_pawns: int) -> list[list[int]]:
     moves = [m[:n_pawns].copy() for m in MOVES_RETURN]
     return moves
+
+
+def get_moves_from_advancement(advancement: list[int] | torch.Tensor) -> list[int]:
+    """
+    >>> get_moves_from_advancement([0, 4, 3, 1, 5, 8])
+    [1, 1, 2, 3, 3, 2]
+    """
+    n_pawns = len(advancement) // 2
+    advancement = [advancement[:n_pawns], advancement[n_pawns:]]
+    max_pos = n_pawns + 1
+    moves = get_moves(n_pawns)
+    moves_return = get_moves_return(n_pawns)
+    steps = [
+        (moves_return if m >= max_pos else moves)[p_id][i]
+        for p_id, a in enumerate(advancement)
+        for i, m in enumerate(a)
+    ]
+    return steps
 
 
 # Removing cache for now to avoid issues when modifying in place the same object
