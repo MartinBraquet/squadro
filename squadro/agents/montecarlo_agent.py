@@ -86,7 +86,12 @@ class MCTS:
         self.alpha_dirichlet = alpha_dirichlet or .5
         assert self.alpha_dirichlet > 0
 
+        self.move_probs = None
+
         logger.info(f"Using MCTS method '{self.method}', uct={self.uct}")
+
+    def __repr__(self) -> str:
+        return f"{self.evaluator.__class__.__name__}, method: {self.method}, uct: {self.uct}"
 
     @staticmethod
     def get_available_methods() -> list[str]:
@@ -195,7 +200,7 @@ class MCTS:
         logger.debug('Sim step 2: EVALUATING LEAF')
         probs, value = self.evaluator.evaluate(leaf.state)
         logger.debug(f'Predicted value for player {leaf.player_turn}: {value}')
-        self._expand_leaf(leaf, probs)
+        self._expand_leaf(leaf, probs=probs)
         return value
 
     @staticmethod
@@ -229,15 +234,15 @@ class MCTS:
         logger.info(f'\n{n} simulations performed.\n'
                     f'Root edges:\n{self.root.get_edge_stats(to_string=True)}')
 
-        pi, values = self.get_av()
-        action = self.choose_action(pi)
+        self.move_probs, values = self.get_av()
+        action = self.choose_action(self.move_probs)
 
         value = values[action]
         # next_state, _ = self.take_action(state, action)
         # - sign because it evaluates with respect to the current player of the state
         # NN_value = -self.evaluate(next_state)[1]
 
-        logger.info(f'Action probs: {np.round(pi, 3)}\n'
+        logger.info(f'Action probs: {np.round(self.move_probs, 3)}\n'
                     f'Action chosen: {action}\n'
                     f'MCTS perceived value: {value:.3f}')
 
@@ -310,6 +315,7 @@ class _MonteCarloAgent(Agent, ABC):
         self.method = method
         self.evaluator = evaluator
         self.is_training = is_training
+        self.mcts_move_probs = None
 
     def get_action(
         self,
@@ -328,7 +334,13 @@ class _MonteCarloAgent(Agent, ABC):
             is_training=self.is_training,
         )
         action = mcts.get_action()
+        self.mcts_move_probs = mcts.move_probs
         return action
+
+    def get_move_info(self):
+        return dict(
+            mcts_move_probs=self.mcts_move_probs,
+        )
 
 
 class MonteCarloAdvancementAgent(_MonteCarloAgent):
@@ -371,4 +383,4 @@ class MonteCarloDeepQLearningAgent(_MonteCarloAgent):
 
     @classmethod
     def get_name(cls) -> str:
-        return "deep_mcts_q_learning"
+        return "mcts_deep_q_learning"
