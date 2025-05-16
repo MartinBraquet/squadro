@@ -46,6 +46,8 @@ class DynamicBoardAnimation:
                         self.state.returning[player][pawn]
                         and self.state.pos[player][pawn] == self.state.max_pos
                     )
+                    self.state.winner = None
+                    self.state.game_over_check()
                 elif len(command) == 3:
                     player, pawn, pawn_pos = command
                     previous_states.append(self.state)
@@ -57,6 +59,8 @@ class DynamicBoardAnimation:
                         self.state.returning[player][pawn]
                         and self.state.pos[player][pawn] == self.state.max_pos
                     )
+                    self.state.winner = None
+                    self.state.game_over_check()
                 else:
                     raise NotImplementedError
 
