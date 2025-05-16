@@ -1,16 +1,16 @@
 import json
 import os
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from multiprocessing.managers import DictProxy, ArrayProxy  # noqa
 from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn.functional as f
 from numpy.typing import NDArray
 from torch import nn
 
-from squadro.state import State
+from squadro.state import State, get_moves_from_advancement
 from squadro.tools.constants import DATA_PATH
 from squadro.tools.evaluation import evaluate_advancement
 from squadro.tools.log import logger
@@ -44,12 +44,11 @@ class Evaluator(ABC):
         """
         return np.ones(state.n_pawns) / state.n_pawns
 
-    @staticmethod
-    def get_value(state: State) -> float:
+    def get_value(self, state: State) -> float:
         """
         Get the value for the given state.
         """
-        raise NotImplementedError
+        return self.evaluate(state)[1]
 
     @classmethod
     def reload(cls):
@@ -67,7 +66,7 @@ class AdvancementEvaluator(Evaluator):
         return p, value
 
     @staticmethod
-    def get_value(state: State) -> float:
+    def get_value(state: State, **kwargs) -> float:
         return evaluate_advancement(state=state)
 
 
@@ -95,7 +94,7 @@ class RolloutEvaluator(Evaluator):
         return p, value
 
     @staticmethod
-    def get_value(state: State) -> float:
+    def get_value(state: State, **kwargs) -> float:
         cur_player = state.cur_player
         while not state.game_over():
             action = state.get_random_action()
@@ -127,6 +126,11 @@ class _RLEvaluator(Evaluator, ABC):
         """
         self.model_path = Path(model_path or DATA_PATH / self._default_dir)
         self.dtype = dtype
+
+    def erase(self, n_pawns: int):
+        filepath = self.get_filepath(n_pawns)
+        if os.path.isfile(filepath):
+            os.remove(filepath)
 
     @classmethod
     def reload(cls):
@@ -237,53 +241,116 @@ class QLearningEvaluator(_RLEvaluator):
             return state_to_index(state)
 
 
-class DeepNetwork(nn.Module):
-    def __init__(self, path):
-        nin = 11  # 11 inputs: player id, 5 first numbers for the player 0 and five numbers for the player 1
-        nout = 5  # 5 outputs: probability to choose one of the 5 actions
-        hidden_layers = 200  # Size of the hidden layers
+@dataclass
+class ModelConfig:
+    n_attn_layers: int = 4
+    n_attn_head: int = 8
+    d_emb: int = 256
+    dropout: float = 0.0
 
-        self.batch_hid = nn.BatchNorm1d(num_features=hidden_layers)
 
-        self.lin = nn.Linear(nin, hidden_layers)
+class Model(nn.Module):
+    """
+    Embedding is advised (instead of CNN) as the state can be represented as a vector of integers.
+    Self-attention: When the relationships between different pieces of information in the input are
+     non-local and need to be discovered via self-attention mechanisms (like relationships between
+     distant game pieces or different turns). Important, because the value of one action must
+     strongly depend on the position of all the opponent's pieces.
 
-        self.linp1 = nn.Linear(hidden_layers, hidden_layers)
-        self.linp2 = nn.Linear(hidden_layers, hidden_layers)
-        self.linp3 = nn.Linear(hidden_layers, nout)
+    TODO: check that they are all using device
+    """
 
-        self.linv1 = nn.Linear(hidden_layers, hidden_layers)
-        self.linv2 = nn.Linear(hidden_layers, hidden_layers)
-        self.linv3 = nn.Linear(hidden_layers, 1)
-
-        self.set_path(path)
-
+    def __init__(
+        self,
+        n_pawns: int,
+        path=None,
+        config: ModelConfig = None,
+    ):
         super().__init__()
 
-    def set_path(self, path):
-        self.load_state_dict(torch.load(path))
+        self.d_s = 2 * n_pawns + 1  # state dim
+        config = config or ModelConfig()
+
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        self.piece_emb = nn.Embedding(2 * (n_pawns + 1) + 1, config.d_emb)
+        self.movement_emb = nn.Embedding(3, config.d_emb)
+        self.player_emb = nn.Embedding(2, config.d_emb)
+        self.position_emb = nn.Embedding(2 * n_pawns, config.d_emb)
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=config.d_emb,
+            nhead=config.n_attn_head,
+            dim_feedforward=4 * config.d_emb,
+            batch_first=True,
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=config.n_attn_layers)
+        self.ln = nn.LayerNorm(config.d_emb)
+
+        self.policy_mlp = nn.Sequential(
+            nn.Linear(config.d_emb, config.d_emb),
+            nn.LayerNorm(config.d_emb),
+            nn.ReLU(),
+            nn.Linear(config.d_emb, 1)
+        )
+
+        self.value_attention = nn.Sequential(
+            nn.Linear(config.d_emb, 1)
+        )
+        self.value_mlp = nn.Sequential(
+            nn.Linear(config.d_emb, config.d_emb),
+            nn.LayerNorm(config.d_emb),
+            nn.ReLU(),
+            nn.Linear(config.d_emb, 1),
+            nn.Tanh(),
+        )
+
+        self.load(path)
+
         self.eval()
 
-    def forward(self, x):
+    def load(self, path):
+        if path is None or not os.path.exists(path):
+            return
+        state_dict = torch.load(path, map_location=self.device)
+        self.load_state_dict(state_dict)
+
+    def forward(self, x: torch.Tensor) -> (torch.Tensor, torch.Tensor):
         """
        Evaluate the neural network
         """
-        l = len(x.size())
+        b, d_s = 1, x.size()[0]
+        assert d_s == self.d_s, f"Input size {d_s} does not match expected size {self.d_s}"
+        assert b == 1, f"Batch size {b} is not supported"
 
-        if l == 1:
-            x = x.unsqueeze(0)
+        advancement, player_id = x[:-1], x[-1]
+        n_pieces = len(advancement)
+        n_pawns = n_pieces // 2
 
-        x = f.relu(self.batch_hid(self.lin(x)))
+        move_ids = torch.IntTensor(get_moves_from_advancement(advancement)) - 1
+        position_ids = torch.arange(0, n_pieces, device=x.device)  # (n_pieces,)
 
-        ph = f.relu(self.batch_hid(self.linp1(x)))
-        ph = f.relu(self.batch_hid(self.linp2(ph)))
-        ph = self.linp3(ph)
-        soft_ph = f.softmax(ph, dim=-1)
+        piece_emb = self.piece_emb(advancement)
+        move_emb = self.movement_emb(move_ids)
+        player_emb = self.player_emb(player_id)
+        pos_emb = self.position_emb(position_ids)
 
-        vh = f.relu(self.batch_hid(self.linv1(x)))
-        vh = f.relu(self.batch_hid(self.linv2(vh)))
-        vh = self.linv3(vh)
+        piece_features = piece_emb + move_emb + player_emb + pos_emb  # (n_pieces, d_emb)
 
-        return soft_ph, vh
+        piece_features = self.ln(piece_features)
+        piece_features = self.transformer(piece_features)
+
+        p_logits = self.policy_mlp(piece_features).squeeze(-1)  # (n_pieces,)
+        mask = range(n_pawns) if player_id.item() == 1 else range(n_pawns, 2 * n_pawns)
+        p_logits = p_logits[mask]
+        p = torch.softmax(p_logits, dim=0)  # (n_pawns,)
+
+        attn_scores = self.value_attention(piece_features)  # (n_pieces,)
+        attn_weights = torch.softmax(attn_scores, dim=0)
+        weighted_sum = (piece_features * attn_weights).sum(dim=0)  # (d_emb,)
+        value = self.value_mlp(weighted_sum)  # ()
+
+        return p, value
 
 
 class DeepQLearningEvaluator(_RLEvaluator):
@@ -304,31 +371,44 @@ class DeepQLearningEvaluator(_RLEvaluator):
         kwargs.setdefault('dtype', 'pt')
         super().__init__(**kwargs)
 
-    def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
-        l0, l1 = state.get_advancement()
-        x = l0 + l1 + [state.cur_player]
-        x = torch.FloatTensor(x)
-        model = self.get_model(state.n_pawns)
-        ph, vh = model(x)
-        ph = ph.data.numpy()[0, :]
-        vh = vh.data.numpy().astype(np.float32)
-        return ph, vh
+    def evaluate(
+        self,
+        state: State,
+        is_torch: bool = False,
+        check_game_over: bool = True,
+    ) -> tuple[NDArray[np.float64], float]:
+        if check_game_over and state.game_over():
+            p = self.get_policy(state)
+            v = 1 if state.winner == state.cur_player else -1
+            if is_torch:
+                p = torch.from_numpy(p)
+                v = torch.FloatTensor([v])
+            return p, v
 
-    def get_model(self, n_pawns: int) -> DeepNetwork:
+        l0, l1 = state.get_advancement()
+        x = torch.IntTensor(l0 + l1 + [state.cur_player])
+        model = self.get_model(state.n_pawns)
+        p, v = model(x)
+        if not is_torch:
+            p = p.detach().numpy()
+            v = v.item()
+        return p, v
+
+    def get_model(self, n_pawns: int) -> Model:
         if self.models.get(n_pawns) is None:
             filepath = self.get_filepath(n_pawns)
             if os.path.exists(filepath):
-                self.models[n_pawns] = torch.load(filepath)
+                self.models[n_pawns] = torch.load(filepath, weights_only=False)
                 logger.info(f"Using model at {filepath}")
             else:
-                self.models[n_pawns] = DeepNetwork(path=filepath)
+                self.models[n_pawns] = Model(path=filepath, n_pawns=n_pawns)
                 logger.warn(f"No file at {filepath}, creating new model")
 
         return self.models[n_pawns]
 
-    def set_model_path(self, path, n_pawns: int):
-        model = self.get_model(n_pawns)
-        model.set_path(path)
+    # def set_model_path(self, path, n_pawns: int):
+    #     model = self.get_model(n_pawns)
+    #     model.load(path)
 
     def _dump(self, model, filepath: str):
         torch.save(obj=model, f=filepath)
