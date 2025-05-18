@@ -70,8 +70,20 @@ class _Tensor:
         return obj
 
     def __add__(self, other):
-        tensor = _Tensor(self.data + self._to_data(other.data))
+        tensor = _Tensor(self.data + self._to_data(other))
         tensor.grad_fn = _AddBackward(self, other)
+        return tensor
+
+    def __neg__(self):
+        return self.__mul__(-1)
+
+    def __sub__(self, other):
+        return self.__add__(-other)
+
+    def __pow__(self, other):
+        tensor = self
+        for _ in range(other - 1):
+            tensor = tensor * self
         return tensor
 
     def __mul__(self, other):
@@ -87,15 +99,21 @@ class _Tensor:
 
     def backward(self, grad=None):
         if self.is_leaf:
-            self.grad = grad
+            if self.grad is None:
+                self.grad = _Tensor(0.)
+            self.grad += grad
         if self.grad_fn is not None:
             self.grad_fn.backward(grad)
 
 
 class Optimizer:
-    def __init__(self, params, lr=.1):
+    def __init__(self, params, lr=1e-3):
         self.params = params
         self.lr = lr
+
+    def zero_grad(self):
+        for param in self.params:
+            param.grad = None
 
     def step(self):
         for param in self.params:
@@ -109,28 +127,36 @@ class TestCustomTensor(TestCase):
         custom_values = [_Tensor(v) for v in values]
         torch_values = [torch.tensor(v, requires_grad=True) for v in values]
 
-        def forward(a, b, w, x):
-            y = w * x
+        lr = 1e-3
+        optimizer = Optimizer(params=custom_values[::2], lr=lr)
+        to = torch.optim.SGD(params=torch_values[::2], lr=lr)
+
+        optimizer.zero_grad()
+        to.zero_grad()
+
+        def forward_backward(a, b, w, x):
             c = a * b
-            out = 2 * (c + y)
-            out.backward()
+            y = w * x
+            z = 2 * (c + y)
+            l = (z - 50.) ** 2
+            l.backward()
             self.assertIsNone(y.grad)  # None, as non-leaf tensors
             self.assertIsNone(c.grad)
-            return out
+            return l
 
-        z = forward(*custom_values)
-        tz = forward(*torch_values)
+        loss = forward_backward(*custom_values)
+        t_loss = forward_backward(*torch_values)
 
-        np.testing.assert_allclose(z.data, tz.detach().data)
+        np.testing.assert_allclose(loss.data, t_loss.detach().data)
 
         for v, tv in zip(custom_values, torch_values):
             np.testing.assert_allclose(v.grad.data, tv.grad.detach().data)
 
-        optimizer = Optimizer(params=custom_values[::2], lr=0.1)
         optimizer.step()
-
-        to = torch.optim.SGD(params=torch_values[::2], lr=0.1)
         to.step()
 
         for v, tv in zip(custom_values, torch_values):
             np.testing.assert_allclose(v.data, tv.detach().data)
+
+        new_loss = forward_backward(*custom_values)
+        np.testing.assert_array_less(new_loss.data, loss.data)
