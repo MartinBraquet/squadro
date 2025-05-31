@@ -192,7 +192,7 @@ You can simulate a game between two computer algorithms. Set `agent_0` and `agen
 game = squadro.Game(agent_0='random', agent_1='random')
 game.run()
 print(game)
-game.save_results('game_results.json')
+game.to_file('game_results.json')
 ```
 
 ### Animations

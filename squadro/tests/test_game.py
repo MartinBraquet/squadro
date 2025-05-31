@@ -73,8 +73,9 @@ class TestGame(TestCase):
 
     def test_save_and_load_results(self):
         game = Game(n_pawns=3)
+        game.run()
         with tempfile.TemporaryDirectory() as temp_dir:
             tmp_file = Path(temp_dir) / "test_results.json"
-            game.save_results(tmp_file)
+            game.to_file(tmp_file)
             game_loaded = Game.from_file(tmp_file)
         self.assertEqual(game, game_loaded)
