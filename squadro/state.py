@@ -66,9 +66,9 @@ class State:
 
     With n, the number of pawns:
     The possible positions are from 0 to n+1 (included)
-    Both player's pawns start at n+1
+    Both players' pawns start at n+1
     Since all pawns move along the same horizontal or vertical line, only the other component
-    is stored
+    is stored.
     For example, the first pawn of P0 moves along Y=1, so we store the X coordinate only.
     Example pos after one move action = 2 from P1: [[4, 4, 4], [4, 4, 3]]
     """
@@ -77,8 +77,10 @@ class State:
         self,
         n_pawns: int = None,
         first: int = None,
+        advancement: list[list[int]] = None,
+        cur_player: int = 0,
     ):
-        self.cur_player = 0
+        self.cur_player = cur_player
         self.winner = None
         self.timeout_player = None
         self.invalid_player = None
@@ -88,15 +90,19 @@ class State:
         else:
             self.cur_player = random.randint(0, 1)
         self.first = self.cur_player
+
+        if advancement:
+            n_pawns = len(advancement[0])
         self.n_pawns = int(n_pawns) if n_pawns is not None else DefaultParams.n_pawns
         assert 2 <= self.n_pawns <= MAX_PAWNS, f"n_pawns must be between 2 and {MAX_PAWNS}"
+
         # Position of the pawns
         self.pos = get_init_pos(self.n_pawns)
-        # Are the pawns on their return journey ?
         self.returning = [[False] * self.n_pawns for _ in range(2)]
-        # Have the pawns completed their journey ?
         self.finished = [[False] * self.n_pawns for _ in range(2)]
         self.total_moves = 0
+        if advancement:
+            self.set_from_advancement(advancement)
 
     def __repr__(self):
         # return f'turn: {self.cur_player}, winner: {self.winner}'
@@ -120,6 +126,10 @@ class State:
     @property
     def max_pos(self) -> int:
         return self.n_pawns + 1
+
+    @property
+    def grid_dim(self) -> int:
+        return self.n_pawns + 2
 
     @property
     def n_pawns_to_win(self) -> int:
@@ -344,7 +354,6 @@ class State:
         return self.winner
 
     def anim(self, blocking: bool = True) -> None:
-        # Avoid circular import, might need to refactor
         from squadro.animation.board import Board, handle_events
 
         board = Board(self.n_pawns, title=f"State Visualization")
@@ -359,6 +368,28 @@ class State:
             pygame.image.save(board.screen, "/tmp/squadro_state.png")
             import subprocess
             subprocess.Popen(["xdg-open", "/tmp/squadro_state.png"])
+
+    def to_list(self):
+        """
+        List representation of the state, used for the replay buffer or other serialized things.
+        """
+        x = [self.get_advancement(), self.cur_player]
+        return x
+
+    @classmethod
+    def from_list(cls, arr: list):
+        """
+        Create a state from a list representation.
+
+        >>> State.from_list([[[1, 2, 3], [1, 2, 4]], 0]).to_list()
+        [[[1, 2, 3], [1, 2, 4]], 0]
+        """
+        advancement, cur_player = arr
+        n_pawns = len(advancement[0])
+        state = cls(n_pawns=n_pawns)
+        state.set_from_advancement(advancement)
+        state.cur_player = cur_player
+        return state
 
 
 def get_next_state(state: State, action: int) -> State:
