@@ -8,9 +8,9 @@ from pathlib import Path
 import numpy as np
 import torch
 from numpy.typing import NDArray
-from torch import nn
+from torch import nn, Tensor
 
-from squadro.state import State, get_moves_from_advancement
+from squadro.state import State
 from squadro.tools.constants import DATA_PATH
 from squadro.tools.evaluation import evaluate_advancement
 from squadro.tools.log import logger
@@ -243,10 +243,25 @@ class QLearningEvaluator(_RLEvaluator):
 
 @dataclass
 class ModelConfig:
-    n_attn_layers: int = 4
-    n_attn_head: int = 8
-    d_emb: int = 256
-    dropout: float = 0.0
+    channels: int = 64
+    value_hidden_dim: int = 64
+    policy_hidden_channels: int = 2
+    num_blocks: int = 5
+
+
+class ResidualBlock(nn.Module):
+    def __init__(self, channels: int):
+        super().__init__()
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(channels)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(channels)
+
+    def forward(self, x):
+        residual = x
+        out = nn.functional.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        return nn.functional.relu(out + residual)
 
 
 class Model(nn.Module):
@@ -268,41 +283,35 @@ class Model(nn.Module):
     ):
         super().__init__()
 
-        self.d_s = 2 * n_pawns + 1  # state dim
         config = config or ModelConfig()
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.piece_emb = nn.Embedding(2 * (n_pawns + 1) + 1, config.d_emb)
-        self.movement_emb = nn.Embedding(3, config.d_emb)
-        self.player_emb = nn.Embedding(2, config.d_emb)
-        self.position_emb = nn.Embedding(2 * n_pawns, config.d_emb)
-
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=config.d_emb,
-            nhead=config.n_attn_head,
-            dim_feedforward=4 * config.d_emb,
-            batch_first=True,
+        in_channels = 5 + 2 * n_pawns
+        self.input_conv = nn.Sequential(
+            nn.Conv2d(in_channels, config.channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(config.channels),
+            nn.ReLU()
         )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=config.n_attn_layers)
-        self.ln = nn.LayerNorm(config.d_emb)
-
-        self.policy_mlp = nn.Sequential(
-            nn.Linear(config.d_emb, config.d_emb),
-            nn.LayerNorm(config.d_emb),
+        self.res_blocks = nn.Sequential(
+            *[ResidualBlock(config.channels) for _ in range(config.num_blocks)]
+        )
+        self.policy_head = nn.Sequential(
+            nn.Conv2d(config.channels, config.policy_hidden_channels, kernel_size=1),
+            nn.BatchNorm2d(config.policy_hidden_channels),
             nn.ReLU(),
-            nn.Linear(config.d_emb, 1)
+            nn.Flatten(),
+            nn.Linear(config.policy_hidden_channels * n_pawns ** 2, n_pawns),
         )
-
-        self.value_attention = nn.Sequential(
-            nn.Linear(config.d_emb, 1)
-        )
-        self.value_mlp = nn.Sequential(
-            nn.Linear(config.d_emb, config.d_emb),
-            nn.LayerNorm(config.d_emb),
+        self.value_head = nn.Sequential(
+            nn.Conv2d(config.channels, 1, kernel_size=1),
+            nn.BatchNorm2d(1),
             nn.ReLU(),
-            nn.Linear(config.d_emb, 1),
-            nn.Tanh(),
+            nn.Flatten(),
+            nn.Linear(n_pawns ** 2, config.value_hidden_dim),
+            nn.ReLU(),
+            nn.Linear(config.value_hidden_dim, 1),
+            nn.Tanh()
         )
 
         self.load(path)
@@ -319,37 +328,12 @@ class Model(nn.Module):
         """
        Evaluate the neural network
         """
-        b, d_s = 1, x.size()[0]
-        assert d_s == self.d_s, f"Input size {d_s} does not match expected size {self.d_s}"
-        assert b == 1, f"Batch size {b} is not supported"
-
-        advancement, player_id = x[:-1], x[-1]
-        n_pieces = len(advancement)
-        n_pawns = n_pieces // 2
-
-        move_ids = torch.IntTensor(get_moves_from_advancement(advancement)) - 1
-        position_ids = torch.arange(0, n_pieces, device=x.device)  # (n_pieces,)
-
-        piece_emb = self.piece_emb(advancement)
-        move_emb = self.movement_emb(move_ids)
-        player_emb = self.player_emb(player_id)
-        pos_emb = self.position_emb(position_ids)
-
-        piece_features = piece_emb + move_emb + player_emb + pos_emb  # (n_pieces, d_emb)
-
-        piece_features = self.ln(piece_features)
-        piece_features = self.transformer(piece_features)
-
-        p_logits = self.policy_mlp(piece_features).squeeze(-1)  # (n_pieces,)
-        mask = range(n_pawns) if player_id.item() == 1 else range(n_pawns, 2 * n_pawns)
-        p_logits = p_logits[mask]
-        p = torch.softmax(p_logits, dim=0)  # (n_pawns,)
-
-        attn_scores = self.value_attention(piece_features)  # (n_pieces,)
-        attn_weights = torch.softmax(attn_scores, dim=0)
-        weighted_sum = (piece_features * attn_weights).sum(dim=0)  # (d_emb,)
-        value = self.value_mlp(weighted_sum)  # ()
-
+        x = self.input_conv(x)
+        x = self.res_blocks(x)
+        p = self.policy_head(x)
+        value = self.value_head(x)
+        # print(p)
+        # print(value)
         return p, value
 
 
@@ -373,25 +357,34 @@ class DeepQLearningEvaluator(_RLEvaluator):
 
     def evaluate(
         self,
-        state: State,
-        is_torch: bool = False,
+        state: State | list,
+        torch_output: bool = False,
         check_game_over: bool = True,
     ) -> tuple[NDArray[np.float64], float]:
+        if isinstance(state, list):
+            state = State.from_list(state)
+
         if check_game_over and state.game_over():
             p = self.get_policy(state)
             v = 1 if state.winner == state.cur_player else -1
-            if is_torch:
+            if torch_output:
                 p = torch.from_numpy(p)
                 v = torch.FloatTensor([v])
             return p, v
 
-        l0, l1 = state.get_advancement()
-        x = torch.IntTensor(l0 + l1 + [state.cur_player])
-        model = self.get_model(state.n_pawns)
+        d = state.grid_dim
+
+        channels = get_channels(state)
+
+        x = torch.stack(channels, dim=0)
+
+        model = self.get_model(n_pawns=state.n_pawns)
         p, v = model(x)
-        if not is_torch:
+
+        if not torch_output:
             p = p.detach().numpy()
             v = v.item()
+
         return p, v
 
     def get_model(self, n_pawns: int) -> Model:
@@ -412,3 +405,42 @@ class DeepQLearningEvaluator(_RLEvaluator):
 
     def _dump(self, model, filepath: str):
         torch.save(obj=model, f=filepath)
+
+
+def get_channels(state: State) -> list[Tensor]:
+    """
+    Get a list of grid where each grid is a binary tensor of shape (d, d)
+    where the value is 1 if the pawn is on that grid and 0 otherwise.
+    """
+    d = state.grid_dim
+    channels = []
+    for p_id, player_pos in enumerate(state.pos):
+        for i, p in enumerate(player_pos):
+            grid = torch.zeros((d, d))
+            idx = (i + 1, p) if p_id == 1 else (p, i + 1)
+            grid[idx] = 1
+            channels.append(grid)
+
+    for p_id, player_pos in enumerate(state.pos):
+        grid = torch.zeros((d, d))
+        for i, p in enumerate(player_pos):
+            idx = (i + 1, p) if p_id == 1 else (p, i + 1)
+            if state.finished[p_id][i]:
+                direction = 0
+            else:
+                direction = -1 if state.returning[p_id][i] else 1
+            grid[idx] = direction
+        channels.append(grid)
+
+    max_advancement = 2 * state.max_pos
+    for p_id, player_pos in enumerate(state.pos):
+        grid = torch.zeros((d, d))
+        for i, p in enumerate(player_pos):
+            idx = (i + 1, p) if p_id == 1 else (p, i + 1)
+            grid[idx] = state.get_pawn_advancement(p_id, i) / max_advancement
+        channels.append(grid)
+
+    grid = torch.ones((d, d)) * state.cur_player
+    channels.append(grid)
+
+    return channels
