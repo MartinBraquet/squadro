@@ -1,4 +1,5 @@
 import logging
+from contextlib import contextmanager
 
 
 class logger:  # noqa
@@ -85,6 +86,17 @@ class logger:  # noqa
     @classmethod
     def critical(cls, msg, **kwargs):
         cls.log(msg=msg, level=logging.CRITICAL, **kwargs)
+
+    @classmethod
+    @contextmanager
+    def context_info(cls, msg: str):
+        """
+        Log start and end of the block
+        """
+        cls.info(msg)
+        yield
+        cls.info(f'... {msg} done')
+
 
 
 class game_logger(logger):  # noqa
