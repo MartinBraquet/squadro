@@ -1,4 +1,6 @@
 import argparse
+import os
+from datetime import datetime
 from time import sleep
 
 import pygame
@@ -7,7 +9,7 @@ from squadro.agents.best import get_best_real_time_game_agent
 from squadro.animation.board import Board, handle_events, check_quit
 from squadro.game import Game
 from squadro.state import State, get_next_state
-from squadro.tools.constants import DefaultParams
+from squadro.tools.constants import DefaultParams, DATA_PATH
 from squadro.tools.log import logger
 
 
@@ -117,6 +119,14 @@ class RealTimeAnimatedGame(Game):
     def run(self):
         try:
             super().run()
+
+            now = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+            path = DATA_PATH / 'game_results'
+            if not os.path.exists(path):
+                os.makedirs(path)
+            self.to_file(path / f'{now}.json')
+
             while True:
                 self.board.display_winner(self.state)
                 self._handle_game_over()
