@@ -30,7 +30,7 @@ class GameFromState:
         self.action_history = []
 
         self.save_states = save_states if save_states else False
-        self.state_history = []
+        self.state_history: list[State] = []
         self.move_info = []
 
     def __repr__(self):
@@ -114,13 +114,14 @@ class GameFromState:
             'state': self.state.get_init_args(),
         }
 
-    def save_results(self, filename: str | Path):
+    def to_file(self, filename: str | Path):
         """
         Save the game results on disk
 
         Note: maybe serialize and save whole objects
         """
-        self.run()
+        if self.winner is None:
+            raise ValueError('Cannot save results to file. Run the game first with run().')
         results = self.to_dict()
         with open(filename, 'w') as f:
             json.dump(results, f, indent=2)
