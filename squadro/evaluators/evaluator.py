@@ -1,9 +1,11 @@
+import io
 import json
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from multiprocessing.managers import DictProxy, ArrayProxy  # noqa
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 import torch
@@ -11,9 +13,11 @@ from numpy.typing import NDArray
 from torch import nn, Tensor
 
 from squadro.state import State
-from squadro.tools.constants import DATA_PATH
+from squadro.tools.constants import DATA_PATH, inf
 from squadro.tools.evaluation import evaluate_advancement
 from squadro.tools.log import logger
+
+default_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class Evaluator(ABC):
@@ -24,7 +28,7 @@ class Evaluator(ABC):
     @abstractmethod
     def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
         """
-        Evaluate the current state (Q value and policy), according to the current player.
+        Evaluate the current state (value and policy), according to the current player.
 
         Args:
             state: The current game state to evaluate
@@ -243,9 +247,9 @@ class QLearningEvaluator(_RLEvaluator):
 
 @dataclass
 class ModelConfig:
-    channels: int = 64
+    cnn_hidden_dim: int = 128
     value_hidden_dim: int = 64
-    policy_hidden_channels: int = 2
+    policy_hidden_dim: int = 2
     num_blocks: int = 5
 
 
@@ -280,35 +284,36 @@ class Model(nn.Module):
         n_pawns: int,
         path=None,
         config: ModelConfig = None,
+        device=None,
     ):
         super().__init__()
 
         config = config or ModelConfig()
 
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = device or default_device
 
-        in_channels = 5 + 2 * n_pawns
+        in_channels = 7 + 2 * n_pawns
         self.input_conv = nn.Sequential(
-            nn.Conv2d(in_channels, config.channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(config.channels),
+            nn.Conv2d(in_channels, config.cnn_hidden_dim, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(config.cnn_hidden_dim),
             nn.ReLU()
         )
         self.res_blocks = nn.Sequential(
-            *[ResidualBlock(config.channels) for _ in range(config.num_blocks)]
+            *[ResidualBlock(config.cnn_hidden_dim) for _ in range(config.num_blocks)]
         )
         self.policy_head = nn.Sequential(
-            nn.Conv2d(config.channels, config.policy_hidden_channels, kernel_size=1),
-            nn.BatchNorm2d(config.policy_hidden_channels),
+            nn.Conv2d(config.cnn_hidden_dim, config.policy_hidden_dim, kernel_size=1),
+            nn.BatchNorm2d(config.policy_hidden_dim),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(config.policy_hidden_channels * n_pawns ** 2, n_pawns),
+            nn.Linear(config.policy_hidden_dim * (n_pawns + 2) ** 2, n_pawns),
         )
         self.value_head = nn.Sequential(
-            nn.Conv2d(config.channels, 1, kernel_size=1),
+            nn.Conv2d(config.cnn_hidden_dim, 1, kernel_size=1),
             nn.BatchNorm2d(1),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(n_pawns ** 2, config.value_hidden_dim),
+            nn.Linear((n_pawns + 2) ** 2, config.value_hidden_dim),
             nn.ReLU(),
             nn.Linear(config.value_hidden_dim, 1),
             nn.Tanh()
@@ -318,11 +323,7 @@ class Model(nn.Module):
 
         self.eval()
 
-    def load(self, path):
-        if path is None or not os.path.exists(path):
-            return
-        state_dict = torch.load(path, map_location=self.device)
-        self.load_state_dict(state_dict)
+        self.to(device=self.device)
 
     def forward(self, x: torch.Tensor) -> (torch.Tensor, torch.Tensor):
         """
@@ -336,6 +337,19 @@ class Model(nn.Module):
         # print(value)
         return p, value
 
+    def load(self, obj: Union['Model', str | Path]):
+        if isinstance(obj, Model):
+            state_dict = obj.state_dict()
+        elif obj is not None and os.path.exists(obj):
+            state_dict = torch.load(obj, map_location=self.device)
+        else:
+            return
+        self.load_state_dict(state_dict)
+        self.to(self.device)
+
+    def byte_size(self, human_readable=True) -> int | str:
+        return get_model_size(self, human_readable)
+
 
 class DeepQLearningEvaluator(_RLEvaluator):
     """
@@ -348,12 +362,14 @@ class DeepQLearningEvaluator(_RLEvaluator):
     _Q = {}
     _default_dir = 'deep_q_learning'
 
-    def __init__(self, **kwargs):
+    def __init__(self, device=None, model_config=None, **kwargs):
         """
         :param model_path: Path to the directory where the model is stored.
         """
         kwargs.setdefault('dtype', 'pt')
         super().__init__(**kwargs)
+        self.model_config = model_config
+        self.device = device or default_device
 
     def evaluate(
         self,
@@ -368,18 +384,23 @@ class DeepQLearningEvaluator(_RLEvaluator):
             p = self.get_policy(state)
             v = 1 if state.winner == state.cur_player else -1
             if torch_output:
-                p = torch.from_numpy(p)
-                v = torch.FloatTensor([v])
+                p = torch.from_numpy(p).to(self.device)
+                v = torch.FloatTensor([v], device=self.device)
             return p, v
 
-        d = state.grid_dim
-
         channels = get_channels(state)
-
-        x = torch.stack(channels, dim=0)
+        x = torch.stack(channels, dim=0).unsqueeze(0).to(self.device)
 
         model = self.get_model(n_pawns=state.n_pawns)
         p, v = model(x)
+
+        # Only 1 batch for now
+        p = p[0]
+        v = v[0]
+
+        finished_mask = torch.asarray(state.finished[state.cur_player]).to(self.device)
+        p[finished_mask] = -inf
+        p = torch.softmax(p, dim=-1)
 
         if not torch_output:
             p = p.detach().numpy()
@@ -391,10 +412,15 @@ class DeepQLearningEvaluator(_RLEvaluator):
         if self.models.get(n_pawns) is None:
             filepath = self.get_filepath(n_pawns)
             if os.path.exists(filepath):
-                self.models[n_pawns] = torch.load(filepath, weights_only=False)
+                self.models[n_pawns] = torch.load(filepath, weights_only=False).to(self.device)
                 logger.info(f"Using model at {filepath}")
             else:
-                self.models[n_pawns] = Model(path=filepath, n_pawns=n_pawns)
+                self.models[n_pawns] = Model(
+                    path=filepath,
+                    n_pawns=n_pawns,
+                    config=self.model_config,
+                    device=self.device,
+                )
                 logger.warn(f"No file at {filepath}, creating new model")
 
         return self.models[n_pawns]
@@ -440,7 +466,36 @@ def get_channels(state: State) -> list[Tensor]:
             grid[idx] = state.get_pawn_advancement(p_id, i) / max_advancement
         channels.append(grid)
 
+    piece_movements = state.get_piece_movements()
+    for p_id, player_pos in enumerate(state.pos):
+        grid = torch.zeros((d, d))
+        for i, p in enumerate(player_pos):
+            idx = (i + 1, p) if p_id == 1 else (p, i + 1)
+            if state.finished[p_id][i]:
+                movement = 0
+            else:
+                movement = piece_movements[p_id * state.n_pawns + i]
+            grid[idx] = movement
+        channels.append(grid)
+
     grid = torch.ones((d, d)) * state.cur_player
     channels.append(grid)
 
     return channels
+
+
+def get_model_size(model: nn.Module, human_readable=True) -> int | str:
+    buffer = io.BytesIO()
+    torch.save(model.state_dict(), buffer)
+    size_in_bytes = buffer.tell()
+    if human_readable:
+        size_in_bytes = human_readable_size(size_in_bytes)
+    return size_in_bytes
+
+
+def human_readable_size(size_in_bytes):
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_in_bytes < 1024:
+            return f"{size_in_bytes:.2f} {unit}"
+        size_in_bytes /= 1024
+    return f"{size_in_bytes:.2f} TB"
