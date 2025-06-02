@@ -3,12 +3,6 @@ import pytest
 from squadro.state import State
 
 
-@pytest.fixture
-def sample_state():
-    """Provides a sample state for tests."""
-    return State(n_pawns=5, first=0)
-
-
 def test_apply_action_valid_action(sample_state):
     """Test apply_action with a valid action."""
     valid_action = 1  # Assuming 1 is a valid action for the initial state
@@ -123,3 +117,70 @@ def test_set_advancement(sample_state):
         [False, False, True, False, False], [False, False, False, False, False]
     ]
     assert sample_state.get_advancement() == advancement
+
+
+def test_state_initialization():
+    n_pawns = 3
+
+    state = State(n_pawns=n_pawns, first=0)
+    assert state.pos == [[4, 4, 4], [4, 4, 4]]
+    assert state.first == 0
+    assert state.cur_player == 0
+
+    state = State(n_pawns=n_pawns, first=1)
+    assert state.first == 1
+    assert state.cur_player == 1
+
+    with pytest.raises(AssertionError) as e:
+        State(n_pawns=n_pawns, cur_player=1)
+    assert str(e.value) == 'cur_player must be None for initial state. Set first instead.'
+
+    with pytest.raises(AssertionError) as e:
+        State(n_pawns=n_pawns, first=2)
+    assert str(e.value) == 'first must be 0 or 1, not 2'
+
+    advancement = [[3, 4, 8], [0, 8, 2]]
+    state = State(n_pawns=n_pawns, advancement=advancement)
+    assert state.pos == [[1, 0, 4], [4, 4, 2]]
+    assert state.returning == [[False, True, True], [False, True, False]]
+    assert state.finished == [[False, False, True], [False, True, False]]
+    assert state.first == 'unknown'
+    assert state.cur_player == 0
+
+    state = State(n_pawns=n_pawns, advancement=advancement, first=0)
+    assert state.first == 0
+    assert state.cur_player == 0
+
+    state = State(n_pawns=n_pawns, advancement=advancement, first=1)
+    assert state.first == 1
+    assert state.cur_player == 0
+
+    state = State(n_pawns=n_pawns, advancement=advancement, cur_player=0)
+    assert state.cur_player == 0
+    assert state.first == 'unknown'
+
+    state = State(n_pawns=n_pawns, advancement=advancement, cur_player=1)
+    assert state.cur_player == 1
+    assert state.first == 'unknown'
+
+    state = State(n_pawns=n_pawns, advancement=advancement, cur_player=0, first=0)
+    assert state.cur_player == 0
+    assert state.first == 0
+
+    state = State(n_pawns=n_pawns, advancement=advancement, cur_player=0, first=1)
+    assert state.cur_player == 0
+    assert state.first == 1
+
+    state = State(n_pawns=n_pawns, advancement=advancement, cur_player=1, first=0)
+    assert state.cur_player == 1
+    assert state.first == 0
+
+    state = State(n_pawns=n_pawns, advancement=advancement, cur_player=1, first=1)
+    assert state.cur_player == 1
+    assert state.first == 1
+
+    state = State(n_pawns=n_pawns, advancement=[[3, 0, 8], [8, 8, 2]])
+    assert state.winner == 1
+
+    state = State(n_pawns=n_pawns, advancement=[[3, 8, 8], [0, 8, 2]])
+    assert state.winner == 0
