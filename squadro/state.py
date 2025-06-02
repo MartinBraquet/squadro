@@ -27,13 +27,18 @@ def get_moves_return(n_pawns: int) -> list[list[int]]:
     return moves
 
 
-def get_moves_from_advancement(advancement: list[int] | torch.Tensor) -> list[int]:
+def get_piece_movements(advancement: list[int | list] | torch.Tensor) -> list[int]:
     """
-    >>> get_moves_from_advancement([0, 4, 3, 1, 5, 8])
+    >>> get_piece_movements([0, 4, 3, 1, 5, 8])
+    [1, 1, 2, 3, 3, 2]
+    >>> get_piece_movements([[0, 4, 3], [1, 5, 8]])
     [1, 1, 2, 3, 3, 2]
     """
-    n_pawns = len(advancement) // 2
-    advancement = [advancement[:n_pawns], advancement[n_pawns:]]
+    if len(advancement) == 2:
+        n_pawns = len(advancement[0])
+    else:
+        n_pawns = len(advancement) // 2
+        advancement = [advancement[:n_pawns], advancement[n_pawns:]]
     max_pos = n_pawns + 1
     moves = get_moves(n_pawns)
     moves_return = get_moves_return(n_pawns)
