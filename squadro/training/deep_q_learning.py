@@ -1,4 +1,5 @@
 import json
+import os
 import random
 import shutil
 from multiprocessing.managers import ArrayProxy  # noqa
@@ -6,14 +7,13 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from torch import nn, optim, Tensor
 
 from squadro import Game
 from squadro.agents.agent import Agent
-from squadro.agents.alphabeta_agent import AlphaBetaAdvancementDeepAgent
 from squadro.agents.montecarlo_agent import MonteCarloDeepQLearningAgent
-from squadro.evaluators.evaluator import DeepQLearningEvaluator
+from squadro.evaluators.evaluator import DeepQLearningEvaluator, Model
 from squadro.tools.constants import DefaultParams, inf, DATA_PATH
+from squadro.tools.dates import get_now
 from squadro.tools.log import training_logger as logger
 
 
@@ -33,6 +33,7 @@ class DeepQLearningTrainer:
         eval_interval=None,
         eval_steps=None,
         model_path=None,
+        model_config=None,
         max_mcts_steps=None,
         init_from=None,
     ):
@@ -48,29 +49,48 @@ class DeepQLearningTrainer:
         assert 2 <= self.n_pawns <= 4, "n_pawns must be between 2 and 4"
         self.n_steps = n_steps or int(5e4)
         self.eval_interval = eval_interval or int(500)
-        self.eval_steps = eval_steps or int(100)
+        self.eval_steps = max(eval_steps or int(100), 4)
         self.mcts_kwargs = dict(
-            max_steps=max_mcts_steps or 20,
+            max_steps=max_mcts_steps or int(1.3 * self.n_pawns ** 3),
             max_time_per_move=inf,
         )
 
-        self.backprop_steps = backprop_steps or 50
         self.backprop_interval = backprop_interval or 100
-        if self.n_steps < self.backprop_interval:
-            self.backprop_interval = 1
+        self.backprop_steps = backprop_steps or self.backprop_interval * 10
 
         self.agent = MonteCarloDeepQLearningAgent(
             model_path=model_path,
+            model_config=model_config,
             is_training=True,
             **self.mcts_kwargs,
         )
-        self.evaluator_old = DeepQLearningEvaluator(model_path=Path(self.model_path) / "old")
+        self.evaluator_old = DeepQLearningEvaluator(
+            model_path=Path(self.model_path) / "old",
+            model_config=model_config,
+        )
+
+        lr = lr or 1e-3
+        self.optimizer = torch.optim.Adam(
+            params=self.model.parameters(),
+            lr=lr,
+            weight_decay=1e-4,
+        )
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer,
+            eta_min=lr / 10,
+            T_max=10_000,
+        )
+
+        self.replay_buffer = ReplayBuffer(n_pawns=self.n_pawns)
+
+        self.results = dict(backprop_loss={}, eval={})
+
+        self._v_loss = torch.nn.MSELoss()
+        self._p_loss = torch.nn.CrossEntropyLoss()
 
         if init_from == 'scratch':
             self.evaluator.erase(self.n_pawns)
-
-        self.optimizer = optim.Adam(params=self.model.parameters(), lr=lr or 1e-3)
-        self.replay_buffer = ReplayBuffer(n_pawns=self.n_pawns)
+            self.replay_buffer.clear()
 
     @property
     def model_path(self):
@@ -90,6 +110,7 @@ class DeepQLearningTrainer:
         """
         logger.info(
             f"Starting training: {self.n_pawns} pawns\n"
+            f"model size: {self.model.byte_size()}\n"
             f"lr: {self.lr}\n"
             f"{self.n_steps} steps\n"
             f"backprop interval: {self.backprop_interval}\n"
@@ -97,7 +118,8 @@ class DeepQLearningTrainer:
             f"eval interval: {self.eval_interval}\n"
             f"eval steps: {self.eval_steps}\n"
             f"path: {self.model_path}\n"
-            f"replay buffer: {self.replay_buffer}"
+            f"replay buffer: {self.replay_buffer}\n"
+            f"MCTS steps: {self.agent.max_steps}\n"
         )
         self.evaluator.get_model(n_pawns=self.n_pawns)
         self.evaluator.dump(self.evaluator_old.model_path)
@@ -106,34 +128,47 @@ class DeepQLearningTrainer:
         self._run()
 
     def _run(self):
-        results_eval = {}
+        filename = get_now()
+        if not os.path.exists(path := 'results_eval'):
+            os.makedirs(path)
+        if not os.path.exists(path_loss := 'results_losses'):
+            os.makedirs(path_loss)
+
         for step in range(1, self.n_steps + 1):
-            print(step)
+            # print(step)
             self.get_training_samples()
 
             if step % self.backprop_interval == 0:
-                with logger.context_info('back_propagate'):
-                    self.back_propagate()
-                self.replay_buffer.save()
+                # with logger.context_info('back_propagate'):
+                loss_avg = self.back_propagate()
+                self.results['backprop_loss'][step] = loss_avg
 
             if step % self.eval_interval == 0:
                 ev = self.evaluate_agent(vs='initial')
                 ev_random = self.evaluate_agent(vs='random')
-                ev_other = self.evaluate_agent(vs=AlphaBetaAdvancementDeepAgent(max_depth=5))
+                # ev_other = self.evaluate_agent(vs=AlphaBetaAdvancementDeepAgent(max_depth=5))
                 logger.info(
                     f"{step} steps"
                     f", {ev * 100 :.0f}% vs initial"
-                    f", {ev_other * 100 :.0f}% vs ab_deep"
+                    # f", {ev_other * 100 :.0f}% vs ab_deep"
                     f", {ev_random * 100 :.0f}% vs random"
                 )
-                results_eval[step] = dict(
+                self.results['eval'][step] = dict(
                     ev=ev,
                     ev_random=ev_random,
-                    ev_ab_deep=ev_other,
+                    # ev_ab_deep=ev_other,
                 )
+                if ev > .55:
+                    logger.info(f"Keeping current model and updating checkpoint")
+                    self.model_old.load(self.model)
+                else:
+                    self.model.load(self.model_old)
                 with logger.context_info('dump'):
-                    json.dump(results_eval, open(f'results_eval.json', 'w'))
+                    json.dump(self.results['eval'], open(f'{path}/{filename}.json', 'w'))
+                    json.dump(self.results['backprop_loss'],
+                              open(f'{path_loss}/{filename}.json', 'w'))
                     self.evaluator.dump()
+                    self.replay_buffer.save()
 
         self.evaluator.dump()
 
@@ -166,61 +201,110 @@ class DeepQLearningTrainer:
 
         return history
 
-    def back_propagate(self) -> None:
+    def back_propagate(self):
         """
         Update the Q-network based on the reward obtained at the end of the game.
-
-        :return: None
         """
         self.model.train()
-        v_loss = nn.MSELoss()
-        p_loss = nn.CrossEntropyLoss()
-        batches = random.sample(self.replay_buffer.buffer, k=self.backprop_steps)
+        buffer = self.replay_buffer.buffer
+        batches = random.sample(buffer, k=min(self.backprop_steps, len(buffer)))
 
+        losses = []
+        v_losses = []
+        p_losses = []
         for state, probs, reward in batches:
             assert reward in {-1, 1}, f"Got reward {reward} instead of {-1, 1} for state {state}"
-            reward = torch.FloatTensor([reward])
+            reward = torch.FloatTensor([reward]).to(self.model.device)
             self.optimizer.zero_grad()
             p, v = self.evaluator.evaluate(state, torch_output=True, check_game_over=False)
             check_nan(p)
             check_nan(v)
             check_nan(reward)
-            loss = v_loss(reward, v)
+            loss = self._v_loss(reward, v)
+            v_losses += [loss.item()]
             if probs is not None:
-                probs = torch.FloatTensor(probs)
-                loss += p_loss(p, probs)
+                probs = torch.FloatTensor(probs).to(self.model.device)
+                p_loss = self._p_loss(p, probs)
+                loss += p_loss
+                p_losses += [p_loss.item()]
             check_nan(loss)
+            losses += [loss.item()]
             loss.backward()
             self.optimizer.step()
+            if self.scheduler:
+                self.scheduler.step()
 
         self.model.eval()
 
+        loss_avg = np.mean(losses)
+        logger.info(f"Backprop loss: {loss_avg:.2f}"
+                    f" (p: {np.mean(p_losses):.2f}, v: {np.mean(v_losses):.2f})")
+
+        return loss_avg
+
     @property
-    def model(self) -> nn.Module:  # noqa
+    def model(self) -> Model:
         return self.evaluator.get_model(n_pawns=self.n_pawns)
+
+    @property
+    def model_old(self) -> Model:
+        return self.evaluator_old.get_model(n_pawns=self.n_pawns)
 
     def evaluate_agent(self, vs: str | Agent = None) -> float:
         """
         Evaluate the success rate of the current agent against another agent.
+
+        Note that if the agent is in evaluation mode (`is_training = False`), then it is fully
+        deterministic. And two deterministic agents will always have the same result. The only
+        randomness would come from who started: 100% if agent 0 wins in either starting position,
+        0% if agent 1 wins in either starting position, and close to 50% if agent 0 wins in one
+        starting position. This is a very bad measure for benchmark evaluation.
+
+        This is a benchmark evaluation, so we want to compare the two models in many different
+        configurations. As the model gets trained, we expect it to have a win rate slowly
+        increasing from 50% to 100% against its past checkpoints.
+        To do so, we must keep the randomness in each agent's decision by keeping
+        `is_training = True`.
         """
-        agent = MonteCarloDeepQLearningAgent(evaluator=self.evaluator, **self.mcts_kwargs)
+        agent = MonteCarloDeepQLearningAgent(
+            evaluator=self.evaluator,
+            is_training=vs != 'random',
+            **self.mcts_kwargs
+        )
 
         if vs == 'initial':
-            vs = MonteCarloDeepQLearningAgent(evaluator=self.evaluator_old, **self.mcts_kwargs)
+            vs = MonteCarloDeepQLearningAgent(
+                evaluator=self.evaluator_old,
+                is_training=True,
+                **self.mcts_kwargs,
+            )
         elif vs is None:
             vs = agent
 
-        v = 0
-        for n in range(self.eval_steps):
-            g = Game(
-                n_pawns=self.n_pawns,
-                agent_0=agent,
-                agent_1=vs,
-            )
-            g.run()
-            v += 1 - g.winner
+        v = {agent_id: {first: dict(win=0, n=0) for first in (0, 1)} for agent_id in (0, 1)}
+        wins = 0
+        n_per_section = self.eval_steps // 4
+        for agent_id in (0, 1):
+            agent_0, agent_1 = (agent, vs) if agent_id == 0 else (vs, agent)
+            for first in (0, 1):
+                for n in range(n_per_section):
+                    g = Game(
+                        n_pawns=self.n_pawns,
+                        agent_0=agent_0,
+                        agent_1=agent_1,
+                        first=first,
+                    )
+                    g.run()
+                    v[agent_id][first]['win'] += int(g.winner == agent_id)
+                wins += v[agent_id][first]['win']
+                v[agent_id][first]['n'] = n_per_section
+                win_rate = v[agent_id][first]['win'] / n_per_section
+                logger.info(
+                    f"Current model as agent {agent_id}, first {first}: {win_rate * 100 :.0f}% win")
 
-        return v / self.eval_steps
+        logger.info(v)
+
+        return wins / self.eval_steps
 
 
 def check_nan(data):
@@ -239,7 +323,7 @@ def check_nan(data):
     """
     if data is None:
         return
-    if isinstance(data, Tensor) and not torch.isnan(data).any():
+    if isinstance(data, torch.Tensor) and not torch.isnan(data).any():
         return
     if isinstance(data, np.ndarray) and not np.isnan(data).any():
         return
@@ -263,22 +347,29 @@ class ReplayBuffer:
     def __repr__(self):
         return f"{len(self.buffer)} samples @ {self.path}"
 
-    def load(self):
-        if self.path.exists():
-            self.buffer = json.load(open(self.path, 'r'))
-
     def append(self, sample):
         self.buffer.append(sample)
+        if len(self.buffer) > 20e3:
+            self.buffer.pop(0)
 
     def __add__(self, other):
         self.buffer += other
         return self
 
+    def load(self):
+        if self.path.exists():
+            self.buffer = json.load(open(self.path, 'r'))
+
     def save(self):
-        shutil.copy(self.path, self.path.with_suffix('.bak'))
+        if self.path.exists():
+            shutil.copy(self.path, self.path.with_suffix('.bak'))
         json.dump(self.buffer, open(self.path, 'w'))
 
     def pretty_save(self):
         text = '\n'.join(map(str, self.buffer))
         with open(self.path.with_suffix('.txt'), 'w') as f:
             f.write(text)
+
+    def clear(self):
+        self.buffer = []
+        self.save()
