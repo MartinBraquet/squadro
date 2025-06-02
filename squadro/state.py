@@ -83,21 +83,31 @@ class State:
         n_pawns: int = None,
         first: int = None,
         advancement: list[list[int]] = None,
-        cur_player: int = 0,
+        cur_player: int = None,
     ):
-        self.cur_player = cur_player
         self.winner = None
         self.timeout_player = None
         self.invalid_player = None
-        if first is not None:
-            assert first in [0, 1], "first must be 0 or 1"
-            self.cur_player = first
-        else:
-            self.cur_player = random.randint(0, 1)
-        self.first = self.cur_player
 
-        if advancement:
+        is_init = advancement is None
+
+        if not is_init:
             n_pawns = len(advancement[0])
+            if first is None:
+                first = 'unknown'
+
+        if first is not None:
+            assert first in [0, 1, 'unknown'], f"first must be 0 or 1, not {first}"
+            self.first = first
+        else:
+            self.first = random.randint(0, 1)
+
+        if is_init:
+            assert cur_player is None, "cur_player must be None for initial state. Set first instead."
+            self.cur_player = self.first
+        else:
+            self.cur_player = cur_player if cur_player is not None else 0
+
         self.n_pawns = int(n_pawns) if n_pawns is not None else DefaultParams.n_pawns
         assert 2 <= self.n_pawns <= MAX_PAWNS, f"n_pawns must be between 2 and {MAX_PAWNS}"
 
@@ -106,6 +116,7 @@ class State:
         self.returning = [[False] * self.n_pawns for _ in range(2)]
         self.finished = [[False] * self.n_pawns for _ in range(2)]
         self.total_moves = 0
+
         if advancement:
             self.set_from_advancement(advancement)
 
@@ -391,10 +402,11 @@ class State:
         """
         advancement, cur_player = arr
         n_pawns = len(advancement[0])
-        state = cls(n_pawns=n_pawns)
-        state.set_from_advancement(advancement)
-        state.cur_player = cur_player
+        state = cls(n_pawns=n_pawns, advancement=advancement, cur_player=cur_player)
         return state
+
+    def get_piece_movements(self):
+        return get_piece_movements(self.get_advancement())
 
 
 def get_next_state(state: State, action: int) -> State:
