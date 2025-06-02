@@ -76,8 +76,11 @@ class DynamicBoardAnimation:
 
             logger.info(f"State: {self.state}")
             for evaluator in self.evaluators:
-                state_value = evaluator.get_value(self.state)
-                logger.info(f"Evaluation from {evaluator.__class__.__name__}: {state_value:.4f}")
+                policy, state_value = evaluator.evaluate(self.state)
+                logger.info(
+                    f"Evaluation from {evaluator.__class__.__name__}: {state_value: .4f}\n"
+                    f"policy: {policy}\n"
+                )
 
             board.turn_draw(self.state)
 
