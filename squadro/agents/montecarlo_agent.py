@@ -376,9 +376,18 @@ class MonteCarloQLearningAgent(_MonteCarloAgent):
 
 
 class MonteCarloDeepQLearningAgent(_MonteCarloAgent):
-    def __init__(self, model_path: str = None, **kwargs):
+    def __init__(
+        self,
+        model_path: str = None,
+        model_config=None,
+        **kwargs,
+    ):
         kwargs.setdefault('method', 'p_uct')
-        kwargs.setdefault('evaluator', DeepQLearningEvaluator(model_path=model_path))
+        if 'evaluator' not in kwargs:
+            kwargs['evaluator'] = DeepQLearningEvaluator(
+                model_path=model_path,
+                model_config=model_config
+            )
         super().__init__(**kwargs)
 
     @classmethod
