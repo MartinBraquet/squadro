@@ -1,27 +1,23 @@
 import json
-import random
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
-import numpy as np
-
 from squadro import Game
 from squadro.state import State
+from squadro.tools.probabilities import set_seed
 from squadro.training.q_learning import QLearningTrainer
 
 
 def run(game: Game):
-    state = State(game.n_pawns)
-    game.state = state.copy()
-    game.state.set_from_advancement([[0, 0, 0], [8, 8, 0]])
+    state = State(n_pawns=game.n_pawns)
+    game.state = State(n_pawns=game.n_pawns, advancement=[[0, 0, 0], [8, 8, 0]])
     game.state_history = [state, state.get_next_state(0), game.state]
 
 
 class TestQLearningTrainer(TestCase):
     def setUp(self):
-        np.random.seed(42)
-        random.seed(42)
+        set_seed(42)
 
     @patch.object(Game, 'run', run)
     def test_from_scratch(self):
@@ -34,6 +30,11 @@ class TestQLearningTrainer(TestCase):
                 lr=.2,
                 gamma=.95,
                 model_path=model_path,
+                mcts_kwargs=dict(
+                    tau=1,
+                    epsilon_action=.3,
+                    alpha_dirochlet=.5,
+                )
             )
             trainer.run()
             q = json.load(open(f"{model_path}/model_3.json"))
