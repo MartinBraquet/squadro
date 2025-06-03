@@ -77,7 +77,7 @@ class DeepQLearningTrainer:
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             self.optimizer,
             eta_min=lr / 10,
-            T_max=10_000,
+            T_max=1000 * self.n_pawns ** 2,
         )
 
         self.replay_buffer = ReplayBuffer(n_pawns=self.n_pawns)
@@ -151,11 +151,9 @@ class DeepQLearningTrainer:
 
             if step % self.eval_interval == 0:
                 self.evaluate_agents(step)
-                if self.results['eval'][step]['checkpoint'] > .55:
-                    logger.info(f"Keeping current model and updating checkpoint")
+                if self.results['eval'][step]['checkpoint'] > .6:
+                    logger.info(f"Updating best checkpoint")
                     self.model_old.load(self.model)
-                else:
-                    self.model.load(self.model_old)
                 with logger.context_info('dump'):
                     json.dump(self.results['eval'], open(f'{path}/{filename}.json', 'w'))
                     json.dump(self.results['backprop_loss'],
