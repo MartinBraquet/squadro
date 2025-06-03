@@ -9,6 +9,7 @@ from squadro import Game
 from squadro.agents.agent import Agent
 from squadro.agents.alphabeta_agent import AlphaBetaAdvancementDeepAgent
 from squadro.agents.montecarlo_agent import MonteCarloQLearningAgent
+from squadro.benchmarking import benchmark
 from squadro.evaluators.evaluator import QLearningEvaluator
 from squadro.state import State
 from squadro.tools.constants import DefaultParams, inf
@@ -35,6 +36,7 @@ class QLearningTrainer:
         model_path=None,
         parallel=None,
         max_mcts_steps=None,
+        mcts_kwargs=None,
     ):
         """
         :param n_pawns: number of pawns in the game.
@@ -54,8 +56,10 @@ class QLearningTrainer:
         self.eval_interval = eval_interval or int(100 if parallel else 500)
         self.eval_steps = eval_steps or int(100)
         self.parallel = parallel if parallel is not None else False
-        self.mcts_kwargs = dict(
-            max_steps=max_mcts_steps or 20,
+        mcts_kwargs = mcts_kwargs or {}
+        mcts_kwargs.setdefault('max_steps', max_mcts_steps or 20)
+        self._agent_kwargs = dict(
+            mcts_kwargs=mcts_kwargs,
             max_time_per_move=inf,
         )
 
@@ -66,7 +70,7 @@ class QLearningTrainer:
         self.agent = MonteCarloQLearningAgent(
             model_path=model_path,
             is_training=True,
-            **self.mcts_kwargs,
+            **self._agent_kwargs,
         )
         self.evaluator_old = QLearningEvaluator(model_path=Path(self.model_path) / "old")
 
@@ -181,27 +185,30 @@ class QLearningTrainer:
     def Q(self) -> dict:  # noqa
         return self.evaluator.get_Q(n_pawns=self.n_pawns)
 
-    def evaluate_agent(self, vs: str | Agent) -> float:
+    def evaluate_agent(self, vs: str | Agent = None) -> float:
         """
         Evaluate the success rate of the current agent against another agent.
         """
-        if vs == 'initial':
-            vs = MonteCarloQLearningAgent(evaluator=self.evaluator_old, **self.mcts_kwargs)
-
         agent = MonteCarloQLearningAgent(
             evaluator=self.evaluator,
-            is_training=False,
-            **self.mcts_kwargs,
+            is_training=vs != 'random',
+            **self._agent_kwargs,
         )
 
-        v = 0
-        for n in range(self.eval_steps):
-            g = Game(
-                n_pawns=self.n_pawns,
-                agent_0=agent,
-                agent_1=vs,
+        if vs == 'initial':
+            vs = MonteCarloQLearningAgent(
+                evaluator=self.evaluator_old,
+                is_training=True,
+                **self._agent_kwargs,
             )
-            g.run()
-            v += 1 - g.winner
+        elif vs is None:
+            vs = agent
 
-        return v / self.eval_steps
+        win_rate = benchmark(
+            agent_0=agent,
+            agent_1=vs,
+            n_pawns=self.n_pawns,
+            n=self.eval_steps,
+        )
+
+        return win_rate
