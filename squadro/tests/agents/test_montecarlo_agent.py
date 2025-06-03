@@ -1,22 +1,22 @@
-import random
+import copy
 from unittest import TestCase
 from unittest.mock import patch
 
 import numpy as np
 
 from squadro.agents.montecarlo_agent import MonteCarloAdvancementAgent, MCTS, \
-    MonteCarloRolloutAgent, MonteCarloQLearningAgent
+    MonteCarloRolloutAgent, MonteCarloQLearningAgent, MonteCarloDeepQLearningAgent
 from squadro.evaluators.evaluator import AdvancementEvaluator, ConstantEvaluator
 from squadro.game import Game
 from squadro.state import State
 from squadro.tools.constants import inf
+from squadro.tools.probabilities import set_seed
 from squadro.tools.tree import Node
 
 
 class TestMonteCarlo(TestCase):
     def setUp(self):
-        random.seed(0)
-        np.random.seed(0)
+        set_seed()
         self.state = State(first=0, n_pawns=3)
 
     def test_get_action_tricky(self):
@@ -24,7 +24,8 @@ class TestMonteCarlo(TestCase):
         agent = MonteCarloAdvancementAgent(
             pid=0,
             max_time_per_move=1e9,
-            max_steps=50,
+            mcts_kwargs=dict(max_steps=50),
+
         )
         action = agent.get_action(self.state)
         self.assertEqual(0, action)
@@ -33,7 +34,7 @@ class TestMonteCarlo(TestCase):
         agent = MonteCarloAdvancementAgent(
             pid=0,
             max_time_per_move=1e9,
-            max_steps=50,
+            mcts_kwargs=dict(max_steps=50),
         )
         for i in range(1, 4):
             self.state.set_from_advancement([[0, 0, 0], [i] * 3])
@@ -41,16 +42,18 @@ class TestMonteCarlo(TestCase):
             self.assertEqual(3 - i, action)
 
     def test_game_ab(self):
-        agent = MonteCarloAdvancementAgent(max_steps=200)
+        agent = MonteCarloAdvancementAgent(mcts_kwargs=dict(max_steps=200))
         game = Game(n_pawns=4, agent_0=agent, agent_1='ab_relative_advancement', first=0)
         game.run()
         self.assertEqual(game.winner, 0)
 
     def test_p_uct(self):
         agent = MonteCarloAdvancementAgent(
-            uct=1,
-            method='p_uct',
-            max_steps=10,
+            mcts_kwargs=dict(
+                uct=1,
+                method='p_uct',
+                max_steps=10,
+            ),
             max_time_per_move=1e9,
         )
         game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
@@ -63,9 +66,11 @@ class TestMonteCarlo(TestCase):
 
     def test_uct(self):
         agent = MonteCarloAdvancementAgent(
-            uct=1,
-            method='uct',
-            max_steps=10,
+            mcts_kwargs=dict(
+                uct=1,
+                method='uct',
+                max_steps=10,
+            ),
             max_time_per_move=1e9,
         )
         game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
@@ -78,10 +83,15 @@ class TestMonteCarlo(TestCase):
 
     def test_biased_uct(self):
         agent = MonteCarloAdvancementAgent(
-            uct=1,
-            method='biased_uct',
-            max_steps=10,
             max_time_per_move=1e9,
+            mcts_kwargs=dict(
+                uct=1,
+                method='biased_uct',
+                max_steps=10,
+                tau=1,
+                epsilon_action=.3,
+                p_mix=.2,
+            )
         )
         game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
         action_history = game.run()
@@ -259,7 +269,13 @@ class TestMonteCarlo(TestCase):
     def test_get_av(self):
         state = self.state
         root = Node(state)
-        mcts = MCTS(root, evaluator=ConstantEvaluator(2), method='uct')
+        mcts = MCTS(
+            root,
+            evaluator=ConstantEvaluator(2),
+            method='uct',
+            epsilon_action=.3,
+            tau=1,
+        )
         mcts._expand_leaf(root)
         for i, edge in enumerate(root.edges):
             edge.stats.N = i
@@ -273,7 +289,11 @@ class TestMonteCarlo(TestCase):
     def test_choose_action(self):
         state = self.state
         root = Node(state)
-        mcts = MCTS(root, evaluator=ConstantEvaluator(2), method='uct')
+        mcts = MCTS(
+            root,
+            evaluator=ConstantEvaluator(2),
+            method='uct',
+        )
         action = mcts.choose_action(pi=np.array([.2, .5, .3]))
         self.assertEqual(1, action)
 
@@ -285,15 +305,16 @@ class TestMonteCarlo(TestCase):
 
 class TestMonteCarloRollout(TestCase):
     def setUp(self):
-        random.seed(0)
-        np.random.seed(0)
+        set_seed()
         self.state = State(first=0, n_pawns=3)
 
     def test_game(self):
         agent = MonteCarloRolloutAgent(
-            uct=1,
-            method='uct',
-            max_steps=10,
+            mcts_kwargs=dict(
+                uct=1,
+                method='uct',
+                max_steps=10,
+            ),
             max_time_per_move=1e9,
         )
         game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
@@ -307,27 +328,66 @@ class TestMonteCarloRollout(TestCase):
     def test_get_action_tricky(self):
         self.state.set_from_advancement([[0, 4, 8], [5, 2, 8]])
         agent = MonteCarloRolloutAgent(
+            mcts_kwargs=dict(
+                max_steps=50,
+                method='uct',
+            ),
             pid=0,
             max_time_per_move=1e9,
-            max_steps=50,
-            method='uct',
         )
         action = agent.get_action(self.state)
         self.assertEqual(0, action)
 
+    def test_mcts_kwargs(self):
+        mcts_kwargs = dict(uct=1)
+        passed_mcts_kwargs = copy.deepcopy(mcts_kwargs)
+        MonteCarloRolloutAgent(mcts_kwargs=passed_mcts_kwargs)
+        self.assertEqual(mcts_kwargs, passed_mcts_kwargs)
+
 
 class TestMonteCarloQLearning(TestCase):
     def setUp(self):
-        random.seed(0)
-        np.random.seed(0)
+        set_seed()
         self.state = State(first=0, n_pawns=3)
 
     def test_game(self):
         agent = MonteCarloQLearningAgent(
-            uct=1,
-            method='uct',
-            max_steps=10,
+            mcts_kwargs=dict(
+                uct=1,
+                method='uct',
+                max_steps=10,
+            ),
             max_time_per_move=1e9,
         )
         game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
         game.run()
+
+    def test_mcts_kwargs(self):
+        mcts_kwargs = dict(uct=1)
+        passed_mcts_kwargs = copy.deepcopy(mcts_kwargs)
+        MonteCarloQLearningAgent(mcts_kwargs=passed_mcts_kwargs)
+        self.assertEqual(mcts_kwargs, passed_mcts_kwargs)
+
+
+class TestMonteCarloDeepQLearning(TestCase):
+    def setUp(self):
+        set_seed()
+        self.state = State(first=0, n_pawns=3)
+
+    def test_game(self):
+        agent = MonteCarloDeepQLearningAgent(
+            mcts_kwargs=dict(
+                uct=1,
+                method='uct',
+                max_steps=10,
+            ),
+            max_time_per_move=1e9,
+        )
+        game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
+        game.run()
+
+    def test_mcts_kwargs(self):
+        mcts_kwargs = dict(uct=1)
+        passed_mcts_kwargs = copy.deepcopy(mcts_kwargs)
+        MonteCarloDeepQLearningAgent(mcts_kwargs=passed_mcts_kwargs)
+        self.assertEqual(mcts_kwargs, passed_mcts_kwargs)
