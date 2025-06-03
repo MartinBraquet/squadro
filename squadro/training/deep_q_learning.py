@@ -2,7 +2,6 @@ import json
 import os
 import random
 import shutil
-from multiprocessing.managers import ArrayProxy  # noqa
 from pathlib import Path
 
 import numpy as np
@@ -11,7 +10,9 @@ import torch
 from squadro import Game
 from squadro.agents.agent import Agent
 from squadro.agents.montecarlo_agent import MonteCarloDeepQLearningAgent
+from squadro.benchmarking import benchmark
 from squadro.evaluators.evaluator import DeepQLearningEvaluator, Model
+from squadro.state import State
 from squadro.tools.constants import DefaultParams, inf, DATA_PATH
 from squadro.tools.dates import get_now
 from squadro.tools.log import training_logger as logger
@@ -34,8 +35,8 @@ class DeepQLearningTrainer:
         eval_steps=None,
         model_path=None,
         model_config=None,
-        max_mcts_steps=None,
         init_from=None,
+        mcts_kwargs=None,
     ):
         """
         :param n_pawns: number of pawns in the game.
@@ -50,10 +51,8 @@ class DeepQLearningTrainer:
         self.n_steps = n_steps or int(5e4)
         self.eval_interval = eval_interval or int(500)
         self.eval_steps = max(eval_steps or int(100), 4)
-        self.mcts_kwargs = dict(
-            max_steps=max_mcts_steps or int(1.3 * self.n_pawns ** 3),
-            max_time_per_move=inf,
-        )
+        self.mcts_kwargs = mcts_kwargs or {}
+        self.mcts_kwargs.setdefault('max_steps', int(1.3 * self.n_pawns ** 3))
 
         self.backprop_interval = backprop_interval or 100
         self.backprop_steps = backprop_steps or self.backprop_interval * 10
@@ -62,7 +61,7 @@ class DeepQLearningTrainer:
             model_path=model_path,
             model_config=model_config,
             is_training=True,
-            **self.mcts_kwargs,
+            **self._agent_kwargs,
         )
         self.evaluator_old = DeepQLearningEvaluator(
             model_path=Path(self.model_path) / "old",
@@ -91,6 +90,13 @@ class DeepQLearningTrainer:
         if init_from == 'scratch':
             self.evaluator.erase(self.n_pawns)
             self.replay_buffer.clear()
+
+    @property
+    def _agent_kwargs(self):
+        return dict(
+            mcts_kwargs=self.mcts_kwargs,
+            max_time_per_move=inf,
+        )
 
     @property
     def model_path(self):
@@ -144,21 +150,8 @@ class DeepQLearningTrainer:
                 self.results['backprop_loss'][step] = loss_avg
 
             if step % self.eval_interval == 0:
-                ev = self.evaluate_agent(vs='initial')
-                ev_random = self.evaluate_agent(vs='random')
-                # ev_other = self.evaluate_agent(vs=AlphaBetaAdvancementDeepAgent(max_depth=5))
-                logger.info(
-                    f"{step} steps"
-                    f", {ev * 100 :.0f}% vs initial"
-                    # f", {ev_other * 100 :.0f}% vs ab_deep"
-                    f", {ev_random * 100 :.0f}% vs random"
-                )
-                self.results['eval'][step] = dict(
-                    ev=ev,
-                    ev_random=ev_random,
-                    # ev_ab_deep=ev_other,
-                )
-                if ev > .55:
+                self.evaluate_agents(step)
+                if self.results['eval'][step]['checkpoint'] > .55:
                     logger.info(f"Keeping current model and updating checkpoint")
                     self.model_old.load(self.model)
                 else:
@@ -168,9 +161,27 @@ class DeepQLearningTrainer:
                     json.dump(self.results['backprop_loss'],
                               open(f'{path_loss}/{filename}.json', 'w'))
                     self.evaluator.dump()
+                    self.evaluator.dump(Path(self.evaluator_old.model_path) / get_now())
                     self.replay_buffer.save()
 
         self.evaluator.dump()
+
+    def evaluate_agents(self, step):
+        vs_list = [
+            'checkpoint',
+            'random',
+            # AlphaBetaAdvancementDeepAgent(max_depth=5),
+        ]
+        results = {}
+        for vs in vs_list:
+            results[str(vs)] = self.evaluate_agent(vs=vs)
+
+        self.results['eval'][step] = results
+
+        msg = f"{step} steps"
+        for k, v in results.items():
+            msg += f", {v * 100 :.0f}% vs {k}"
+        logger.info(msg)
 
     def get_training_samples(self):
         game = Game(
@@ -206,7 +217,7 @@ class DeepQLearningTrainer:
         Update the Q-network based on the reward obtained at the end of the game.
         """
         self.model.train()
-        buffer = self.replay_buffer.buffer
+        buffer = self.replay_buffer.data
         batches = random.sample(buffer, k=min(self.backprop_steps, len(buffer)))
 
         losses = []
@@ -269,42 +280,26 @@ class DeepQLearningTrainer:
         agent = MonteCarloDeepQLearningAgent(
             evaluator=self.evaluator,
             is_training=vs != 'random',
-            **self.mcts_kwargs
+            **self._agent_kwargs,
         )
 
-        if vs == 'initial':
+        if vs == 'checkpoint':
             vs = MonteCarloDeepQLearningAgent(
                 evaluator=self.evaluator_old,
                 is_training=True,
-                **self.mcts_kwargs,
+                **self._agent_kwargs,
             )
         elif vs is None:
             vs = agent
 
-        v = {agent_id: {first: dict(win=0, n=0) for first in (0, 1)} for agent_id in (0, 1)}
-        wins = 0
-        n_per_section = self.eval_steps // 4
-        for agent_id in (0, 1):
-            agent_0, agent_1 = (agent, vs) if agent_id == 0 else (vs, agent)
-            for first in (0, 1):
-                for n in range(n_per_section):
-                    g = Game(
-                        n_pawns=self.n_pawns,
-                        agent_0=agent_0,
-                        agent_1=agent_1,
-                        first=first,
-                    )
-                    g.run()
-                    v[agent_id][first]['win'] += int(g.winner == agent_id)
-                wins += v[agent_id][first]['win']
-                v[agent_id][first]['n'] = n_per_section
-                win_rate = v[agent_id][first]['win'] / n_per_section
-                logger.info(
-                    f"Current model as agent {agent_id}, first {first}: {win_rate * 100 :.0f}% win")
+        win_rate = benchmark(
+            agent_0=agent,
+            agent_1=vs,
+            n_pawns=self.n_pawns,
+            n=self.eval_steps,
+        )
 
-        logger.info(v)
-
-        return wins / self.eval_steps
+        return win_rate
 
 
 def check_nan(data):
@@ -341,35 +336,48 @@ class ReplayBuffer:
         if path is None:
             raise ValueError("path must be specified")
         self.path = Path(path)
-        self.buffer = []
+        self.data = []
         self.load()
 
     def __repr__(self):
-        return f"{len(self.buffer)} samples @ {self.path}"
+        return f"{len(self.data)} samples @ {self.path}"
 
     def append(self, sample):
-        self.buffer.append(sample)
-        if len(self.buffer) > 20e3:
-            self.buffer.pop(0)
+        self.data.append(sample)
+        self._cap()
+
+    def _cap(self):
+        if len(self.data) > 20e3:
+            self.data.pop(0)
 
     def __add__(self, other):
-        self.buffer += other
+        self.data += other
+        self._cap()
         return self
 
     def load(self):
         if self.path.exists():
-            self.buffer = json.load(open(self.path, 'r'))
+            self.data = json.load(open(self.path, 'r'))
 
     def save(self):
         if self.path.exists():
             shutil.copy(self.path, self.path.with_suffix('.bak'))
-        json.dump(self.buffer, open(self.path, 'w'))
+        json.dump(self.data, open(self.path, 'w'))
 
     def pretty_save(self):
-        text = '\n'.join(map(str, self.buffer))
+        text = '\n'.join(map(str, self.data))
         with open(self.path.with_suffix('.txt'), 'w') as f:
             f.write(text)
 
     def clear(self):
-        self.buffer = []
+        self.data = []
         self.save()
+
+    def get_winners(self):
+        winners = []
+        for s, p, r in self.data:
+            if p is None:
+                s = State.from_list(s)
+                assert s.winner is not None
+                winners.append(s.winner)
+        return winners
