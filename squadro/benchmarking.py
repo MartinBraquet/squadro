@@ -22,7 +22,7 @@ def benchmark(
     me, vs = agent_0, agent_1
     v = {agent_id: {first: dict(win=0, n=0) for first in (0, 1)} for agent_id in (0, 1)}
     wins = 0
-    n_per_section = n // 4
+    n_per_section = max(n // 4, 1)
     n = 4 * n_per_section
 
     if save_loss:
