@@ -28,7 +28,6 @@ dependencies = [
     'pydantic',
     'pygame',
     'torch',
-    'torchvision',
 ]
 
 
