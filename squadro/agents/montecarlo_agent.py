@@ -42,6 +42,7 @@ class MCTS:
         max_time: float = None,
         max_steps: int = None,
         epsilon_action: float = None,
+        stochastic_moves: float = None,
         p_mix: float = None,
         alpha_dirichlet: float = None,
         tau: float = None,
@@ -66,24 +67,31 @@ class MCTS:
         assert self.max_steps > 0
 
         # Probability to sample the action from pi instead of arg max pi during training
-        self.epsilon_action = epsilon_action if epsilon_action is not None else 0.3
-        assert 0 <= self.epsilon_action <= 1
+        self.epsilon_action = epsilon_action
+        # assert 0 <= self.epsilon_action <= 1
+
+        # Choose stochastic actions for the first `stochastic_moves` moves
+        if stochastic_moves is not None:
+            self.stochastic_moves = stochastic_moves
+        else:
+            self.stochastic_moves = self.n_pawns ** 2
+        assert 0 <= self.stochastic_moves
 
         # If MCTS stochastic: select action with distribution pi^(1/tau)
-        self.tau = tau or 1
+        self.tau = tau or .2
         assert self.tau > 0
 
         # Upper Confidence Bound for Trees (exploration constant)
-        self.uct = uct or DefaultParams.get_uct(n_pawns=self.root.state.n_pawns)
+        self.uct = uct or DefaultParams.get_uct(n_pawns=self.n_pawns)
         assert self.uct > 0
 
         # Mixing constant between prior and dirichlet noise in P-UCT during training
-        self.p_mix = p_mix if p_mix is not None else .2
+        self.p_mix = p_mix if p_mix is not None else .25
         assert 0 <= self.p_mix <= 1
 
         # Dirichlet noise spread.
         # Small value means spiky distribution (one action dominates)
-        self.alpha_dirichlet = alpha_dirichlet or .5
+        self.alpha_dirichlet = alpha_dirichlet or .03
         assert self.alpha_dirichlet > 0
 
         self.move_probs = None
@@ -91,7 +99,19 @@ class MCTS:
         logger.info(f"Using MCTS method '{self.method}', uct={self.uct}")
 
     def __repr__(self) -> str:
-        return f"{self.evaluator.__class__.__name__}, method: {self.method}, uct: {self.uct}"
+        return (
+            f"{self.evaluator.__class__.__name__}"
+            f", method: {self.method}"
+            f", uct: {self.uct}"
+            f", max_steps: {self.max_steps}"
+            f", tau: {self.tau}"
+            # f", epsilon_action: {self.epsilon_action}"
+            f", stochastic_moves: {self.stochastic_moves}"
+        )
+
+    @property
+    def n_pawns(self) -> int:
+        return self.root.state.n_pawns
 
     @staticmethod
     def get_available_methods() -> list[str]:
@@ -284,7 +304,13 @@ class MCTS:
         Returns:
             int: The chosen action index
         """
-        if self.is_training and random.uniform(0, 1) < self.epsilon_action:
+        condition = None
+        if self.is_training:
+            if self.epsilon_action is not None:
+                condition = random.uniform(0, 1) < self.epsilon_action
+            else:
+                condition = self.root.state.total_moves < self.stochastic_moves
+        if self.is_training and condition:
             action = get_random_index(pi)
         else:
             actions = np.argwhere(pi == max(pi))
@@ -301,21 +327,25 @@ class _MonteCarloAgent(Agent, ABC):
     def __init__(
         self,
         evaluator: Evaluator,
-        max_steps: Optional[int] = None,
-        uct: Optional[float] = None,
-        method: Optional[str] = None,
         is_training: bool = False,
+        mcts_kwargs: Optional[dict] = None,
         **kwargs
     ):
         # use fixed time for now
         kwargs.setdefault('max_time_per_move', DefaultParams.max_time_per_move)
         super().__init__(**kwargs)
-        self.max_steps = max_steps
-        self.uct = uct
-        self.method = method
-        self.evaluator = evaluator
-        self.is_training = is_training
         self.mcts_move_probs = None
+        self.mcts_kwargs = mcts_kwargs or {}
+        self.mcts_kwargs['is_training'] = is_training
+        self.mcts_kwargs['evaluator'] = evaluator
+
+    @property
+    def evaluator(self) -> Evaluator:
+        return self.mcts_kwargs['evaluator']
+
+    @property
+    def max_steps(self) -> int:
+        return self.mcts_kwargs['max_steps']
 
     def get_action(
         self,
@@ -326,13 +356,10 @@ class _MonteCarloAgent(Agent, ABC):
         root = Node(state)
         mcts = MCTS(
             root=root,
-            evaluator=self.evaluator,
             max_time=self.max_time_per_move,
-            max_steps=self.max_steps,
-            uct=self.uct,
-            method=self.method,
-            is_training=self.is_training,
+            **self.mcts_kwargs,
         )
+        # print(mcts)
         action = mcts.get_action()
         self.mcts_move_probs = mcts.move_probs
         return action
@@ -354,10 +381,15 @@ class MonteCarloAdvancementAgent(_MonteCarloAgent):
 
 
 class MonteCarloRolloutAgent(_MonteCarloAgent):
-    def __init__(self, *args, **kwargs):
-        kwargs.setdefault('method', 'uct')
+    def __init__(
+        self,
+        mcts_kwargs: Optional[dict] = None,
+        **kwargs,
+    ):
+        mcts_kwargs = (mcts_kwargs or {}).copy()
+        mcts_kwargs.setdefault('method', 'uct')
         kwargs.setdefault('evaluator', RolloutEvaluator())
-        super().__init__(*args, **kwargs)
+        super().__init__(mcts_kwargs=mcts_kwargs, **kwargs)
 
     @classmethod
     def get_name(cls) -> str:
@@ -365,10 +397,17 @@ class MonteCarloRolloutAgent(_MonteCarloAgent):
 
 
 class MonteCarloQLearningAgent(_MonteCarloAgent):
-    def __init__(self, model_path: str = None, **kwargs):
-        kwargs.setdefault('method', 'uct')
-        kwargs.setdefault('evaluator', QLearningEvaluator(model_path=model_path))
-        super().__init__(**kwargs)
+    def __init__(
+        self,
+        model_path: str = None,
+        mcts_kwargs: Optional[dict] = None,
+        **kwargs,
+    ):
+        mcts_kwargs = (mcts_kwargs or {}).copy()
+        mcts_kwargs.setdefault('method', 'uct')
+        if 'evaluator' not in kwargs:
+            kwargs['evaluator'] = QLearningEvaluator(model_path=model_path)
+        super().__init__(mcts_kwargs=mcts_kwargs, **kwargs)
 
     @classmethod
     def get_name(cls) -> str:
@@ -380,15 +419,17 @@ class MonteCarloDeepQLearningAgent(_MonteCarloAgent):
         self,
         model_path: str = None,
         model_config=None,
+        mcts_kwargs: Optional[dict] = None,
         **kwargs,
     ):
-        kwargs.setdefault('method', 'p_uct')
+        mcts_kwargs = (mcts_kwargs or {}).copy()
+        mcts_kwargs.setdefault('method', 'p_uct')
         if 'evaluator' not in kwargs:
             kwargs['evaluator'] = DeepQLearningEvaluator(
                 model_path=model_path,
                 model_config=model_config
             )
-        super().__init__(**kwargs)
+        super().__init__(mcts_kwargs=mcts_kwargs, **kwargs)
 
     @classmethod
     def get_name(cls) -> str:
