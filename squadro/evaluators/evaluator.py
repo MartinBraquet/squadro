@@ -403,7 +403,7 @@ class DeepQLearningEvaluator(_RLEvaluator):
         p = torch.softmax(p, dim=-1)
 
         if not torch_output:
-            p = p.detach().numpy()
+            p = p.cpu().detach().numpy()
             v = v.item()
 
         return p, v
