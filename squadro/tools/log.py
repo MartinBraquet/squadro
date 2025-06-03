@@ -11,6 +11,7 @@ class logger:  # noqa
         'monte_carlo': True,
         'alpha_beta': True,
         'training': True,
+        'benchmark': True,
     }
 
     @classmethod
@@ -113,3 +114,7 @@ class alpha_beta_logger(logger):  # noqa
 
 class training_logger(logger):  # noqa
     section = 'training'
+
+
+class benchmark_logger(logger):  # noqa
+    section = 'benchmark'
