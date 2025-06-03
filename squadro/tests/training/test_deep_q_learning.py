@@ -4,17 +4,15 @@ from unittest import TestCase
 import pytest
 
 import squadro
-from squadro import Game
 from squadro.evaluators.evaluator import ModelConfig
-from squadro.state import State
 from squadro.tools.probabilities import set_seed
 
 
-def run(game: Game):
-    state = State(game.n_pawns)
-    game.state = state.copy()
-    game.state.set_from_advancement([[0, 0, 0], [8, 8, 0]])
-    game.state_history = [state, state.get_next_state(0), game.state]
+# def run(game: Game):
+#     state = State(game.n_pawns)
+#     game.state = state.copy()
+#     game.state.set_from_advancement([[0, 0, 0], [8, 8, 0]])
+#     game.state_history = [state, state.get_next_state(0), game.state]
 
 
 class TestDeepQLearningTrainer(TestCase):
@@ -34,12 +32,14 @@ class TestDeepQLearningTrainer(TestCase):
                 n_pawns=3,
                 eval_steps=4,
                 eval_interval=3,
-                max_mcts_steps=4,
                 backprop_interval=3,
                 backprop_steps=2,
                 n_steps=4,
                 model_path=model_path,
                 model_config=config,
+                mcts_kwargs=dict(
+                    max_steps=4,
+                )
             )
             trainer.run()
             # q = json.load(open(f"{model_path}/model_3.pt"))
