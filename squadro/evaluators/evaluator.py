@@ -78,6 +78,8 @@ class ModelConfig:
             text += f", double_value"
         if self.board_flipping:
             text += f", board_flip"
+        if self.separate_networks:
+            text += f", separate_networks"
         return text
 
 
@@ -172,6 +174,7 @@ class Model(nn.Module):
 
     def save(self, filepath: str | Path, weights_only=False):
         obj = self.state_dict() if weights_only else self
+        # mkdir(filepath)
         torch.save(obj=obj, f=filepath)
 
     def byte_size(self, human_readable=True) -> int | str:
