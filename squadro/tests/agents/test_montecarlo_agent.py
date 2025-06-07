@@ -1,4 +1,5 @@
 import copy
+from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -393,16 +394,18 @@ class TestMonteCarloDeepQLearning(TestCase):
         self.state = State(first=0, n_pawns=3)
 
     def test_game(self):
-        agent = MonteCarloDeepQLearningAgent(
-            mcts_kwargs=dict(
-                uct=1,
-                method='uct',
-                max_steps=10,
-            ),
-            max_time_per_move=1e9,
-        )
-        game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
-        game.run()
+        with TemporaryDirectory() as model_path:
+            agent = MonteCarloDeepQLearningAgent(
+                mcts_kwargs=dict(
+                    uct=1,
+                    method='uct',
+                    max_steps=10,
+                ),
+                max_time_per_move=1e9,
+                model_path=model_path,
+            )
+            game = Game(agent_0=agent, agent_1='random', n_pawns=3, first=0)
+            game.run()
 
     def test_mcts_kwargs(self):
         mcts_kwargs = dict(uct=1)

@@ -9,15 +9,15 @@ from typing import Union
 
 import numpy as np
 import torch
-from numpy._typing import NDArray
+from numpy.typing import NDArray
 from torch import nn
 
-from squadro import logger
 from squadro.evaluators.channels import get_num_channels, get_channels
 from squadro.evaluators.evaluator import Evaluator
 from squadro.state import State
 from squadro.tools.constants import DATA_PATH, inf
 from squadro.tools.dates import get_file_modified_time, get_now, READABLE_DATE_FMT
+from squadro.tools.log import logger
 from squadro.tools.ml import get_model_size
 from squadro.tools.state import get_grid_shape, state_to_index, get_reward
 
