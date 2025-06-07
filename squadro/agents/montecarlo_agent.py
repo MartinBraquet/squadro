@@ -44,7 +44,7 @@ class MCTS:
         epsilon_action: float = None,
         stochastic_moves: float = None,
         p_mix: float = None,
-        alpha_dirichlet: float = None,
+        a_dirichlet: float = None,
         tau: float = None,
         uct: float = None,
         is_training: bool = None,
@@ -74,25 +74,28 @@ class MCTS:
         if stochastic_moves is not None:
             self.stochastic_moves = stochastic_moves
         else:
-            self.stochastic_moves = self.n_pawns ** 2
+            self.stochastic_moves = root.state.max_moves
         assert 0 <= self.stochastic_moves
 
         # If MCTS stochastic: select action with distribution pi^(1/tau)
-        self.tau = tau or .2
+        self.tau = tau or 1.
         assert self.tau > 0
+
+        self.decay_rate = .9
+        self.min_temp = .1
 
         # Upper Confidence Bound for Trees (exploration constant)
         self.uct = uct or DefaultParams.get_uct(n_pawns=self.n_pawns)
         assert self.uct > 0
 
         # Mixing constant between prior and dirichlet noise in P-UCT during training
-        self.p_mix = p_mix if p_mix is not None else .25
+        self.p_mix = p_mix if p_mix is not None else .4
         assert 0 <= self.p_mix <= 1
 
         # Dirichlet noise spread.
         # Small value means spiky distribution (one action dominates)
-        self.alpha_dirichlet = alpha_dirichlet or .03
-        assert self.alpha_dirichlet > 0
+        self.a_dirichlet = a_dirichlet or .9 / self.n_pawns
+        assert self.a_dirichlet > 0
 
         self.move_probs = None
 
@@ -110,6 +113,24 @@ class MCTS:
         )
 
     @property
+    def config(self) -> dict:
+        data = {
+            'method': self.method,
+            'uct': self.uct,
+            'max_steps': self.max_steps,
+            'tau': self.tau,
+            'min_temp': self.min_temp,
+            'decay_rate': self.decay_rate,
+            'stochastic_moves': self.stochastic_moves,
+            'p_mix': self.p_mix,
+            'a_dirichlet': self.a_dirichlet,
+            'evaluator': self.evaluator.__class__.__name__,
+        }
+        if self.epsilon_action is not None:
+            data['epsilon_action'] = self.epsilon_action
+        return data
+
+    @property
     def n_pawns(self) -> int:
         return self.root.state.n_pawns
 
@@ -125,7 +146,7 @@ class MCTS:
     def _get_sim_edge_values(self, node: Node) -> list[float]:
         # Introduce slight incentives for the root node to explore different edges (for training)
         epsilon = self.p_mix if node == self.root and self.is_training else 0
-        nu = np.random.dirichlet([self.alpha_dirichlet] * len(node.edges))
+        nu = np.random.dirichlet([self.a_dirichlet] * len(node.edges))
         nb = sum(edge.stats.N for edge in node.edges)
 
         values = []
@@ -280,16 +301,26 @@ class MCTS:
                 - np.ndarray: Q-values for each action
         """
         n_pawns = self.root.state.n_pawns
-        pi = np.zeros(n_pawns, dtype=np.float32)
+        pi = - np.ones(n_pawns, dtype=np.float32) * inf
         values = np.zeros(n_pawns, dtype=np.float32)
 
+        temperature = self.get_temperature()
+
         for edge in self.root.edges:
-            pi[edge.action] = pow(edge.stats.N, 1 / self.tau)
+            pi[edge.action] = np.log(edge.stats.N + 1e-9) / temperature
             values[edge.action] = edge.stats.Q
 
-        pi = pi / float(np.sum(pi))
+        # Numerical trick to avoid overflow when computing softmax (N^temp)
+        pi = np.exp(pi - pi.max())
+        pi /= pi.sum()
 
         return pi, values
+
+    def get_temperature(self) -> float:
+        """
+        Get temperature for the softmax function.
+        """
+        return max(self.tau * self.decay_rate ** self.root.state.turn_count, self.min_temp)
 
     def choose_action(self, pi: np.ndarray) -> int:
         """
@@ -309,11 +340,11 @@ class MCTS:
             if self.epsilon_action is not None:
                 condition = random.uniform(0, 1) < self.epsilon_action
             else:
-                condition = self.root.state.total_moves < self.stochastic_moves
+                condition = self.root.state.turn_count < self.stochastic_moves
         if self.is_training and condition:
             action = get_random_index(pi)
         else:
-            actions = np.argwhere(pi == max(pi))
+            actions = np.argwhere(pi == pi.max())
             # If several actions have the same prob, pick randomly among them
             action = random.choice(actions)[0]
         return int(action)
@@ -347,6 +378,19 @@ class _MonteCarloAgent(Agent, ABC):
     def max_steps(self) -> int:
         return self.mcts_kwargs['max_steps']
 
+    @property
+    def mcts_config(self) -> dict:
+        mcts = self.get_mcts(Node(State()))
+        return mcts.config
+
+    def get_mcts(self, root):
+        mcts = MCTS(
+            root=root,
+            max_time=self.max_time_per_move,
+            **self.mcts_kwargs,
+        )
+        return mcts
+
     def get_action(
         self,
         state: State,
@@ -354,11 +398,7 @@ class _MonteCarloAgent(Agent, ABC):
         time_left: Optional[float] = None,
     ) -> int:
         root = Node(state)
-        mcts = MCTS(
-            root=root,
-            max_time=self.max_time_per_move,
-            **self.mcts_kwargs,
-        )
+        mcts = self.get_mcts(root)
         # print(mcts)
         action = mcts.get_action()
         self.mcts_move_probs = mcts.move_probs

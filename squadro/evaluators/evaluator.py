@@ -2,6 +2,7 @@ import io
 import json
 import os
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from dataclasses import dataclass
 from multiprocessing.managers import DictProxy, ArrayProxy  # noqa
 from pathlib import Path
@@ -14,6 +15,7 @@ from torch import nn, Tensor
 
 from squadro.state import State
 from squadro.tools.constants import DATA_PATH, inf
+from squadro.tools.dates import get_now, READABLE_DATE_FMT, get_file_modified_time
 from squadro.tools.evaluation import evaluate_advancement
 from squadro.tools.log import logger
 
@@ -123,6 +125,7 @@ def index_to_state(index: int, n_pawns: int):
 
 class _RLEvaluator(Evaluator, ABC):
     _default_dir = 'default'
+    _weight_update_timestamp = defaultdict(lambda: 'unknown')
 
     def __init__(self, model_path: str | Path = None, dtype='json'):
         """
@@ -131,6 +134,9 @@ class _RLEvaluator(Evaluator, ABC):
         self.model_path = Path(model_path or DATA_PATH / self._default_dir)
         self.dtype = dtype
 
+    def get_weight_update_timestamp(self, n_pawns: int):
+        return self._weight_update_timestamp[self.get_filepath(n_pawns)]
+
     def erase(self, n_pawns: int):
         filepath = self.get_filepath(n_pawns)
         if os.path.isfile(filepath):
@@ -138,14 +144,14 @@ class _RLEvaluator(Evaluator, ABC):
 
     @classmethod
     def reload(cls):
-        cls._Q = {}
+        cls._models = {}
 
     def get_filepath(self, n_pawns: int, model_path=None) -> str:
         model_path = Path(model_path or self.model_path)
         return str(model_path / f"model_{n_pawns}.{self.dtype}")
 
     def clear(self):
-        self._Q[self.dir_key] = {}
+        self._models[self.dir_key] = {}
 
     @property
     def dir_key(self):
@@ -156,9 +162,9 @@ class _RLEvaluator(Evaluator, ABC):
         """
         :return: A dictionary mapping pawn numbers to Q tables.
         """
-        if self.dir_key not in self._Q:
-            self._Q[self.dir_key] = {}
-        return self._Q[self.dir_key]
+        if self.dir_key not in self._models:
+            self._models[self.dir_key] = {}
+        return self._models[self.dir_key]
 
     def set_model(
         self,
@@ -187,14 +193,14 @@ class QLearningEvaluator(_RLEvaluator):
      _Q is a cache for all Q-tables.
      _Q['/path/dir'][3] is the Q-table in '/path/dir' for 3 pawns (stared in file '/path/dir/model_3.json')
     """
-    _Q = {}
+    _models = {}
     _default_dir = 'q_learning'
 
     @property
     def is_json(self):
         return self.dtype == 'json'
 
-    def get_Q(self, n_pawns: int) -> dict:  # noqa
+    def get_model(self, n_pawns: int) -> dict:  # noqa
         if self.models.get(n_pawns) is None:
             filepath = self.get_filepath(n_pawns)
             if os.path.exists(filepath):
@@ -203,6 +209,7 @@ class QLearningEvaluator(_RLEvaluator):
                 else:
                     self.models[n_pawns] = np.load(filepath, allow_pickle=True)
                 logger.info(f"Using Q table at {filepath}")
+                self._weight_update_timestamp[filepath] = get_file_modified_time(filepath)
             else:
                 if self.is_json:
                     self.models[n_pawns] = {}
@@ -211,6 +218,7 @@ class QLearningEvaluator(_RLEvaluator):
                     length = np.ravel_multi_index([s - 1 for s in shape], dims=shape)
                     self.models[n_pawns] = np.zeros(length, dtype=np.float32)
                 logger.warn(f"No file at {filepath}, creating new Q table")
+                self._weight_update_timestamp[filepath] = get_now(fmt=READABLE_DATE_FMT)
 
         return self.models[n_pawns]
 
@@ -231,7 +239,7 @@ class QLearningEvaluator(_RLEvaluator):
         if check_game_over and state.game_over():
             return 1 if state.winner == state.cur_player else -1
 
-        q = self.get_Q(state.n_pawns)
+        q = self.get_model(state.n_pawns)
         state_id = self.get_id(state)
         if self.is_json:
             return q.get(state_id, 0)
@@ -247,10 +255,26 @@ class QLearningEvaluator(_RLEvaluator):
 
 @dataclass
 class ModelConfig:
-    cnn_hidden_dim: int = 128
+    cnn_hidden_dim: int = 64
     value_hidden_dim: int = 64
-    policy_hidden_dim: int = 2
+    policy_hidden_dim: int = 4
     num_blocks: int = 5
+    double_value_head: bool = False
+    board_flipping: bool = True
+    separate_networks: bool = False
+
+    def __repr__(self):
+        text = (
+            f"cnn_d={self.cnn_hidden_dim}"
+            f", v_d={self.value_hidden_dim}"
+            f", p_d={self.policy_hidden_dim}"
+            f", blocks={self.num_blocks}"
+        )
+        if self.double_value_head:
+            text += f", double_value"
+        if self.board_flipping:
+            text += f", board_flip"
+        return text
 
 
 class ResidualBlock(nn.Module):
@@ -275,8 +299,6 @@ class Model(nn.Module):
      non-local and need to be discovered via self-attention mechanisms (like relationships between
      distant game pieces or different turns). Important, because the value of one action must
      strongly depend on the position of all the opponent's pieces.
-
-    TODO: check that they are all using device
     """
 
     def __init__(
@@ -289,10 +311,12 @@ class Model(nn.Module):
         super().__init__()
 
         config = config or ModelConfig()
+        self.config = config
 
         self.device = device or default_device
 
-        in_channels = 7 + 2 * n_pawns
+        in_channels = get_num_channels(n_pawns, board_flipping=config.board_flipping)
+        grid_dim = n_pawns + 2
         self.input_conv = nn.Sequential(
             nn.Conv2d(in_channels, config.cnn_hidden_dim, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(config.cnn_hidden_dim),
@@ -306,16 +330,17 @@ class Model(nn.Module):
             nn.BatchNorm2d(config.policy_hidden_dim),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(config.policy_hidden_dim * (n_pawns + 2) ** 2, n_pawns),
+            nn.Linear(config.policy_hidden_dim * grid_dim ** 2, n_pawns),
         )
+        n_value_heads = 2 if config.double_value_head else 1
         self.value_head = nn.Sequential(
             nn.Conv2d(config.cnn_hidden_dim, 1, kernel_size=1),
             nn.BatchNorm2d(1),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear((n_pawns + 2) ** 2, config.value_hidden_dim),
+            nn.Linear(grid_dim ** 2, config.value_hidden_dim),
             nn.ReLU(),
-            nn.Linear(config.value_hidden_dim, 1),
+            nn.Linear(config.value_hidden_dim, n_value_heads),
             nn.Tanh()
         )
 
@@ -359,10 +384,15 @@ class DeepQLearningEvaluator(_RLEvaluator):
      _Q['/path/dir'][3] is the neural network in '/path/dir' for 3 pawns (stared in file '/path/dir/model_3.json')
     """
 
-    _Q = {}
+    _models = {}
     _default_dir = 'deep_q_learning'
 
-    def __init__(self, device=None, model_config=None, **kwargs):
+    def __init__(
+        self,
+        device=None,
+        model_config: ModelConfig = None,
+        **kwargs,
+    ):
         """
         :param model_path: Path to the directory where the model is stored.
         """
@@ -376,22 +406,28 @@ class DeepQLearningEvaluator(_RLEvaluator):
         state: State | list,
         torch_output: bool = False,
         check_game_over: bool = True,
-    ) -> tuple[NDArray[np.float64], float]:
+        return_all: bool = False,
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64] | float]:
         if isinstance(state, list):
             state = State.from_list(state)
 
         if check_game_over and state.game_over():
             p = self.get_policy(state)
-            v = 1 if state.winner == state.cur_player else -1
+            v = get_reward(
+                winner=state.winner,
+                cur_player=state.cur_player,
+                return_all=return_all,
+            )
             if torch_output:
                 p = torch.from_numpy(p).to(self.device)
-                v = torch.FloatTensor([v], device=self.device)
+                v = torch.from_numpy(v).to(self.device)
             return p, v
 
-        channels = get_channels(state)
+        model = self.get_model(n_pawns=state.n_pawns)
+
+        channels = get_channels(state, board_flipping=model.config.board_flipping)
         x = torch.stack(channels, dim=0).unsqueeze(0).to(self.device)
 
-        model = self.get_model(n_pawns=state.n_pawns)
         p, v = model(x)
 
         # Only 1 batch for now
@@ -404,9 +440,18 @@ class DeepQLearningEvaluator(_RLEvaluator):
 
         if not torch_output:
             p = p.cpu().detach().numpy()
-            v = v.item()
+            v = v.cpu().detach().numpy()
+
+        if not return_all:
+            if len(v) > 1:
+                v = v[state.cur_player]
+            elif not torch_output:
+                v = v.item()
 
         return p, v
+
+    def is_pretrained(self, n_pawns: int) -> bool:
+        return os.path.exists(self.get_filepath(n_pawns))
 
     def get_model(self, n_pawns: int) -> Model:
         if self.models.get(n_pawns) is None:
@@ -414,6 +459,7 @@ class DeepQLearningEvaluator(_RLEvaluator):
             if os.path.exists(filepath):
                 self.models[n_pawns] = torch.load(filepath, weights_only=False).to(self.device)
                 logger.info(f"Using model at {filepath}")
+                self._weight_update_timestamp[filepath] = get_file_modified_time(filepath)
             else:
                 self.models[n_pawns] = Model(
                     path=filepath,
@@ -422,6 +468,7 @@ class DeepQLearningEvaluator(_RLEvaluator):
                     device=self.device,
                 )
                 logger.warn(f"No file at {filepath}, creating new model")
+                self._weight_update_timestamp[filepath] = get_now(fmt=READABLE_DATE_FMT)
 
         return self.models[n_pawns]
 
@@ -433,22 +480,91 @@ class DeepQLearningEvaluator(_RLEvaluator):
         torch.save(obj=model, f=filepath)
 
 
-def get_channels(state: State) -> list[Tensor]:
+def get_num_channels(n_pawns: int, board_flipping: bool) -> int:
+    return 6 + 4 * n_pawns - int(board_flipping)
+
+
+def get_channels(state: State, board_flipping=True) -> list[Tensor]:
     """
     Get a list of grid where each grid is a binary tensor of shape (d, d)
     where the value is 1 if the pawn is on that grid and 0 otherwise.
     """
+    cur_player = state.cur_player
     d = state.grid_dim
     channels = []
-    for p_id, player_pos in enumerate(state.pos):
-        for i, p in enumerate(player_pos):
-            grid = torch.zeros((d, d))
-            idx = (i + 1, p) if p_id == 1 else (p, i + 1)
-            grid[idx] = 1
-            channels.append(grid)
+
+    # positions, one plane per piece
+    position_channels = get_position_channels(state, board_flipping)
+    channels += position_channels
+
+    # speed, one plane per piece
+    speed_channels = get_speed_channels(state, board_flipping)
+    channels += speed_channels
+
+    # returning, one plane per player
+    returning_channels = get_returning_channels(state, board_flipping)
+    channels += returning_channels
+
+    # advancement, one plane per player
+    advancement_channels = get_advancement_channels(state, board_flipping)
+    channels += advancement_channels
+
+    # current player, one plane
+    if not board_flipping:
+        grid = torch.ones((d, d)) * cur_player
+        channels.append(grid)
+
+    # turn count, one plane
+    grid = torch.ones((d, d)) * state.turn_count / state.max_moves
+    channels.append(grid)
+
+    return channels
+
+
+def get_position_channels(state: State, board_flipping: bool):
+    channels = []
 
     for p_id, player_pos in enumerate(state.pos):
-        grid = torch.zeros((d, d))
+        c = []
+        for i, p in enumerate(player_pos):
+            grid = torch.zeros((state.grid_dim, state.grid_dim))
+            idx = (i + 1, p) if p_id == 1 else (p, i + 1)
+            grid[idx] = 1
+            c.append(grid)
+        channels.append(c)
+
+    channels = flip_piece_boards(channels, state, board_flipping)
+
+    return channels
+
+
+def get_speed_channels(state: State, board_flipping: bool):
+    channels = []
+
+    piece_movements = state.get_piece_movements()
+    for p_id, player_pos in enumerate(state.pos):
+        c = []
+        for i, p in enumerate(player_pos):
+            grid = torch.zeros((state.grid_dim, state.grid_dim))
+            idx = (i + 1, p) if p_id == 1 else (p, i + 1)
+            if state.finished[p_id][i]:
+                movement = 0
+            else:
+                movement = piece_movements[p_id * state.n_pawns + i] / 3
+            grid[idx] = movement
+            c.append(grid)
+        channels.append(c)
+
+    channels = flip_piece_boards(channels, state, board_flipping)
+
+    return channels
+
+
+def get_returning_channels(state: State, board_flipping: bool):
+    channels = []
+
+    for p_id, player_pos in enumerate(state.pos):
+        grid = torch.zeros((state.grid_dim, state.grid_dim))
         for i, p in enumerate(player_pos):
             idx = (i + 1, p) if p_id == 1 else (p, i + 1)
             if state.finished[p_id][i]:
@@ -458,29 +574,40 @@ def get_channels(state: State) -> list[Tensor]:
             grid[idx] = direction
         channels.append(grid)
 
+    channels = flip_boards(channels, state, board_flipping)
+
+    return channels
+
+
+def get_advancement_channels(state: State, board_flipping: bool):
+    channels = []
     max_advancement = 2 * state.max_pos
+
     for p_id, player_pos in enumerate(state.pos):
-        grid = torch.zeros((d, d))
+        grid = torch.zeros((state.grid_dim, state.grid_dim))
         for i, p in enumerate(player_pos):
             idx = (i + 1, p) if p_id == 1 else (p, i + 1)
             grid[idx] = state.get_pawn_advancement(p_id, i) / max_advancement
         channels.append(grid)
 
-    piece_movements = state.get_piece_movements()
-    for p_id, player_pos in enumerate(state.pos):
-        grid = torch.zeros((d, d))
-        for i, p in enumerate(player_pos):
-            idx = (i + 1, p) if p_id == 1 else (p, i + 1)
-            if state.finished[p_id][i]:
-                movement = 0
-            else:
-                movement = piece_movements[p_id * state.n_pawns + i]
-            grid[idx] = movement
-        channels.append(grid)
+    channels = flip_boards(channels, state, board_flipping)
 
-    grid = torch.ones((d, d)) * state.cur_player
-    channels.append(grid)
+    return channels
 
+
+def flip_boards(channels, state, board_flipping):
+    if board_flipping and state.cur_player == 1:
+        channels = list(reversed(channels))
+        channels = [g.T for g in channels]
+    return channels
+
+
+def flip_piece_boards(channels, state, board_flipping):
+    if board_flipping and state.cur_player == 1:
+        channels = list(reversed(channels))
+        for i in range(len(channels)):
+            channels[i] = [g.T for g in channels[i]]
+    channels = [g for c in channels for g in c]
     return channels
 
 
@@ -499,3 +626,14 @@ def human_readable_size(size_in_bytes):
             return f"{size_in_bytes:.2f} {unit}"
         size_in_bytes /= 1024
     return f"{size_in_bytes:.2f} TB"
+
+
+def get_reward(winner: int, cur_player: int, return_all: bool) -> NDArray[np.float64]:
+    """
+    Get the double-value reward for a given winner.
+    """
+    v1 = 2 * winner - 1
+    reward = np.array([-v1, v1], dtype=np.float32)
+    if not return_all:
+        reward = reward[cur_player]
+    return reward
