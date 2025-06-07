@@ -32,8 +32,8 @@ class _RLEvaluator(Evaluator, ABC):
     def get_weight_update_timestamp(self, n_pawns: int):
         return self._weight_update_timestamp[self.get_filepath(n_pawns)]
 
-    def erase(self, n_pawns: int):
-        filepath = self.get_filepath(n_pawns)
+    def erase(self, n_pawns: int, filepath=None):
+        filepath = filepath or self.get_filepath(n_pawns)
         if os.path.isfile(filepath):
             os.remove(filepath)
 
@@ -53,7 +53,7 @@ class _RLEvaluator(Evaluator, ABC):
         return str(self.model_path)
 
     @property
-    def models(self):
+    def models(self) -> dict:
         """
         :return: A dictionary mapping pawn numbers to Q tables.
         """
@@ -170,7 +170,7 @@ class DeepQLearningEvaluator(_RLEvaluator):
         """
         kwargs.setdefault('dtype', 'pt')
         super().__init__(**kwargs)
-        self.model_config = model_config
+        self.model_config = model_config or ModelConfig()
         self.device = device or default_device
 
     def evaluate(
@@ -195,7 +195,7 @@ class DeepQLearningEvaluator(_RLEvaluator):
                 v = torch.from_numpy(v).to(self.device)
             return p, v
 
-        model = self.get_model(n_pawns=state.n_pawns)
+        model = self.get_model(n_pawns=state.n_pawns, player=state.cur_player)
 
         channels = get_channels(state, board_flipping=model.config.board_flipping)
         x = torch.stack(channels, dim=0).unsqueeze(0).to(self.device)
@@ -223,14 +223,33 @@ class DeepQLearningEvaluator(_RLEvaluator):
         return p, v
 
     def is_pretrained(self, n_pawns: int) -> bool:
-        return os.path.exists(self.get_filepath(n_pawns))
+        key = self.get_key(n_pawns, player=0)
+        return os.path.exists(self.get_filepath(key))
 
-    def get_model(self, n_pawns: int) -> Model:
-        if self.models.get(n_pawns) is None:
-            filepath = self.get_filepath(n_pawns)
+    def get_key(self, n_pawns, player):
+        if self.model_config.separate_networks:
+            assert player is not None, "Player must be specified for separate networks"
+            key = f"{n_pawns}_{player}"
+        else:
+            key = n_pawns
+        return key
+
+    @staticmethod
+    def extract_from_key(key):
+        if isinstance(key, int):
+            return dict(n_pawns=key)
+        elif isinstance(key, str):
+            n_pawns, player = key.split("_")
+            return dict(n_pawns=int(n_pawns), player=int(player))
+        raise ValueError(f"Invalid key: {key}")
+
+    def get_model(self, n_pawns: int, player: int = None) -> Model:
+        key = self.get_key(n_pawns, player=player)
+        if self.models.get(key) is None:
+            filepath = self.get_filepath(key)
             if os.path.exists(filepath):
                 logger.info(f"Using pre-trained model at {filepath}")
-                self.models[n_pawns] = torch.load(
+                self.models[key] = torch.load(
                     filepath,
                     weights_only=False,
                     map_location=self.device
@@ -238,14 +257,45 @@ class DeepQLearningEvaluator(_RLEvaluator):
                 self._weight_update_timestamp[filepath] = get_file_modified_time(filepath)
             else:
                 logger.warn(f"No file at {filepath}, creating new model")
-                self.models[n_pawns] = Model(
+                self.models[key] = Model(
                     n_pawns=n_pawns,
                     config=self.model_config,
                     device=self.device,
                 )
                 self._weight_update_timestamp[filepath] = get_now(fmt=READABLE_DATE_FMT)
 
-        return self.models[n_pawns]
+        return self.models[key]
 
     def _dump(self, model: Model, filepath: str):
         model.save(filepath)
+
+    def erase(self, n_pawns: int, filepath=None):
+        if self.model_config.separate_networks and not filepath:
+            for player in range(2):
+                key = self.get_key(n_pawns, player=player)
+                filepath = self.get_filepath(key)
+                super().erase(n_pawns=n_pawns, filepath=filepath)
+            return
+
+        super().erase(n_pawns=n_pawns, filepath=filepath)
+
+    def load_weights(self, other: 'DeepQLearningEvaluator', n_pawns: int):
+        """
+        Loads the weights from the specified DeepQLearningEvaluator instance and applies
+        them to the current model. This function does not return any value but modifies
+        the internal state of the model to reflect the newly loaded weights.
+
+        Arguments:
+            other: DeepQLearningEvaluator
+                An instance of DeepQLearningEvaluator containing the weights to be
+                loaded and applied to the model.
+
+            n_pawns: int
+
+
+        Returns:
+            None
+        """
+        for k, model in other.models.items():
+            key_info = self.extract_from_key(k)
+            self.get_model(**key_info).load(model)
