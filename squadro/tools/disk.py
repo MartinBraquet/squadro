@@ -1,3 +1,4 @@
+import pickle
 from pathlib import Path
 
 
@@ -21,3 +22,33 @@ def extend_filename(file_path: str | Path, s: str) -> Path:
     if is_string:
         file_path_new = str(file_path_new)
     return file_path_new
+
+
+def pickle_dump(obj, file_path: str | Path):
+    """
+    Dumps an object to a file using pickle.
+    :param obj:
+    :param file_path:
+    :return:
+    """
+
+    with open(file_path, 'wb') as f:
+        pickle.dump(obj, f)
+
+
+def pickle_load(file_path: str | Path):
+    """
+    Loads an object from a file using pickle.
+    :param file_path:
+    :return:
+    """
+    with open(file_path, 'rb') as f:
+        return pickle.load(f)
+
+
+def mkdir(path: str | Path):
+    """
+    Creates a directory if it doesn't exist.
+    :param path:
+    """
+    Path(path).mkdir(parents=True, exist_ok=True)
