@@ -5,13 +5,14 @@ from unittest.mock import patch
 
 from squadro import minimax
 from squadro.agents.alphabeta_agent import (
-    AlphaBetaAdvancementAgent,
-    AlphaBetaRelativeAdvancementAgent,
+    AdvancementAgent,
+    RelativeAdvancementAgent,
     AlphaBetaAgent,
-    AlphaBetaAdvancementDeepAgent,
+    AlphaBetaRelativeAdvancementAgent,
 )
 from squadro.agents.random_agent import RandomAgent
 from squadro.state import State
+from squadro.tools.constants import DefaultParams
 
 
 class RandomAlphaBetaAgent(AlphaBetaAgent):
@@ -60,7 +61,7 @@ class TestAlphaBeta(TestCase):
         self.assertEqual(1, action)
 
     def test_successors(self):
-        self.agent = AlphaBetaAdvancementAgent(pid=0)
+        self.agent = AdvancementAgent(pid=0)
         self.state = State(n_pawns=3, first=0)
         expected = [
             (0, [[3, 4, 4], [4, 4, 4]]),
@@ -76,7 +77,7 @@ class TestAlphaBeta(TestCase):
 
 class TestAdvancement(TestCase):
     def setUp(self):
-        self.agent = AlphaBetaAdvancementAgent(pid=0)
+        self.agent = AdvancementAgent(pid=0)
         self.state = State(first=0, n_pawns=3)
 
     def test_cutoff(self):
@@ -103,7 +104,7 @@ class TestAdvancement(TestCase):
 
 class TestRelativeAdvancement(TestCase):
     def setUp(self):
-        self.agent = AlphaBetaRelativeAdvancementAgent(pid=0)
+        self.agent = RelativeAdvancementAgent(pid=0)
         self.state = State(first=0, n_pawns=3)
 
     def test_evaluate(self):
@@ -116,7 +117,7 @@ class TestRelativeAdvancement(TestCase):
 
 class TestAdvancementDeep(TestCase):
     def setUp(self):
-        self.agent = AlphaBetaAdvancementDeepAgent(pid=0, max_depth=5)
+        self.agent = AlphaBetaRelativeAdvancementAgent(pid=0, max_depth=5)
         self.state = State(first=0, n_pawns=3)
 
     def test_evaluate(self):
@@ -132,7 +133,7 @@ class TestAdvancementDeep(TestCase):
         self.assertEqual(2, action)
         self.assertGreater(self.agent.depth, 0)
 
-    @patch.object(minimax, 'search', lambda *a, **kw: sleep(.01) or 2)
+    @patch.object(minimax, 'search', lambda *a, **kw: sleep(DefaultParams.max_time_per_move) or 2)
     @patch.object(State, 'get_random_action', return_value=-1)
     def test_skip_unfinished_depth(self, *args, **kwargs):
         """

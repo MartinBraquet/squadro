@@ -30,7 +30,7 @@ def test_initial_state_attributes(sample_state):
     """Test the initial state attributes."""
     assert sample_state.cur_player == 0  # Player 0 should be the default first player
     assert sample_state.n_pawns == 5  # Default number of pawns should be 5
-    assert sample_state.total_moves == 0  # No moves have been made yet
+    assert sample_state.turn_count == 0  # No moves have been made yet
     assert sample_state.pos == [[6, 6, 6, 6, 6], [6, 6, 6, 6, 6]]  # Default positions
     assert sample_state.returning == [[False] * 5, [False] * 5]  # No pawns are returning yet
     assert sample_state.finished == [[False] * 5, [False] * 5]  # No pawns have finished
@@ -85,10 +85,10 @@ def test_apply_action_changes_player(sample_state):
 
 def test_apply_action_updates_total_moves(sample_state):
     """Test if the total_moves counter updates after applying an action."""
-    initial_moves = sample_state.total_moves
+    initial_moves = sample_state.turn_count
     valid_action = 0  # Assuming 0 is a valid action
     sample_state.apply_action(valid_action)
-    assert sample_state.total_moves == initial_moves + 1
+    assert sample_state.turn_count == initial_moves + 1
 
 
 def test_return_init_resets_pawn_position(sample_state):
