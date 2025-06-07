@@ -60,13 +60,13 @@ To play the game with someone else, run the following command:
 ```python
 import squadro
 
-squadro.RealTimeAnimatedGame(n_pawns=5, first=None).run()
+squadro.GamePlay(n_pawns=5, first=None).run()
 ```
 
 To access all the parameters to play, see the doc:
 
 ```python
-help(squadro.RealTimeAnimatedGame.__init__)  # for the arguments to RealTimeAnimatedGame
+help(squadro.GamePlay.__init__)  # for the arguments to RealTimeAnimatedGame
 ```
 
 #### Play against the computer
@@ -76,13 +76,13 @@ To play against the computer, set `agent_1` to one of the `squadro.AVAILABLE_AGE
 For instance:
 
 ```python
-squadro.RealTimeAnimatedGame(agent_1='random').run()
+squadro.GamePlay(agent_1='random').run()
 ```
 
 > [!TIP]
 > To play against our best algorithm, run:
 > ```python
-> squadro.RealTimeAnimatedGame(agent_1='best').run()
+> squadro.GamePlay(agent_1='best').run()
 > ```
 > Let us know if you ever beat it!
 
@@ -128,9 +128,9 @@ List of available agents:
 
 * _human_: another local human player (i.e., both playing on the same computer)
 * _random_: a computer that plays randomly among all available moves
-* _ab_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement
-* _ab_relative_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement compared to the other player
-* _ab_advancement_deep_: a computer that plays minimax with alpha-beta pruning (depth ~4), where the evaluation function is the player's advancement compared to the other player
+* _ab_relative_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement
+* _relative_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement compared to the other player
+* _ab_relative_advancement_: a computer that plays minimax with alpha-beta pruning (depth ~4), where the evaluation function is the player's advancement compared to the other player
 * _mcts_advancement_: Monte Carlo tree search, where the evaluation function is the player's advancement compared to the other player
 * _mcts_rollout_: Monte Carlo tree search, where the evaluation function is determined by a random playout until the end of the game
 

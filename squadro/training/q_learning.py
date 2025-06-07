@@ -7,7 +7,7 @@ import numpy as np
 
 from squadro import Game
 from squadro.agents.agent import Agent
-from squadro.agents.alphabeta_agent import AlphaBetaAdvancementDeepAgent
+from squadro.agents.alphabeta_agent import AlphaBetaRelativeAdvancementAgent
 from squadro.agents.montecarlo_agent import MonteCarloQLearningAgent
 from squadro.benchmarking import benchmark
 from squadro.evaluators.evaluator import QLearningEvaluator
@@ -72,7 +72,7 @@ class QLearningTrainer:
             is_training=True,
             **self._agent_kwargs,
         )
-        self.evaluator_old = QLearningEvaluator(model_path=Path(self.model_path) / "old")
+        self.evaluator_old = QLearningEvaluator(model_path=Path(self.model_path) / "checkpoint")
 
     @property
     def model_path(self):
@@ -86,7 +86,7 @@ class QLearningTrainer:
         """
         Run the training loop.
         """
-        self.evaluator.get_Q(n_pawns=self.n_pawns)
+        self.evaluator.get_model(n_pawns=self.n_pawns)
         self.evaluator.dump(self.evaluator_old.model_path)
         self.evaluator_old.clear()
         # Should be close to 50% as the agents are the same
@@ -137,7 +137,8 @@ class QLearningTrainer:
                 if step % self.eval_interval == 0 and pid == 0:
                     ev = self.evaluate_agent(vs='initial')
                     ev_random = self.evaluate_agent(vs='random')
-                    ev_other = self.evaluate_agent(vs=AlphaBetaAdvancementDeepAgent(max_depth=5))
+                    ev_other = self.evaluate_agent(
+                        vs=AlphaBetaRelativeAdvancementAgent(max_depth=5))
                     logger.info(
                         f"{step} steps"
                         f", {ev * 100 :.0f}% vs initial"
@@ -183,7 +184,7 @@ class QLearningTrainer:
 
     @property
     def Q(self) -> dict:  # noqa
-        return self.evaluator.get_Q(n_pawns=self.n_pawns)
+        return self.evaluator.get_model(n_pawns=self.n_pawns)
 
     def evaluate_agent(self, vs: str | Agent = None) -> float:
         """

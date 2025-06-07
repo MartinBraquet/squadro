@@ -84,6 +84,7 @@ class State:
         first: int = None,
         advancement: list[list[int]] = None,
         cur_player: int = None,
+        turn_count: int = None,
     ):
         self.winner = None
         self.timeout_player = None
@@ -115,7 +116,7 @@ class State:
         self.pos = get_init_pos(self.n_pawns)
         self.returning = [[False] * self.n_pawns for _ in range(2)]
         self.finished = [[False] * self.n_pawns for _ in range(2)]
-        self.total_moves = 0
+        self.turn_count = turn_count if turn_count is not None else 0
 
         if advancement:
             self.set_from_advancement(advancement)
@@ -126,6 +127,13 @@ class State:
 
     def __eq__(self, other: 'State') -> bool:
         return self.cur_player == other.cur_player and self.pos == other.pos
+
+    @property
+    def max_moves(self) -> int:
+        """
+        An estimate for the maximum number of moves with that number of pawns.
+        """
+        return int(20 * self.n_pawns)
 
     def to_dict(self) -> dict:
         return {
@@ -238,7 +246,7 @@ class State:
         cp.finished = deepcopy(self.finished)
         cp.n_pawns = self.n_pawns
         cp.first = self.first
-        cp.total_moves = self.total_moves
+        cp.turn_count = self.turn_count
         return cp
 
     def get_init_args(self) -> dict:
@@ -318,7 +326,7 @@ class State:
             if self.check_crossings(self.cur_player, action):
                 break
 
-        self.total_moves += 1
+        self.turn_count += 1
         self.cur_player = 1 - self.cur_player
 
     def move_1(self, player: int, pawn: int) -> None:
@@ -389,7 +397,7 @@ class State:
         """
         List representation of the state, used for the replay buffer or other serialized things.
         """
-        x = [self.get_advancement(), self.cur_player]
+        x = [self.get_advancement(), self.cur_player, self.turn_count]
         return x
 
     @classmethod
@@ -397,12 +405,17 @@ class State:
         """
         Create a state from a list representation.
 
-        >>> State.from_list([[[1, 2, 3], [1, 2, 4]], 0]).to_list()
-        [[[1, 2, 3], [1, 2, 4]], 0]
+        >>> State.from_list([[[1, 2, 3], [1, 2, 4]], 0, 69]).to_list()
+        [[[1, 2, 3], [1, 2, 4]], 0, 69]
         """
-        advancement, cur_player = arr
+        advancement, cur_player, turn_count = arr
         n_pawns = len(advancement[0])
-        state = cls(n_pawns=n_pawns, advancement=advancement, cur_player=cur_player)
+        state = cls(
+            n_pawns=n_pawns,
+            advancement=advancement,
+            cur_player=cur_player,
+            turn_count=turn_count,
+        )
         return state
 
     def get_piece_movements(self):
