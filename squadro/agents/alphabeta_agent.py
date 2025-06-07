@@ -55,9 +55,9 @@ class AlphaBetaAgent(Agent):
         pass
 
 
-class AlphaBetaAdvancementAgent(AlphaBetaAgent):
+class AdvancementAgent(AlphaBetaAgent):
     """
-    Alpha-beta advancement agent:
+    Advancement agent:
 
     Pick the action according to minimax tree search (with alpha-beta pruning, depth=0),
     where the state evaluation function is the player's advancement.
@@ -73,7 +73,7 @@ class AlphaBetaAdvancementAgent(AlphaBetaAgent):
 
     @classmethod
     def get_name(cls):
-        return 'ab_advancement'
+        return 'advancement'
 
     def cutoff(self, state: State, depth: int):
         return depth > self.depth or state.game_over_check()
@@ -85,9 +85,9 @@ class AlphaBetaAdvancementAgent(AlphaBetaAgent):
         )
 
 
-class AlphaBetaRelativeAdvancementAgent(AlphaBetaAdvancementAgent):
+class RelativeAdvancementAgent(AdvancementAgent):
     """
-    Alpha-beta relative-advancement agent:
+    Relative-advancement agent:
 
     Pick the action according to minimax tree search (with alpha-beta pruning, depth=0),
     where the state
@@ -96,7 +96,7 @@ class AlphaBetaRelativeAdvancementAgent(AlphaBetaAdvancementAgent):
 
     @classmethod
     def get_name(cls):
-        return 'ab_relative_advancement'
+        return 'relative_advancement'
 
     def evaluate(self, state: State):
         return sum(
@@ -105,9 +105,9 @@ class AlphaBetaRelativeAdvancementAgent(AlphaBetaAdvancementAgent):
         )
 
 
-class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
+class AlphaBetaRelativeAdvancementAgent(AdvancementAgent):
     """
-    Alpha-beta deep advancement agent:
+    Alpha-beta relative advancement agent:
 
     Pick the action according to minimax tree search (with alpha-beta pruning, depth up to 9),
     where the heuristic state
@@ -130,7 +130,7 @@ class AlphaBetaAdvancementDeepAgent(AlphaBetaAdvancementAgent):
 
     @classmethod
     def get_name(cls):
-        return 'ab_advancement_deep'
+        return 'ab_relative_advancement'
 
     def get_action(self, state, last_action=None, time_left=None):
         # if time_left is None:
