@@ -12,7 +12,8 @@ from squadro import Game
 from squadro.agents.agent import Agent
 from squadro.agents.montecarlo_agent import MonteCarloDeepQLearningAgent
 from squadro.benchmarking import Benchmark
-from squadro.evaluators.rl import Model, DeepQLearningEvaluator
+from squadro.evaluators.evaluator import Model
+from squadro.evaluators.rl import DeepQLearningEvaluator
 from squadro.tools.basic import dict_factory, check_nan
 from squadro.tools.constants import DefaultParams, inf
 from squadro.tools.dates import get_now
