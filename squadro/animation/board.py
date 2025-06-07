@@ -148,7 +148,7 @@ class Board:
         textRect3.center = ((self.n_tiles - 1) * 100 + 50, 38)
         self.screen.blit(text3, textRect3)
 
-        text3 = font3.render(f"Turn: {state.total_moves}", True, black, grey)
+        text3 = font3.render(f"Turn: {state.turn_count}", True, black, grey)
         textRect3 = text3.get_rect()
         textRect3.center = (50, 38)
         self.screen.blit(text3, textRect3)
