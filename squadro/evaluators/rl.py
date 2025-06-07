@@ -228,15 +228,21 @@ class DeepQLearningEvaluator(_RLEvaluator):
     def get_model(self, n_pawns: int) -> Model:
         if self.models.get(n_pawns) is None:
             filepath = self.get_filepath(n_pawns)
-            self.models[n_pawns] = Model(
-                path=filepath,
-                n_pawns=n_pawns,
-                config=self.model_config,
-                device=self.device,
-            )
             if os.path.exists(filepath):
+                logger.info(f"Using pre-trained model at {filepath}")
+                self.models[n_pawns] = torch.load(
+                    filepath,
+                    weights_only=False,
+                    map_location=self.device
+                )
                 self._weight_update_timestamp[filepath] = get_file_modified_time(filepath)
             else:
+                logger.warn(f"No file at {filepath}, creating new model")
+                self.models[n_pawns] = Model(
+                    n_pawns=n_pawns,
+                    config=self.model_config,
+                    device=self.device,
+                )
                 self._weight_update_timestamp[filepath] = get_now(fmt=READABLE_DATE_FMT)
 
         return self.models[n_pawns]

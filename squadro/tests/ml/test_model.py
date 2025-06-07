@@ -31,7 +31,7 @@ class TestModel(TestCase):
             )
             weights = list(model.parameters())
             self.assertFalse(path.exists())
-            model.save(path)
+            model.save(path, weights_only=True)
             self.assertTrue(path.exists())
             model = Model(
                 n_pawns=n_pawns,

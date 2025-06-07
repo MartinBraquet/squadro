@@ -10,7 +10,6 @@ import torch
 from numpy.typing import NDArray
 from torch import nn
 
-from squadro import logger
 from squadro.evaluators.channels import get_num_channels
 from squadro.state import State
 from squadro.tools.ml import get_model_size
@@ -163,20 +162,17 @@ class Model(nn.Module):
         state_dict = None
         if isinstance(obj, Model):
             state_dict = obj.state_dict()
-        elif obj is not None:
-            if os.path.exists(obj):
-                logger.info(f"Using model at {obj}")
-                state_dict = torch.load(obj, map_location=self.device)
-            else:
-                logger.warn(f"No file at {obj}, creating new model")
+        elif obj is not None and os.path.exists(obj):
+            state_dict = torch.load(obj, weights_only=False, map_location=self.device)
 
         if state_dict:
             self.load_state_dict(state_dict)
 
         self.to(self.device)
 
-    def save(self, filepath: str | Path):
-        torch.save(obj=self.state_dict(), f=filepath)
+    def save(self, filepath: str | Path, weights_only=False):
+        obj = self.state_dict() if weights_only else self
+        torch.save(obj=obj, f=filepath)
 
     def byte_size(self, human_readable=True) -> int | str:
         return get_model_size(self, human_readable)
