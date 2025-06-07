@@ -18,11 +18,14 @@ class GameFromState:
         agent_1: Agent | str = None,
         time_out=None,
         save_states: bool = None,
+        agent_kwargs: dict = None,
     ):
         agent_0 = agent_0 or DefaultParams.agent
         agent_1 = agent_1 or DefaultParams.agent
+        agent_kwargs = agent_kwargs or {}
 
-        self.agents = [get_agent(a, pid=i) for i, a in enumerate((agent_0, agent_1))]
+        self.agents = [get_agent(a, pid=i, **agent_kwargs) for i, a in
+                       enumerate((agent_0, agent_1))]
         self.times_left = [time_out] * 2
 
         self.state = state
