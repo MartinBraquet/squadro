@@ -164,7 +164,7 @@ def handle_timeout(signum, frame):
 
 def get_timed_action(player, state, last_action, time_left):
     """
-    Get an action from player with a timeout.
+    Get an action from a player with a timeout.
     """
     if not time_left:
         start_time = time()
