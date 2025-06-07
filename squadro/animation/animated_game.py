@@ -1,15 +1,16 @@
 import argparse
-import os
 from time import sleep
 
 import pygame
 
+from squadro.agents.agent import Agent
 from squadro.agents.best import get_best_real_time_game_agent
 from squadro.animation.board import Board, handle_events, check_quit
 from squadro.game import Game
 from squadro.state import State, get_next_state
 from squadro.tools.constants import DefaultParams, DATA_PATH
 from squadro.tools.dates import get_now
+from squadro.tools.disk import mkdir
 from squadro.tools.log import logger
 
 
@@ -52,6 +53,7 @@ class GameAnimation:
                 break
 
             board.turn_draw(state)
+            logger.info(f"State: {state.to_list()}")
 
             if state.game_over():
                 board.display_winner(state)
@@ -89,7 +91,7 @@ class GameAnimation:
             return 'quit'
 
 
-class RealTimeAnimatedGame(Game):
+class GamePlay(Game):
     """
     Runs the game and renders the board in real time
     """
@@ -99,19 +101,28 @@ class RealTimeAnimatedGame(Game):
         agent_0=None,
         agent_1=None,
         time_out=None,
+        agent_kwargs: dict = None,
         **kwargs
     ):
+        agent_kwargs = agent_kwargs or {}
+
         agents = dict(agent_0=agent_0, agent_1=agent_1)
         for agent_name, agent in agents.items():
             if agent is None:
                 agents[agent_name] = 'human'
             elif agent == 'best':
                 agents[agent_name] = get_best_real_time_game_agent(n_pawns=kwargs.get('n_pawns'))
+            elif isinstance(agent, Agent):
+                for k, v in agent_kwargs.items():
+                    setattr(agent, k, v)
+
+        agent_kwargs.setdefault('max_time_per_move', DefaultParams.max_time_per_move_real_time)
 
         super().__init__(
             **agents,
             time_out=time_out or DefaultParams.time_out,
-            **kwargs
+            agent_kwargs=agent_kwargs,
+            **kwargs,
         )
         self.board = Board(self.n_pawns, title=f"Real-Time Game: {self.title}")
         self.draw()
@@ -121,8 +132,7 @@ class RealTimeAnimatedGame(Game):
             super().run()
 
             path = DATA_PATH / 'game_results'
-            if not os.path.exists(path):
-                os.makedirs(path)
+            mkdir(path)
             self.to_file(path / f'{get_now()}.json')
 
             while True:
@@ -157,4 +167,4 @@ if __name__ == "__main__":
                         help="indicates the player (0 or 1) that plays first; random otherwise")
     _args = parser.parse_args()
 
-    RealTimeAnimatedGame(_args.ai0, _args.ai1, _args.t, first=_args.f).run()
+    GamePlay(_args.ai0, _args.ai1, _args.t, first=_args.f).run()
