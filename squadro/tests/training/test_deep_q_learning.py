@@ -4,7 +4,7 @@ from unittest import TestCase
 import pytest
 
 import squadro
-from squadro.evaluators.evaluator import ModelConfig
+from squadro.evaluators.rl import ModelConfig
 from squadro.tools.probabilities import set_seed
 
 

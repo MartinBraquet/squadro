@@ -3,7 +3,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from squadro.evaluators.evaluator import RolloutEvaluator
+from squadro.evaluators.rollout import RolloutEvaluator
 from squadro.state import State
 
 

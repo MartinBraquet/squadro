@@ -6,7 +6,8 @@ import numpy as np
 
 from squadro.agents.montecarlo_agent import MonteCarloAdvancementAgent, MCTS, \
     MonteCarloRolloutAgent, MonteCarloQLearningAgent, MonteCarloDeepQLearningAgent
-from squadro.evaluators.evaluator import AdvancementEvaluator, ConstantEvaluator
+from squadro.evaluators.advancement import AdvancementEvaluator
+from squadro.evaluators.constant import ConstantEvaluator
 from squadro.game import Game
 from squadro.state import State
 from squadro.tools.constants import inf

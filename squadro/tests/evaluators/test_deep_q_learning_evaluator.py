@@ -1,7 +1,8 @@
 import torch
 from torch import tensor
 
-from squadro.evaluators.evaluator import DeepQLearningEvaluator, get_channels
+from squadro.evaluators.channels import get_channels
+from squadro.evaluators.rl import DeepQLearningEvaluator
 from squadro.state import State
 from squadro.tests.tools import ML
 

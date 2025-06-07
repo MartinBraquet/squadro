@@ -18,8 +18,10 @@ import numpy as np
 from numpy.typing import NDArray
 
 from squadro.agents.agent import Agent
-from squadro.evaluators.evaluator import Evaluator, AdvancementEvaluator, RolloutEvaluator, \
-    QLearningEvaluator, DeepQLearningEvaluator
+from squadro.evaluators.advancement import AdvancementEvaluator
+from squadro.evaluators.evaluator import Evaluator
+from squadro.evaluators.rl import QLearningEvaluator, DeepQLearningEvaluator
+from squadro.evaluators.rollout import RolloutEvaluator
 from squadro.state import State, get_next_state
 from squadro.tools.constants import DefaultParams, inf
 from squadro.tools.evaluation import evaluate_advancement

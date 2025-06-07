@@ -3,7 +3,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from squadro.evaluators.evaluator import AdvancementEvaluator
+from squadro.evaluators.advancement import AdvancementEvaluator
 from squadro.state import State
 
 
