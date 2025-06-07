@@ -1,6 +1,19 @@
 from squadro.tools.constants import inf
 
 
+class Elo:
+    def __init__(self, start=0):
+        self.current = start
+        self.checkpoint = start
+
+    def __repr__(self):
+        return f"{self.current:.0f} vs {self.checkpoint:.0f}"
+
+    def update(self, delta):
+        self.current += delta
+        self.checkpoint -= delta
+
+
 def get_expected_score(a, b):
     """
     Expected score of A vs. B.
