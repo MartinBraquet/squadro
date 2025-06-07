@@ -42,8 +42,8 @@ class TestMonteCarlo(TestCase):
             self.assertEqual(3 - i, action)
 
     def test_game_ab(self):
-        agent = MonteCarloAdvancementAgent(mcts_kwargs=dict(max_steps=200))
-        game = Game(n_pawns=4, agent_0=agent, agent_1='ab_relative_advancement', first=0)
+        agent = MonteCarloAdvancementAgent(mcts_kwargs=dict(max_steps=200, stochastic_moves=10))
+        game = Game(n_pawns=4, agent_0=agent, agent_1='relative_advancement', first=0)
         game.run()
         self.assertEqual(game.winner, 0)
 
@@ -174,7 +174,7 @@ class TestMonteCarlo(TestCase):
             uct=1.12,
             p_mix=0.217,
             is_training=True,
-            alpha_dirichlet=.8,
+            a_dirichlet=.8,
         )
         mcts._expand_leaf(root, probs=np.array([.2, .2, .2]))
         root.edges[0].stats.update(8.0)
@@ -284,6 +284,23 @@ class TestMonteCarlo(TestCase):
         pi, values = mcts.get_av()
         np.testing.assert_almost_equal(np.array([0.0, 1 / 3, 2 / 3]), pi, decimal=7)
         self.assertEqual([0.0, 1.0, 4.0], values.tolist())
+
+    def test_get_av_limited_actions(self):
+        state = State.from_list([[[3, 4, 2], [0, 2, 8]], 1, 0])
+        root = Node(state)
+        mcts = MCTS(
+            root,
+            evaluator=ConstantEvaluator(2),
+            method='uct',
+            epsilon_action=.3,
+            tau=1,
+        )
+        mcts._expand_leaf(root)
+        for i, edge in enumerate(root.edges):
+            edge.stats.N = i + 1
+
+        pi, values = mcts.get_av()
+        np.testing.assert_almost_equal(pi, np.array([1 / 3, 2 / 3, 0.0]), decimal=7)
 
     @patch('random.uniform', lambda *a, **kw: 0)
     def test_choose_action(self):
