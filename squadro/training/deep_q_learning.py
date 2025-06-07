@@ -2,6 +2,7 @@ import json
 import random
 from collections import defaultdict
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import torch
@@ -18,7 +19,7 @@ from squadro.tools.basic import dict_factory, check_nan
 from squadro.tools.constants import DefaultParams, inf
 from squadro.tools.dates import get_now
 from squadro.tools.disk import pickle_dump, mkdir
-from squadro.tools.elo import get_expected_score
+from squadro.tools.elo import get_expected_score, Elo
 from squadro.tools.log import training_logger as logger
 from squadro.tools.notebooks import is_notebook
 from squadro.tools.state import get_reward
@@ -88,19 +89,19 @@ class DeepQLearningTrainer:
         lr = lr or 1e-3
         self.min_lr = min_lr or max(lr / 10, 1e-4)
 
-        self.optimizer = torch.optim.Adam(
-            params=self.model.parameters(),
+        self._optimizer = [torch.optim.Adam(
+            params=self.get_model(player=i).parameters(),
             lr=lr,
             weight_decay=1e-4,
-        )
+        ) for i in range(self.n_networks)]
 
-        self.scheduler = None
+        self._scheduler = None
         if self.min_lr != lr:
-            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                self.optimizer,
+            self._scheduler = [torch.optim.lr_scheduler.CosineAnnealingLR(
+                self.get_optimizer(player=i),
                 eta_min=self.min_lr,
                 T_max=self.lr_final_step * backprop_per_game,
-            )
+            ) for i in range(self.n_networks)]
 
         self.replay_buffer = ReplayBuffer(
             n_pawns=self.n_pawns,
@@ -108,8 +109,7 @@ class DeepQLearningTrainer:
         )
 
         self.results = defaultdict(dict_factory)
-        self.results['elo']['current'] = 0
-        self.results['elo']['checkpoint'] = 0
+        self.results['elo'] = Elo()
 
         self._v_loss = torch.nn.MSELoss(reduction='none')
         self._p_loss = torch.nn.CrossEntropyLoss()
@@ -133,6 +133,32 @@ class DeepQLearningTrainer:
             mcts_kwargs=self.mcts_kwargs,
             max_time_per_move=inf,
         )
+
+    @property
+    def n_networks(self) -> int:
+        return 2 if self.separate_networks else 1
+
+    @property
+    def separate_networks(self):
+        return self.model_config.separate_networks
+
+    def get_optimizer(self, player=0) -> torch.optim.Optimizer:
+        return self._optimizer[player]
+
+    def get_scheduler(self, player=0) -> Optional[torch.optim.lr_scheduler.LRScheduler]:
+        if self._scheduler:
+            return self._scheduler[player]
+        return None
+
+    def get_model(self, player=0) -> Model:
+        return self.evaluator.get_model(n_pawns=self.n_pawns, player=player)
+
+    def get_model_chkpt(self, player=0) -> Model:
+        return self.evaluator_chkpt.get_model(n_pawns=self.n_pawns, player=player)
+
+    @property
+    def model_config(self):
+        return self.evaluator.model_config
 
     @property
     def model_path(self):
@@ -159,12 +185,15 @@ class DeepQLearningTrainer:
             r"$\mathbf{Deep\ Q-Learning\ Training}$"
             f" ({self.n_pawns} pawns)"
             f"\n{mcts_info}"
-            f"\n{self.model.config}, lr={self.lr:.0e}"
+            f"\n{self.model_config}, lr={self.lr:.0e}"
         )
 
     @property
     def lr(self):
-        return self.optimizer.param_groups[0]["lr"]
+        return self.get_lr()
+
+    def get_lr(self, player=0) -> float:
+        return self.get_optimizer(player).param_groups[0]["lr"]
 
     def run(self) -> None:
         """
@@ -172,10 +201,10 @@ class DeepQLearningTrainer:
         """
         logger.info(
             f"Starting training: {self.n_pawns} pawns\n"
-            f"model size: {self.model.byte_size()}\n"
-            f"model config: {self.model.config}\n"
-            f"optimizer: {self.optimizer}\n"
-            f"scheduler: {self.scheduler.__class__.__name__} (min lr: {self.min_lr})\n"
+            f"model size: {self.get_model().byte_size()}\n"
+            f"model config: {self.model_config}\n"
+            f"optimizer: {self.get_optimizer()}\n"
+            f"scheduler: {self.get_scheduler().__class__.__name__} (min lr: {self.min_lr})\n"
             f"games: {self.n_steps}\n"
             f"backprop interval: {self.backprop_interval}\n"
             f"backprop steps: {self.backprop_steps}\n"
@@ -187,7 +216,7 @@ class DeepQLearningTrainer:
             f"replay buffer: {self.replay_buffer}\n"
         )
         if not self.evaluator_chkpt.is_pretrained(n_pawns=self.n_pawns):
-            self.model_chkpt.load(self.model)
+            self.copy_weights_to_checkpoint()
 
         self._open_figure()
         self._results_path = RESULTS_PATH / get_now()
@@ -203,6 +232,9 @@ class DeepQLearningTrainer:
 
         logger.info("Training finished.")
 
+    def copy_weights_to_checkpoint(self):
+        self.evaluator_chkpt.load_weights(self.evaluator, n_pawns=self.n_pawns)
+
     def _run(self):
         self._clear_self_play_win_rate()
 
@@ -213,7 +245,7 @@ class DeepQLearningTrainer:
 
             if step % self.backprop_interval == 0:
                 self._process_self_play_info()
-                self.back_propagate(step)
+                self._back_propagate(step)
                 self._plot_loss()
                 self.replay_buffer.get_state_uniqueness()
                 self._clear_self_play_win_rate()
@@ -242,27 +274,31 @@ class DeepQLearningTrainer:
             plt.show(block=False)
 
     def update_checkpoint_model(self, step):
-        if self.results['eval']['checkpoint'][step]['total'] > .6:  # noqa
+        if self.results['eval']['checkpoint'][step]['total'] > .7:  # noqa
             logger.info(f"Updating best checkpoint")
-            self.model_chkpt.load(self.model)
+            self.copy_weights_to_checkpoint()
             self.evaluator_chkpt.dump()
-            self.results['elo']['checkpoint'] = self.results['elo']['current']
+            self.elo.checkpoint = self.elo.current
 
     def dump(self):
-        with logger.context_info('dump'):
-            self.dump_results()
-            self.evaluator.dump()
-            filename = get_now()
-            self.evaluator.dump(Path(self.evaluator_chkpt.model_path) / filename)
-            self.replay_buffer.save()
-            logger.info(f"Dumped current model to '{filename}'")
+        # with logger.context_info('dump'):
+        self.dump_results()
+        self.evaluator.dump()
+        filename = get_now()
+        self.evaluator.dump(Path(self.evaluator_chkpt.model_path) / filename)
+        self.replay_buffer.save()
+        logger.info(f"Dumped current model to '{filename}'")
 
-    def dump_results(self):
+    def dump_results(self, fmt='pkl'):
         for name in ('eval', 'backprop_loss'):
             result = self.results[name]
-            # result = {str(k): v for k, v in result.items()}
-            # json.dump(result, open(self._results_path / f'{name}.json', 'w'))
-            pickle_dump(result, self._results_path / f'{name}.pkl')
+            if fmt == 'json':
+                result = {str(k): v for k, v in result.items()}
+                json.dump(result, open(self._results_path / f'{name}.json', 'w'))
+            elif fmt == 'pkl':
+                pickle_dump(result, self._results_path / f'{name}.pkl')
+            else:
+                raise ValueError(f"Unknown format: {fmt}")
 
     def _clear_self_play_win_rate(self):
         self._self_play_win_rate = {0: [], 1: []}
@@ -388,15 +424,17 @@ class DeepQLearningTrainer:
 
         return history
 
-    def back_propagate(self, step: int = 0):
+    def _back_propagate(self, step: int = 0):
         """
         Update the Q-network based on the reward obtained at the end of the game.
         """
-        logger.info(f"lr: {self.lr:.1e}")
-        if step > self.lr_final_step:
-            self.scheduler = None
+        lrs = ', '.join([f"{self.get_lr(i):.1e}" for i in range(self.n_networks)])
+        logger.info(f"lr: {lrs}")
 
-        self.model.train()
+        if step > self.lr_final_step:
+            self._scheduler = None
+
+        self._train()
 
         batches = []
         for w, f, data in self.replay_buffer.iter_buckets():
@@ -412,17 +450,45 @@ class DeepQLearningTrainer:
 
         batches = [s for t in zip(*batches) for s in t]
 
-        return_all = self.model.config.double_value_head
-        losses = []
-        v_losses = []
-        p_losses = []
+        if self.separate_networks:
+            # sort by current player
+            batches_by_player = {0: [], 1: []}
+            for state, probs, winner in batches:
+                cur_player = state[1]
+                batches_by_player[cur_player] += [(state, probs, winner)]
+        else:
+            batches_by_player = {0: batches}
+
+        losses, p_losses, v_losses = [], [], []
+        for player, ba in batches_by_player.items():
+            l, p, v = self._backprop_batches(ba)
+            losses += l
+            p_losses += p
+            v_losses += v
+
+        loss = float(np.mean(losses))
+        p_loss = float(np.mean(p_losses))
+        v_loss = np.mean(np.array(v_losses), axis=0)
+
+        self.results['backprop_loss']['total'][step] = loss
+        self.results['backprop_loss']['p'][step] = p_loss
+        self.results['backprop_loss']['v'][step] = v_loss
+
+        v_txt = ', '.join([f"v{i}: {v:.2f}" for i, v in enumerate(v_loss)])
+        logger.info(f"Backprop loss: {loss:.2f} (p: {p_loss:.2f}, {v_txt})")
+
+    def _backprop_batches(self, batches: list, player: int = 0):
+        return_all = self.model_config.double_value_head
+
+        losses, p_losses, v_losses = [], [], []
         for state, probs, winner in batches:
             assert winner in {0, 1}, f"Got {winner=} instead of {0, 1} for state {state}"
-            reward = get_reward(winner=winner, return_all=return_all, cur_player=state[1])
+            cur_player = state[1]
+            reward = get_reward(winner=winner, return_all=return_all, cur_player=cur_player)
             if not isinstance(reward, np.ndarray):
                 reward = [reward]
             reward = torch.FloatTensor(reward).to(self.device)
-            self.optimizer.zero_grad()
+            self._zero_grad()
             p, v = self.evaluator.evaluate(
                 state=state,
                 torch_output=True,
@@ -442,34 +508,25 @@ class DeepQLearningTrainer:
             check_nan(loss)
             losses += [loss.item()]
             loss.backward()
-            self.optimizer.step()
-            if self.scheduler:
-                self.scheduler.step()
+            self.get_optimizer(player).step()
+            if scheduler := self.get_scheduler(player):
+                scheduler.step()
 
-        self.model.eval()
+        self._train(mode=False)
 
-        loss = float(np.mean(losses))
-        p_loss = float(np.mean(p_losses))
-        v_loss = np.mean(np.array(v_losses), axis=0)
+        return losses, p_losses, v_losses
 
-        self.results['backprop_loss']['total'][step] = loss
-        self.results['backprop_loss']['p'][step] = p_loss
-        self.results['backprop_loss']['v'][step] = v_loss
+    def _zero_grad(self):
+        for i in range(self.n_networks):
+            self.get_optimizer(i).zero_grad()
 
-        v_txt = ', '.join([f"v{i}: {v:.2f}" for i, v in enumerate(v_loss)])
-        logger.info(f"Backprop loss: {loss:.2f} (p: {p_loss:.2f}, {v_txt})")
+    def _train(self, mode=True):
+        for i in range(self.n_networks):
+            self.get_model(i).train(mode=mode)
 
     @property
     def device(self):
-        return self.model.device
-
-    @property
-    def model(self) -> Model:
-        return self.evaluator.get_model(n_pawns=self.n_pawns)
-
-    @property
-    def model_chkpt(self) -> Model:
-        return self.evaluator_chkpt.get_model(n_pawns=self.n_pawns)
+        return self.get_model().device
 
     def evaluate_agents(self, step):
         vs_list = self._opponents
@@ -481,23 +538,21 @@ class DeepQLearningTrainer:
             # if vs == 'random' and _['total'] == 100:
             #     self._opponents += AlphaBetaRelativeAdvancementAgent(max_depth=5)
 
-        elo_cur = self.results['elo']['current']
-        elo_cp = self.results['elo']['checkpoint']
-        win_rate = results['checkpoint']
-        k = 2
-
-        expected_score = get_expected_score(elo_cur, elo_cp)
-        delta_elo = k * (win_rate - expected_score) * self.eval_steps
-        self.results['elo']['current'] += delta_elo
-        self.results['elo']['checkpoint'] -= delta_elo
+        self.compute_elo(win_rate=results['checkpoint'])
 
         msg = f"{step} steps: "
         msg += ', '.join([f"{v:.0%} vs {k}" for k, v in results.items()])
         logger.info(msg)
 
-        elo_cur = self.results['elo']['current']
-        elo_cp = self.results['elo']['checkpoint']
-        logger.info(f"Elo: {elo_cur:.0f} vs {elo_cp:.0f} (delta: {delta_elo:.0f})")
+    @property
+    def elo(self) -> Elo:
+        return self.results['elo']
+
+    def compute_elo(self, win_rate: float, k=2):
+        expected_score = get_expected_score(self.elo.current, self.elo.checkpoint)
+        delta_elo = k * (win_rate - expected_score) * self.eval_steps
+        self.elo.update(delta_elo)
+        logger.info(f"Elo: {self.elo} (delta: {delta_elo:.0f})")
 
     def evaluate_agent(self, vs: str | Agent = None) -> dict:
         """
