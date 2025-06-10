@@ -1,17 +1,30 @@
 from squadro.tools.constants import inf
+from squadro.tools.log import training_logger as logger
 
 
 class Elo:
-    def __init__(self, start=0):
+    def __init__(self, start=0, step=0):
         self.current = start
         self.checkpoint = start
+        self.history = {step: self.current}
+        self.k = 2
 
     def __repr__(self):
         return f"{self.current:.0f} vs {self.checkpoint:.0f}"
 
-    def update(self, delta):
+    def update(self, win_rate, n, step):
+        expected_score = get_expected_score(self.current, self.checkpoint)
+        delta_elo = self.k * (win_rate - expected_score) * n
+        self.delta_update(delta_elo, step)
+        logger.info(f"Elo: {self} (delta: {delta_elo:.0f})")
+
+    def delta_update(self, delta, step):
         self.current += delta
         self.checkpoint -= delta
+        self.history[step] = self.current
+
+    def update_checkpoint(self):
+        self.checkpoint = self.current
 
 
 def get_expected_score(a, b):
