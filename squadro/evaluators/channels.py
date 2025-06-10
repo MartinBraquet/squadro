@@ -4,11 +4,11 @@ from torch import Tensor
 from squadro.state import State
 
 
-def get_num_channels(n_pawns: int, board_flipping: bool) -> int:
-    return 6 + 4 * n_pawns - int(board_flipping)
+def get_num_channels(n_pawns: int, board_flipping: bool, separate_networks) -> int:
+    return 6 + 4 * n_pawns - int(board_flipping or separate_networks)
 
 
-def get_channels(state: State, board_flipping=True) -> list[Tensor]:
+def get_channels(state: State, board_flipping=True, separate_networks=False) -> list[Tensor]:
     """
     Get a list of grid where each grid is a binary tensor of shape (d, d)
     where the value is 1 if the pawn is on that grid and 0 otherwise.
@@ -34,7 +34,7 @@ def get_channels(state: State, board_flipping=True) -> list[Tensor]:
     channels += advancement_channels
 
     # current player, one plane
-    if not board_flipping:
+    if not (board_flipping or separate_networks):
         grid = torch.ones((d, d)) * cur_player
         channels.append(grid)
 
@@ -74,7 +74,7 @@ def get_speed_channels(state: State, board_flipping: bool):
             if state.finished[p_id][i]:
                 movement = 0
             else:
-                movement = piece_movements[p_id * state.n_pawns + i] / 3
+                movement = piece_movements[p_id * state.n_pawns + i] / 3.
             grid[idx] = movement
             c.append(grid)
         channels.append(c)
