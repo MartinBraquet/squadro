@@ -14,6 +14,12 @@ MOVES = [[1, 3, 2, 3, 1, 3, 2, 1, 2], [3, 1, 2, 1, 3, 1, 2, 3, 2]]
 MOVES_RETURN = [[3, 1, 2, 1, 3, 1, 2, 3, 2], [1, 3, 2, 3, 1, 3, 2, 1, 2]]
 MAX_PAWNS = len(MOVES[0])
 
+SWAP_PLAYERS = False
+
+if SWAP_PLAYERS:
+    MOVES = list(reversed(MOVES))
+    MOVES_RETURN = list(reversed(MOVES_RETURN))
+
 
 @lru_cache
 def get_moves(n_pawns: int) -> list[list[int]]:
