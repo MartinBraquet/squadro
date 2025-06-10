@@ -179,7 +179,7 @@ class DeepQLearningEvaluator(_RLEvaluator):
         torch_output: bool = False,
         check_game_over: bool = True,
         return_all: bool = False,
-    ) -> tuple[NDArray[np.float64], NDArray[np.float64] | float]:
+    ) -> tuple[NDArray[np.float64] | torch.Tensor, NDArray[np.float64] | float | torch.Tensor]:
         if isinstance(state, list):
             state = State.from_list(state)
 
@@ -197,7 +197,11 @@ class DeepQLearningEvaluator(_RLEvaluator):
 
         model = self.get_model(n_pawns=state.n_pawns, player=state.cur_player)
 
-        channels = get_channels(state, board_flipping=model.config.board_flipping)
+        channels = get_channels(
+            state,
+            board_flipping=model.config.board_flipping,
+            separate_networks=model.config.separate_networks,
+        )
         x = torch.stack(channels, dim=0).unsqueeze(0).to(self.device)
 
         p, v = model(x)
@@ -225,6 +229,9 @@ class DeepQLearningEvaluator(_RLEvaluator):
     def is_pretrained(self, n_pawns: int) -> bool:
         key = self.get_key(n_pawns, player=0)
         return os.path.exists(self.get_filepath(key))
+
+    def get_weight_update_timestamp(self, n_pawns: int):
+        return super().get_weight_update_timestamp(self.get_key(n_pawns, player=0))
 
     def get_key(self, n_pawns, player):
         if self.model_config.separate_networks:

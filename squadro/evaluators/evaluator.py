@@ -12,6 +12,7 @@ from torch import nn
 
 from squadro.evaluators.channels import get_num_channels
 from squadro.state import State
+from squadro.tools.log import logger
 from squadro.tools.ml import get_model_size
 
 
@@ -64,22 +65,29 @@ class ModelConfig:
     policy_hidden_dim: int = 4
     num_blocks: int = 5
     double_value_head: bool = False
-    board_flipping: bool = True
-    separate_networks: bool = False
+    board_flipping: bool = False
+    separate_networks: bool = True
+
+    def __post_init__(self):
+        if self.double_value_head and self.separate_networks:
+            raise ValueError("Cannot use separate networks with double value head")
+        if self.separate_networks and self.board_flipping:
+            logger.warn("Using separate networks with board flipping, not recommended")
 
     def __repr__(self):
-        text = (
-            f"cnn_d={self.cnn_hidden_dim}"
+        text = ''
+        if self.double_value_head:
+            text += f"double_value"
+        if self.board_flipping:
+            text += f"board_flip"
+        if self.separate_networks:
+            text += f"separate_networks"
+        text += (
+            f", cnn_d={self.cnn_hidden_dim}"
             f", v_d={self.value_hidden_dim}"
             f", p_d={self.policy_hidden_dim}"
             f", blocks={self.num_blocks}"
         )
-        if self.double_value_head:
-            text += f", double_value"
-        if self.board_flipping:
-            text += f", board_flip"
-        if self.separate_networks:
-            text += f", separate_networks"
         return text
 
 
@@ -117,7 +125,11 @@ class Model(nn.Module):
 
         self.device = device or default_device
 
-        in_channels = get_num_channels(n_pawns, board_flipping=config.board_flipping)
+        in_channels = get_num_channels(
+            n_pawns,
+            board_flipping=config.board_flipping,
+            separate_networks=config.separate_networks,
+        )
         grid_dim = n_pawns + 2
         self.input_conv = nn.Sequential(
             nn.Conv2d(in_channels, config.cnn_hidden_dim, kernel_size=3, padding=1, bias=False),
