@@ -24,7 +24,7 @@ def extend_filename(file_path: str | Path, s: str) -> Path:
     return file_path_new
 
 
-def pickle_dump(obj, file_path: str | Path):
+def dump_pickle(obj, file_path: str | Path):
     """
     Dumps an object to a file using pickle.
     :param obj:
@@ -36,14 +36,37 @@ def pickle_dump(obj, file_path: str | Path):
         pickle.dump(obj, f)
 
 
-def pickle_load(file_path: str | Path):
+def load_pickle(file_path: str | Path, raise_error=True):
+    """
+    Loads an object from a file using pickle.
+    :param file_path:
+    :param raise_error: If True, raises an error if the file doesn't exist. If False, returns None.
+    :return:
+    """
+    if not raise_error and not Path(file_path).exists():
+        return None
+    with open(file_path, 'rb') as f:
+        return pickle.load(f)
+
+
+def load_txt(file_path: str | Path):
     """
     Loads an object from a file using pickle.
     :param file_path:
     :return:
     """
-    with open(file_path, 'rb') as f:
-        return pickle.load(f)
+    with open(file_path, 'r') as f:
+        return f.read()
+
+
+def dump_txt(obj, file_path: str | Path, mode='w'):
+    """
+    Dumps an object to a file.
+    :param obj:
+    :param file_path:
+    """
+    with open(file_path, mode=mode) as f:
+        f.write(obj)
 
 
 def mkdir(path: str | Path):
