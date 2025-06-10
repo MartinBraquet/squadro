@@ -30,7 +30,7 @@ class ReplayBuffer:
         self._results = None
         self.clear()
         self.load()
-        self.max_size = max_size or int(20e3)
+        self.max_size = int(max_size or 20e3)
 
     def __repr__(self):
         return f"{len(self)} samples @ {self.path}"

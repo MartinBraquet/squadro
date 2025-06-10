@@ -84,7 +84,8 @@ class DeepQLearningTrainer:
         self.mcts_kwargs.setdefault('max_steps', int(1.3 * self.n_pawns ** 3))
 
         self.backprop_interval = backprop_interval or 100
-        self.backprop_steps = backprop_steps or self.backprop_interval * (backprop_per_game or 10)
+        backprop_per_game = backprop_per_game or self.n_pawns ** 3
+        self.backprop_steps = backprop_steps or self.backprop_interval * backprop_per_game
         backprop_per_game = int(self.backprop_steps / self.backprop_interval)
 
         self.agent = MonteCarloDeepQLearningAgent(
@@ -112,6 +113,7 @@ class DeepQLearningTrainer:
         self.replay_buffer = ReplayBuffer(
             n_pawns=self.n_pawns,
             path=self.model_path / 'replay_buffer.pkl',
+            max_size=8e3 * (self.n_pawns ** 2),
         )
 
         self._v_loss = torch.nn.MSELoss(reduction='none')
