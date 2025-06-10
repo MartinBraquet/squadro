@@ -5,9 +5,10 @@ from typing import Iterator
 import numpy as np
 from matplotlib import pyplot as plt
 
-from squadro import logger
 from squadro.state import State
-from squadro.tools.disk import pickle_load, pickle_dump
+from squadro.tools.basic import dict_factory
+from squadro.tools.disk import load_pickle, dump_pickle
+from squadro.tools.log import training_logger as logger
 from squadro.training.constants import DQL_PATH
 
 
@@ -26,7 +27,7 @@ class ReplayBuffer:
             assert n_pawns is not None, "Must provide either path or n_pawns"
             path = DQL_PATH / f"replay_buffer_{n_pawns}.pkl"
         self.path = Path(path)
-        self.data = None
+        self._results = None
         self.clear()
         self.load()
         self.max_size = max_size or int(20e3)
@@ -36,6 +37,14 @@ class ReplayBuffer:
 
     def __len__(self):
         return sum(self.lengths)
+
+    @property
+    def data(self):
+        return self._results['data']
+
+    @property
+    def diversity_history(self):
+        return self._results['diversity_history']
 
     @property
     def lengths(self):
@@ -71,12 +80,12 @@ class ReplayBuffer:
 
     def load(self):
         if self.path.exists():
-            self.data = pickle_load(self.path)
+            self._results = load_pickle(self.path)
 
     def save(self):
         if self.path.exists():
             shutil.copy(self.path, self.path.with_suffix('.bak'))
-        pickle_dump(self.data, self.path)
+        dump_pickle(self._results, self.path)
 
     def pretty_save(self):
         text = ''
@@ -88,7 +97,10 @@ class ReplayBuffer:
             f.write(text)
 
     def clear(self):
-        self.data = {(w, f): [] for w in (0, 1) for f in (0, 1)}
+        self._results = dict_factory()
+        for w in (0, 1):
+            for f in (0, 1):
+                self.data[w, f] = []
 
     def get_winners(self) -> list[int]:
         winners = []
@@ -111,11 +123,12 @@ class ReplayBuffer:
         plt.show()
         logger.info(f"Win rate in replay buffer: {win_rate.mean():.0%}")
 
-    def get_state_uniqueness(self) -> float:
+    def get_diversity_ratio(self, epoch=0) -> float:
         unique_hashes = set()
         for w, f, s, _, _ in self.iter_data():
             unique_hashes.add(str(s))
         diversity_ratio = len(unique_hashes) / len(self)
+        self.diversity_history[epoch] = diversity_ratio
         logger.info(f"State uniqueness in replay buffer: {diversity_ratio:.0%}")
         return diversity_ratio
 
