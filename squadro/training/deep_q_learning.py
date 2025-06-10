@@ -1,6 +1,7 @@
 import contextlib
 import json
 import random
+import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -146,6 +147,11 @@ class DeepQLearningTrainer:
                         T_max=int(self.lr_final_step * backprop_per_game / self.n_networks),
                     )
                     scheduler.last_epoch = epoch
+                    warnings.filterwarnings(
+                        "ignore",
+                        message="To get the last learning rate computed by the scheduler",
+                        category=UserWarning,
+                    )
                     self.set_lr(scheduler.get_lr()[0], player=player)
                     self._scheduler.append(scheduler)
                 else:
