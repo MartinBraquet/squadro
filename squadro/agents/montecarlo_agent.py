@@ -91,7 +91,7 @@ class MCTS:
         assert self.uct > 0
 
         # Mixing constant between prior and dirichlet noise in P-UCT during training
-        self.p_mix = p_mix if p_mix is not None else .4
+        self.p_mix = p_mix if p_mix is not None else .3
         assert 0 <= self.p_mix <= 1
 
         # Dirichlet noise spread.
