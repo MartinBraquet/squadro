@@ -6,6 +6,7 @@ from time import time
 from squadro.agents.agent import Agent
 from squadro.state import State
 from squadro.tools.agents import get_agent
+from squadro.tools.arrays import box
 from squadro.tools.constants import DefaultParams
 from squadro.tools.log import game_logger as logger
 
@@ -19,6 +20,7 @@ class GameFromState:
         time_out=None,
         save_states: bool = None,
         agent_kwargs: dict = None,
+        evaluators=None,
     ):
         agent_0 = agent_0 or DefaultParams.agent
         agent_1 = agent_1 or DefaultParams.agent
@@ -31,6 +33,8 @@ class GameFromState:
         self.state = state
 
         self.action_history = []
+
+        self.evaluators = box(evaluators or [])
 
         self.save_states = save_states if save_states else False
         self.state_history: list[State] = []
@@ -77,6 +81,12 @@ class GameFromState:
             if self.save_states:
                 self.state_history.append(self.state.copy())
             while not self.state.game_over():
+                for evaluator in self.evaluators:
+                    policy, state_value = evaluator.evaluate(self.state)
+                    logger.info(
+                        f"Evaluation from {evaluator.__class__.__name__}: {state_value: .4f}\n"
+                        f"policy: {policy}\n"
+                    )
                 player = self.state.get_cur_player()
                 try:
                     action, exe_time = get_timed_action(
