@@ -1,7 +1,9 @@
 import logging
 import sys
 from contextlib import contextmanager
+from logging import Logger
 from pathlib import Path
+from typing import Optional
 
 
 class ColorFormatter(logging.Formatter):
@@ -46,7 +48,7 @@ def get_stderr_handler(formatter):
 
 
 class logger:  # noqa
-    client = None
+    client: Optional[Logger] = None
     section = 'main'
     ENABLED_SECTIONS = {
         'main': True,
@@ -118,16 +120,17 @@ class logger:  # noqa
         cls.history = []
 
     @classmethod
-    def dump_history(cls, path: Path | str = None) -> None:
+    def dump_history(cls, path: Path | str = None, mode='a') -> None:
         """
         Dump log history to a text file.
 
         :param path: Path to the text file (default: None)
+        :param mode: How to handle if the file exists (default: 'a')
         """
         if cls.client is None:
             return
-        text = '\n'.join(cls.history)
-        with open(path, 'w') as f:
+        text = '\n'.join(cls.history) + '\n'
+        with open(path, mode=mode) as f:
             f.write(text)
 
     @classmethod
@@ -135,6 +138,7 @@ class logger:  # noqa
         if (
             cls.client is not None
             and (cls.ENABLED_SECTIONS[cls.section] or level > logging.INFO)
+            and cls.client.isEnabledFor(level)
         ):
             cls.client.log(msg=msg, level=level, stacklevel=3, **kwargs)
             logger.history.append(str(msg))
