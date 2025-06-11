@@ -274,7 +274,7 @@ class MCTS:
             self.simulate()
             n += 1
 
-        logger.info(f'\n{n} simulations performed.\n'
+        logger.info(f'{n} simulations performed.\n'
                     f'Root edges:\n{self.root.get_edge_stats(to_string=True)}')
 
         self.move_probs, values = self.get_av()
