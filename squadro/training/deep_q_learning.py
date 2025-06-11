@@ -44,6 +44,7 @@ class DeepQLearningTrainer:
         min_lr=None,
         lr_final_step=None,
         adaptive_lr=True,
+        lambda_entropy=None,
         n_steps=None,
         backprop_interval=None,
         backprop_steps=None,
@@ -70,6 +71,7 @@ class DeepQLearningTrainer:
         self.adaptive_sampling = adaptive_sampling
         self.adaptive_lr = adaptive_lr
         self.freeze_backprop = freeze_backprop
+        self.lambda_entropy = lambda_entropy if lambda_entropy is not None else .5
 
         from_scratch = init_from == 'scratch'
 
@@ -146,7 +148,7 @@ class DeepQLearningTrainer:
                         eta_min=self.min_lr,
                         T_max=int(self.lr_final_step * backprop_per_game / self.n_networks),
                     )
-                    scheduler.last_epoch = epoch
+                    scheduler.last_epoch = int(epoch * backprop_per_game / self.n_networks)
                     warnings.filterwarnings(
                         "ignore",
                         message="To get the last learning rate computed by the scheduler",
@@ -670,9 +672,8 @@ class DeepQLearningTrainer:
         return losses, p_losses, v_losses
 
     def _get_lambda_entropy(self, step: int):
-        lambda_init = 1.5
         decay_rate = 0.1
-        lambda_t = lambda_init * (decay_rate ** (step / self.lr_final_step))
+        lambda_t = self.lambda_entropy * (decay_rate ** (step / self.lr_final_step))
         return lambda_t
 
     def _step_lr(self, player: int):
