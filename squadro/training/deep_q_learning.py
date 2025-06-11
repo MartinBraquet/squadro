@@ -327,12 +327,15 @@ class DeepQLearningTrainer:
             plt.ion()
 
     def _close_figure(self):
-        plt.savefig(self.results_path / 'plots.png')
+        self._save_figure()
         if is_notebook():
             plt.close(self._fig)
         else:
             plt.ioff()
             plt.show(block=False)
+
+    def _save_figure(self):
+        plt.savefig(self.results_path / 'plots.png')
 
     def update_checkpoint_model(self, step):
         if self.results['eval']['checkpoint'][step]['total'] > .7:  # noqa
@@ -345,6 +348,7 @@ class DeepQLearningTrainer:
         # with logger.context_info('dump'):
         self.dump_results()
         logger.dump_history(self.results_path / f'logs.txt', clear=True)
+        self._save_figure()
         self.evaluator.dump()
         filename = get_now()
         self.evaluator.dump(Path(self.evaluator_chkpt.model_path) / filename)
