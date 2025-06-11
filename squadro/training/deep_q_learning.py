@@ -282,7 +282,6 @@ class DeepQLearningTrainer:
         finally:
             self.dump()
             self._close_figure()
-            logger.dump_history(self.results_path / f'logs.txt')
 
         logger.info("Training finished.")
 
@@ -345,6 +344,7 @@ class DeepQLearningTrainer:
     def dump(self):
         # with logger.context_info('dump'):
         self.dump_results()
+        logger.dump_history(self.results_path / f'logs.txt', clear=True)
         self.evaluator.dump()
         filename = get_now()
         self.evaluator.dump(Path(self.evaluator_chkpt.model_path) / filename)

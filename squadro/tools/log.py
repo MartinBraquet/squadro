@@ -120,18 +120,21 @@ class logger:  # noqa
         cls.history = []
 
     @classmethod
-    def dump_history(cls, path: Path | str = None, mode='a') -> None:
+    def dump_history(cls, path: Path | str = None, mode='a', clear=False) -> None:
         """
         Dump log history to a text file.
 
         :param path: Path to the text file (default: None)
         :param mode: How to handle if the file exists (default: 'a')
+        :param clear: Whether to clear the history after dumping (default: False)
         """
         if cls.client is None:
             return
         text = '\n'.join(cls.history) + '\n'
         with open(path, mode=mode) as f:
             f.write(text)
+        if clear:
+            cls.clear_history()
 
     @classmethod
     def log(cls, msg, level=logging.INFO, **kwargs):
@@ -141,7 +144,7 @@ class logger:  # noqa
             and cls.client.isEnabledFor(level)
         ):
             cls.client.log(msg=msg, level=level, stacklevel=3, **kwargs)
-            logger.history.append(str(msg))
+            cls.history.append(str(msg))
 
     @classmethod
     def debug(cls, msg, **kwargs):
