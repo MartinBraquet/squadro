@@ -3,6 +3,8 @@ import signal
 from pathlib import Path
 from time import time
 
+import numpy as np
+
 from squadro.agents.agent import Agent
 from squadro.state import State
 from squadro.tools.agents import get_agent
@@ -43,7 +45,7 @@ class GameFromState:
     def __repr__(self):
         text = f'{self.agents[0]} vs {self.agents[1]}, first: {self.first}, {self.state.n_pawns} pawns'
         if self.winner is not None:
-            text += f', winner: {self.winner}, {len(self.action_history)} moves'
+            text += f', winner: {self.winner} ({self.agents[self.winner]}), {len(self.action_history)} moves'
         return text
 
     def __eq__(self, other: 'GameFromState'):
@@ -83,9 +85,11 @@ class GameFromState:
             while not self.state.game_over():
                 for evaluator in self.evaluators:
                     policy, state_value = evaluator.evaluate(self.state)
+                    policy = np.array2string(policy, formatter={'float_kind': lambda x: f"{x:.2f}"})
                     logger.info(
-                        f"Evaluation from {evaluator.__class__.__name__}: {state_value: .4f}\n"
-                        f"policy: {policy}\n"
+                        f"Evaluation from {evaluator.__class__.__name__}:\n"
+                        f"Value: {state_value: .4f}\n"
+                        f"Policy: {policy}\n"
                     )
                 player = self.state.get_cur_player()
                 try:
