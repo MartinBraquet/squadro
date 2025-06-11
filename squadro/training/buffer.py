@@ -83,11 +83,10 @@ class ReplayBuffer:
 
         if self.path.exists():
             results = load_pickle(self.path, raise_error=False)
-
-        if not results:
-            logger.warn(f"Could not load replay buffer from {self.path}, retrieving backup.")
-            path = self.path.with_suffix('.bak')
-            results = load_pickle(path)
+            if not results:
+                logger.warn(f"Could not load replay buffer from {self.path}, retrieving backup.")
+                path = self.path.with_suffix('.bak')
+                results = load_pickle(path)
 
         if results:
             self._results = results
