@@ -79,8 +79,18 @@ class ReplayBuffer:
                 yield w, f, s, p, r
 
     def load(self):
+        results = None
+
         if self.path.exists():
-            self._results = load_pickle(self.path)
+            results = load_pickle(self.path, raise_error=False)
+
+        if not results:
+            logger.warn(f"Could not load replay buffer from {self.path}, retrieving backup.")
+            path = self.path.with_suffix('.bak')
+            results = load_pickle(path)
+
+        if results:
+            self._results = results
 
     def save(self):
         if self.path.exists():

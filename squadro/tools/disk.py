@@ -43,10 +43,18 @@ def load_pickle(file_path: str | Path, raise_error=True):
     :param raise_error: If True, raises an error if the file doesn't exist. If False, returns None.
     :return:
     """
-    if not raise_error and not Path(file_path).exists():
+    if not Path(file_path).exists():
+        if raise_error:
+            raise FileNotFoundError(f"File {file_path} not found.")
         return None
-    with open(file_path, 'rb') as f:
-        return pickle.load(f)
+
+    try:
+        with open(file_path, 'rb') as f:
+            return pickle.load(f)
+    except (EOFError, pickle.UnpicklingError):
+        if raise_error:
+            raise
+        return None
 
 
 def load_txt(file_path: str | Path):
