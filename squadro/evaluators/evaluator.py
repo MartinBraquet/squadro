@@ -90,6 +90,9 @@ class ModelConfig:
         )
         return text
 
+    def copy(self):
+        return ModelConfig(**self.__dict__)
+
 
 class ResidualBlock(nn.Module):
     def __init__(self, channels: int):
