@@ -81,12 +81,13 @@ class DeepQLearningTrainer:
         if n_steps:
             self.lr_final_step = min(n_steps, self.lr_final_step)
 
+        self.entropy_final_step = self.lr_final_step
+
         self.eval_interval = eval_interval or 500
         self.eval_steps = max(eval_steps or 100, 4)
 
         self.mcts_kwargs = mcts_kwargs or {}
-        self.mcts_kwargs.setdefault('max_steps', int(40))
-        # self.mcts_kwargs.setdefault('max_steps', int(1.3 * self.n_pawns ** 3))
+        self.mcts_kwargs.setdefault('max_steps', int(40))  # int(1.3 * self.n_pawns ** 3))
 
         self.backprop_interval = backprop_interval or 100
         backprop_per_game = backprop_per_game or self.n_pawns ** 3
@@ -113,7 +114,7 @@ class DeepQLearningTrainer:
             self.results = dict_factory()
 
         lr = lr or 1e-3
-        self.min_lr = min_lr or max(lr / 10, 1e-4)
+        self.min_lr = min_lr or max(lr / 10., 1e-4)
 
         self.replay_buffer = ReplayBuffer(
             n_pawns=self.n_pawns,
@@ -122,7 +123,7 @@ class DeepQLearningTrainer:
         )
 
         self._v_loss = torch.nn.MSELoss(reduction='none')
-        self._p_loss = torch.nn.CrossEntropyLoss()
+        self._base_p_loss = torch.nn.CrossEntropyLoss()
 
         self._opponents = [
             'checkpoint',
@@ -168,6 +169,9 @@ class DeepQLearningTrainer:
         self.run_ts = None
         self._player_losses = None
         self._lr_tweak = None
+
+    def set_step(self, step: int):
+        self.results['game_step'] = step
 
     def get_step(self):
         if 'game_step' not in self.results:
@@ -349,7 +353,7 @@ class DeepQLearningTrainer:
 
     def update_checkpoint_model(self):
         step = self.get_step()
-        if self.results['eval']['checkpoint'][step]['total'] > .7:  # noqa
+        if self.checkpoint_eval[step]['total'] > .7:  # noqa
             logger.info(f"Updating best checkpoint")
             self.copy_weights_to_checkpoint()
             self.evaluator_chkpt.dump()
@@ -387,9 +391,17 @@ class DeepQLearningTrainer:
             win_rate += data
         self._self_play_win_rate = win_rate_split
         win_rate = np.array(win_rate).mean()
-        self.results['self_play_win_rate'][step] = win_rate
+        self.self_play_win_rates[step] = win_rate
         logger.info(f"Self-play win rate: {win_rate:.0%}"
                     f" (first 0: {win_rate_split[0]:.0%}, first 1: {win_rate_split[1]:.0%})")
+
+    @property
+    def checkpoint_eval(self):
+        return self.results['eval']['checkpoint']
+
+    @property
+    def self_play_win_rates(self):
+        return self.results['self_play_win_rate']
 
     @property
     def backprop_losses(self):
@@ -412,7 +424,7 @@ class DeepQLearningTrainer:
         ax = self._ax[0]
         ax.clear()
 
-        d = self.results['self_play_win_rate']
+        d = self.self_play_win_rates
         if d:
             x, y = zip(*d.items())
             ax.plot(x, [.5] * len(x), linestyle='--', color="grey", alpha=.2)
@@ -481,7 +493,7 @@ class DeepQLearningTrainer:
         ax = self._ax[2]
         ax.clear()
 
-        d = self.results['eval']['checkpoint']
+        d = self.checkpoint_eval
 
         if not d:
             return
@@ -619,7 +631,7 @@ class DeepQLearningTrainer:
         for player, ba in batches_by_player.items():
             # model = next(self.get_model(player).parameters())[0][0].clone()
             # other_model = next(self.get_model(1 - player).parameters())[0][0].clone()
-            l, p, v = self._backprop_batches(batches=ba, player=player, step=step)
+            l, p, v = self._backprop_batches(batches=ba, player=player)
             # model_updated = next(self.get_model(player).parameters())[0][0]
             # other_model_updated = next(self.get_model(1 - player).parameters())[0][0]
             # print('Should update', model, model_updated, sep='\n')
@@ -644,7 +656,7 @@ class DeepQLearningTrainer:
 
         self._clear_self_play_win_rate()
 
-    def _backprop_batches(self, batches: list, player: int, step: int):
+    def _backprop_batches(self, batches: list, player: int):
         if self.freeze_backprop == player:
             logger.info(f"Skipping backprop for player {player} (freeze)")
             return [], [], []
@@ -652,7 +664,7 @@ class DeepQLearningTrainer:
         return_all = self.model_config.double_value_head
 
         max_entropy = np.log(self.n_pawns)
-        lambda_entropy = self._get_lambda_entropy(step)
+        lambda_entropy = self._get_lambda_entropy()
 
         losses, p_losses, v_losses, entropies = [], [], [], []
         for state, probs, winner in batches:
@@ -679,7 +691,8 @@ class DeepQLearningTrainer:
             if probs is not None:
                 probs = torch.FloatTensor(probs).to(self.device)
                 entropy = - torch.sum(p * torch.log(p + EPS), dim=-1)
-                p_loss = self._p_loss(p, probs) + lambda_entropy * (max_entropy - entropy.sum())
+                p_loss = self._base_p_loss(p, probs) + lambda_entropy * (
+                    max_entropy - entropy.sum())
                 p_losses += [p_loss.item()]
                 loss += p_loss
                 entropies.append(entropy)
@@ -687,7 +700,6 @@ class DeepQLearningTrainer:
             losses += [loss.item()]
             loss.backward()
             with self._tweak_lr(player):
-                # print(self.get_lr(player))
                 self.get_optimizer(player).step()
             self._step_lr(player)
 
@@ -706,9 +718,10 @@ class DeepQLearningTrainer:
 
         return losses, p_losses, v_losses
 
-    def _get_lambda_entropy(self, step: int):
+    def _get_lambda_entropy(self):
+        step = self.get_step()
         decay_rate = 0.1
-        lambda_t = self.lambda_entropy * (decay_rate ** (step / self.lr_final_step))
+        lambda_t = self.lambda_entropy * (decay_rate ** (step / self.entropy_final_step))
         return lambda_t
 
     def _step_lr(self, player: int):
@@ -730,7 +743,6 @@ class DeepQLearningTrainer:
             # logger.info(f"Player {player} back to lr: {self.get_lr(player):.1e}")
         else:
             yield
-
 
     def _zero_grad(self):
         for i in range(self.n_networks):
@@ -760,12 +772,6 @@ class DeepQLearningTrainer:
         msg = f"{step} steps: "
         msg += ', '.join([f"{v:.0%} vs {k}" for k, v in results.items()])
         logger.info(msg)
-
-    @property
-    def elo(self) -> Elo:
-        if 'elo' not in self.results:
-            self.results['elo'] = Elo()
-        return self.results['elo']
 
     def evaluate_agent(self, vs: str | Agent = None) -> dict:
         """
@@ -815,3 +821,9 @@ class DeepQLearningTrainer:
         win_rate_split['total'] = win_rate
 
         return win_rate_split
+
+    @property
+    def elo(self) -> Elo:
+        if 'elo' not in self.results:
+            self.results['elo'] = Elo()
+        return self.results['elo']
