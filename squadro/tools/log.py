@@ -117,7 +117,7 @@ class logger:  # noqa
 
     @classmethod
     def clear_history(cls) -> None:
-        cls.history = []
+        logger.history = []
 
     @classmethod
     def dump_history(cls, path: Path | str = None, mode='a', clear=False) -> None:
@@ -130,7 +130,7 @@ class logger:  # noqa
         """
         if cls.client is None:
             return
-        text = '\n'.join(cls.history) + '\n'
+        text = '\n'.join(logger.history) + '\n'
         with open(path, mode=mode) as f:
             f.write(text)
         if clear:
@@ -144,7 +144,7 @@ class logger:  # noqa
             and cls.client.isEnabledFor(level)
         ):
             cls.client.log(msg=msg, level=level, stacklevel=3, **kwargs)
-            cls.history.append(str(msg))
+            logger.history.append(str(msg))
 
     @classmethod
     def debug(cls, msg, **kwargs):
