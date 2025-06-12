@@ -3,12 +3,10 @@ import signal
 from pathlib import Path
 from time import time
 
-import numpy as np
-
 from squadro.agents.agent import Agent
 from squadro.state import State
 from squadro.tools.agents import get_agent
-from squadro.tools.arrays import box
+from squadro.tools.arrays import box, array2string
 from squadro.tools.constants import DefaultParams
 from squadro.tools.log import game_logger as logger
 
@@ -78,6 +76,9 @@ class GameFromState:
         Run the game if not yet played
         Return the action history
         """
+        return self._run()
+
+    def _run(self):
         if not self.action_history:
             last_action = None
             if self.save_states:
@@ -85,11 +86,10 @@ class GameFromState:
             while not self.state.game_over():
                 for evaluator in self.evaluators:
                     policy, state_value = evaluator.evaluate(self.state)
-                    policy = np.array2string(policy, formatter={'float_kind': lambda x: f"{x:.2f}"})
                     logger.info(
                         f"Evaluation from {evaluator.__class__.__name__}:\n"
                         f"Value: {state_value: .4f}\n"
-                        f"Policy: {policy}\n"
+                        f"Policy: {array2string(policy)}\n"
                     )
                 player = self.state.get_cur_player()
                 try:
@@ -116,7 +116,6 @@ class GameFromState:
                 self._post_apply_action()
 
             logger.info(f'Game over: {self}')
-
         return self.action_history.copy()
 
     def _post_apply_action(self):
