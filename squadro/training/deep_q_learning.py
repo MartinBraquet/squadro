@@ -57,6 +57,7 @@ class DeepQLearningTrainer:
         mcts_kwargs=None,
         adaptive_sampling=True,
         freeze_backprop=None,
+        plot=True,
     ):
         """
         :param n_pawns: number of pawns in the game.
@@ -84,7 +85,8 @@ class DeepQLearningTrainer:
         self.eval_steps = max(eval_steps or 100, 4)
 
         self.mcts_kwargs = mcts_kwargs or {}
-        self.mcts_kwargs.setdefault('max_steps', int(1.3 * self.n_pawns ** 3))
+        self.mcts_kwargs.setdefault('max_steps', int(40))
+        # self.mcts_kwargs.setdefault('max_steps', int(1.3 * self.n_pawns ** 3))
 
         self.backprop_interval = backprop_interval or 100
         backprop_per_game = backprop_per_game or self.n_pawns ** 3
@@ -159,7 +161,9 @@ class DeepQLearningTrainer:
                 else:
                     self.set_lr(self.min_lr, player=player)
 
+        self.plot = plot
         self._display_handle, self._fig, self._ax = None, None, None
+
         self._self_play_win_rate = None
         self.run_ts = None
         self._player_losses = None
@@ -285,9 +289,6 @@ class DeepQLearningTrainer:
 
         logger.info("Training finished.")
 
-    def copy_weights_to_checkpoint(self):
-        self.evaluator_chkpt.load_weights(self.evaluator, n_pawns=self.n_pawns)
-
     def _run(self):
         self._plot_replay_buffer_diversity()
         self._plot_loss()
@@ -298,14 +299,12 @@ class DeepQLearningTrainer:
 
         for step in range(self.get_step(), (self.n_steps or int(1e15)) + 1):
             self._game_step()
-            # print('Step:', step)
+            print('Step:', step)
             self.get_training_samples()
 
             if step % self.backprop_interval == 0:
-                self._process_self_play_info()
                 self._back_propagate()
                 self._plot_loss()
-                self._clear_self_play_win_rate()
 
             if step % self.eval_interval == 0:
                 self.evaluate_agents()
@@ -316,10 +315,15 @@ class DeepQLearningTrainer:
                 self._plot_replay_buffer_diversity()
                 self.dump()
 
+    def copy_weights_to_checkpoint(self):
+        self.evaluator_chkpt.load_weights(self.evaluator)
+
     def _game_step(self):
         self.results['game_step'] += 1
 
     def _open_figure(self):
+        if not self.plot:
+            return
         self._fig, self._ax = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
         self._ax = self._ax.flatten()
         self._fig.suptitle(self.title)
@@ -329,6 +333,8 @@ class DeepQLearningTrainer:
             plt.ion()
 
     def _close_figure(self):
+        if not self.plot:
+            return
         self._save_figure()
         if is_notebook():
             plt.close(self._fig)
@@ -337,6 +343,8 @@ class DeepQLearningTrainer:
             plt.show(block=False)
 
     def _save_figure(self):
+        if not self.plot:
+            return
         plt.savefig(self.results_path / 'plots.png')
 
     def update_checkpoint_model(self):
@@ -388,6 +396,8 @@ class DeepQLearningTrainer:
         return self.results['backprop_loss']
 
     def _display_plot(self):
+        if not self.plot:
+            return
         if is_notebook():
             self._display_handle.update(self._fig)
         else:
@@ -396,6 +406,9 @@ class DeepQLearningTrainer:
             plt.pause(0.01)  # Needed to refresh the figure
 
     def _plot_replay_buffer_diversity(self):
+        if not self.plot:
+            return
+
         ax = self._ax[0]
         ax.clear()
 
@@ -419,6 +432,9 @@ class DeepQLearningTrainer:
         self._display_plot()
 
     def _plot_loss(self):
+        if not self.plot:
+            return
+
         ax = self._ax[1]
         ax.clear()
         labels = {'total': "Total", 'p': "Policy", 'v': "Value"}
@@ -459,6 +475,9 @@ class DeepQLearningTrainer:
         self._display_plot()
 
     def _plot_win_rate(self):
+        if not self.plot:
+            return
+
         ax = self._ax[2]
         ax.clear()
 
@@ -502,6 +521,9 @@ class DeepQLearningTrainer:
         self._display_plot()
 
     def _plot_elo(self):
+        if not self.plot:
+            return
+
         ax = self._ax[3]
         ax.clear()
         x, y = zip(*self.elo.history.items())
@@ -545,10 +567,13 @@ class DeepQLearningTrainer:
 
         return history
 
-    def _back_propagate(self, step: int = 0):
+    def _back_propagate(self):
         """
         Update the Q-network based on the reward obtained at the end of the game.
         """
+        step = self.get_step()
+        self._process_self_play_info()
+
         lrs = ', '.join([f"{self.get_lr(i):.1e}" for i in range(self.n_networks)])
         logger.info(f"lr: {lrs}")
 
@@ -566,7 +591,7 @@ class DeepQLearningTrainer:
                 logger.warn(f"win_rate is NaN for {w=}, {f=}. To Fix.")
                 win_rate = .5
             k = (1. - win_rate) * (self.backprop_steps // 2)
-            k = min(round(k), len(data))
+            k = min(max(round(k), 1), len(data))
             batch = random.sample(data, k=k)
             # print(len(batch), '/', len(data))
             if batch:
@@ -616,6 +641,8 @@ class DeepQLearningTrainer:
 
         v_txt = ', '.join([f"v{i}: {v:.2f}" for i, v in enumerate(v_loss)])
         logger.info(f"Backprop loss: {loss:.2f} (p: {p_loss:.2f}, {v_txt})")
+
+        self._clear_self_play_win_rate()
 
     def _backprop_batches(self, batches: list, player: int, step: int):
         if self.freeze_backprop == player:
