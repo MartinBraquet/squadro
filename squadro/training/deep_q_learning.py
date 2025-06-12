@@ -296,26 +296,28 @@ class DeepQLearningTrainer:
 
         self._clear_self_play_win_rate()
 
-        n_steps = self.n_steps or int(1e15)
-        for step in range(self.get_step(), n_steps + 1):
-            self.results['game_step'] += 1
+        for step in range(self.get_step(), (self.n_steps or int(1e15)) + 1):
+            self._game_step()
             # print('Step:', step)
             self.get_training_samples()
 
             if step % self.backprop_interval == 0:
-                self._process_self_play_info(step)
-                self._back_propagate(step)
+                self._process_self_play_info()
+                self._back_propagate()
                 self._plot_loss()
-                self.replay_buffer.get_diversity_ratio(step)
-                self._plot_replay_buffer_diversity()
                 self._clear_self_play_win_rate()
 
             if step % self.eval_interval == 0:
-                self.evaluate_agents(step)
-                self.update_checkpoint_model(step)
+                self.evaluate_agents()
+                self.update_checkpoint_model()
                 self._plot_win_rate()
                 self._plot_elo()
+                self.replay_buffer.get_diversity_ratio(step)
+                self._plot_replay_buffer_diversity()
                 self.dump()
+
+    def _game_step(self):
+        self.results['game_step'] += 1
 
     def _open_figure(self):
         self._fig, self._ax = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
@@ -337,7 +339,8 @@ class DeepQLearningTrainer:
     def _save_figure(self):
         plt.savefig(self.results_path / 'plots.png')
 
-    def update_checkpoint_model(self, step):
+    def update_checkpoint_model(self):
+        step = self.get_step()
         if self.results['eval']['checkpoint'][step]['total'] > .7:  # noqa
             logger.info(f"Updating best checkpoint")
             self.copy_weights_to_checkpoint()
@@ -367,7 +370,8 @@ class DeepQLearningTrainer:
     def _clear_self_play_win_rate(self):
         self._self_play_win_rate = {0: [], 1: []}
 
-    def _process_self_play_info(self, step):
+    def _process_self_play_info(self):
+        step = self.get_step()
         win_rate = []
         win_rate_split = {}
         for f, data in self._self_play_win_rate.items():
@@ -713,7 +717,8 @@ class DeepQLearningTrainer:
     def device(self):
         return self.get_model().device
 
-    def evaluate_agents(self, step):
+    def evaluate_agents(self):
+        step = self.get_step()
         vs_list = self._opponents
         results = {}
         for vs in vs_list:
