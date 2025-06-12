@@ -170,7 +170,7 @@ class DeepQLearningEvaluator(_RLEvaluator):
         """
         kwargs.setdefault('dtype', 'pt')
         super().__init__(**kwargs)
-        self.model_config = model_config or ModelConfig()
+        self.model_config: ModelConfig = model_config or ModelConfig()
         self.device = device or default_device
 
     def evaluate(
@@ -192,7 +192,8 @@ class DeepQLearningEvaluator(_RLEvaluator):
             )
             if torch_output:
                 p = torch.from_numpy(p).to(self.device)
-                v = torch.from_numpy(v).to(self.device)
+                v = torch.from_numpy(v) if isinstance(v, np.ndarray) else torch.tensor(v)
+                v = v.to(self.device)
             return p, v
 
         model = self.get_model(n_pawns=state.n_pawns, player=state.cur_player)
@@ -286,7 +287,7 @@ class DeepQLearningEvaluator(_RLEvaluator):
 
         super().erase(n_pawns=n_pawns, filepath=filepath)
 
-    def load_weights(self, other: 'DeepQLearningEvaluator', n_pawns: int):
+    def load_weights(self, other: 'DeepQLearningEvaluator'):
         """
         Loads the weights from the specified DeepQLearningEvaluator instance and applies
         them to the current model. This function does not return any value but modifies
@@ -296,9 +297,6 @@ class DeepQLearningEvaluator(_RLEvaluator):
             other: DeepQLearningEvaluator
                 An instance of DeepQLearningEvaluator containing the weights to be
                 loaded and applied to the model.
-
-            n_pawns: int
-
 
         Returns:
             None
