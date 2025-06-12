@@ -9,6 +9,8 @@ class ML(TestCase, ABC):
     def setUp(self):
         set_seed()
         self.evaluator = self.get_evaluator()
+        self.state = State(advancement=[[1, 8, 3], [1, 2, 4]], cur_player=0)
+        self.end_state = State(advancement=[[8, 8, 3], [1, 2, 4]], cur_player=0)
 
     @abstractmethod
     def get_evaluator(self):
@@ -16,7 +18,7 @@ class ML(TestCase, ABC):
         pass
 
     def test_game_over(self):
-        state = State(advancement=[[8, 8, 3], [1, 2, 4]], cur_player=0)
+        state = self.end_state
         value = self.evaluator.get_value(state)
         self.assertEqual(1, value)
 
