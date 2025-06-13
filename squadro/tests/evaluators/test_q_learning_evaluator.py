@@ -6,7 +6,7 @@ import numpy as np
 
 from squadro.evaluators.rl import QLearningEvaluator
 from squadro.state import State
-from squadro.tests.tools import ML
+from squadro.tests.evaluators.tools import ML
 
 
 class TestQLearningEvaluator(ML):

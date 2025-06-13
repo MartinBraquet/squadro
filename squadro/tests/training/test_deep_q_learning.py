@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from unittest import TestCase
 from unittest.mock import patch
 
 import numpy as np
@@ -12,8 +11,12 @@ from squadro.agents.random_agent import RandomAgent
 from squadro.evaluators.evaluator import ModelConfig
 from squadro.evaluators.rl import DeepQLearningEvaluator
 from squadro.state import State
+from squadro.tests.base import Base
+from squadro.tools.disk import load_pickle, dump_pickle
 from squadro.tools.ml import assert_models_equal, assert_models_unequal
 from squadro.tools.probabilities import set_seed
+
+DIR = Path(__file__).parent
 
 MEDIUM_PARAMS = dict(
     eval_steps=8,
@@ -45,8 +48,9 @@ def run(game: Game):
     game.agents = agents
 
 
-class TestDeepQLearningTrainer(TestCase):
+class _Base(Base):
     def setUp(self):
+        super().setUp()
         set_seed()
         self.model_config = ModelConfig(
             num_blocks=2,
@@ -78,7 +82,62 @@ class TestDeepQLearningTrainer(TestCase):
         trainer = squadro.DeepQLearningTrainer(**kwargs)
         return trainer
 
-    # @pytest.mark.slow
+
+class Data:
+    data = {}
+    _data_path = DIR / 'dql_data.pkl'
+
+    @classmethod
+    def load(cls):
+        data = load_pickle(cls._data_path, raise_error=False)
+        print(data)
+        if data:
+            cls.data = data
+
+    @classmethod
+    def dump(cls):
+        dump_pickle(cls.data, cls._data_path)
+
+    @classmethod
+    def get(cls, key):
+        return cls.data[key]
+
+    @classmethod
+    def set(cls, key, value):
+        cls.data[key] = value
+
+
+# @pytest.mark.slow
+class TestDeepQLearningTrainerTight(_Base):
+    """
+    Those are very tight integration tests.
+    They will frequently break as soon as the implementation changes. When they change, we want
+    to be able to quickly update the expected results here.
+    If there is a bug in a low-level method, the bug should be caught somewhere else. The tests
+    here are not intended to catch low-level bugs.
+    The primary goal of these tests it to be able to refactor the code or any other code change
+    that are not expected to affect the results.
+    In other words, if we change the results, those tests should be ignored.
+    If we refactor code without result change, we should pay close attention to those tests and
+    ensure that they pass before and after the refactoring.
+    """
+    UPDATE_DATA = False
+
+    def setUp(self):
+        super().setUp()
+        Data.load()
+
+    def check(self, evaluator, key):
+        evaluation = evaluator.evaluate(self.state)
+        if self.UPDATE_DATA:
+            Data.set(key, evaluation)
+            Data.dump()
+        expected = Data.get(key)
+        # print(expected)
+        # print(evaluation)
+        for a, b in zip(expected, evaluation):
+            self.assertEqualGeneral(a, b)
+
     def test_from_scratch(self):
         trainer = self.get_trainer()
         trainer.run()
@@ -86,9 +145,7 @@ class TestDeepQLearningTrainer(TestCase):
             model_path=trainer.model_path,
             model_config=self.model_config,
         )
-        p, v = evaluator.evaluate(self.state)
-        self.assertEqual(0.30241554975509644, v)
-        np.testing.assert_almost_equal(p, [0.3195003, 0.2665146, 0.4139851])
+        self.check(evaluator, key='from_scratch')
 
     def test_board_flipping(self):
         self.model_config.board_flipping = True
@@ -98,9 +155,7 @@ class TestDeepQLearningTrainer(TestCase):
             model_path=trainer.model_path,
             model_config=self.model_config,
         )
-        p, v = evaluator.evaluate(self.state)
-        self.assertEqual(-0.08411766588687897, v)
-        np.testing.assert_almost_equal(p, [0.403206, 0.2753415, 0.3214525])
+        self.check(evaluator, key='board_flipping')
 
     def test_separate_networks(self):
         self.model_config.separate_networks = True
@@ -110,9 +165,7 @@ class TestDeepQLearningTrainer(TestCase):
             model_path=trainer.model_path,
             model_config=self.model_config,
         )
-        p, v = evaluator.evaluate(self.state)
-        self.assertEqual(-0.085907943546772, v)
-        np.testing.assert_almost_equal(p, [0.4568438, 0.22258231, 0.3205739])
+        self.check(evaluator, key='separate_networks')
 
     @patch.object(Game, 'run', run)
     def test_longer_training_fake_game(self):
@@ -127,9 +180,10 @@ class TestDeepQLearningTrainer(TestCase):
             model_path=trainer.model_path,
             model_config=self.model_config,
         )
-        p, v = evaluator.evaluate(self.state)
-        self.assertEqual(0.2970362603664398, v)
-        np.testing.assert_almost_equal(p, [0.3038661, 0.3249999, 0.371134])
+        self.check(evaluator, key='longer_training')
+
+
+class TestDeepQLearningTrainer(_Base):
 
     @patch.object(Game, 'run', run)
     def test_from_file(self):
@@ -159,7 +213,9 @@ class TestDeepQLearningTrainer(TestCase):
         path = model_path / 'checkpoint'
         files = os.listdir(path)
         self.assertGreaterEqual(len(files), 1)
-        # files.remove('checkpoint/model_3.pt')
+        pt = 'checkpoint/model_3.pt'
+        if pt in files:
+            files.remove(pt)
         # print(files)
         path = path / files[0] / 'model_3.pt'
         self.assertTrue(path.exists())

@@ -1,3 +1,4 @@
+import json
 import pickle
 from pathlib import Path
 
@@ -33,7 +34,7 @@ def dump_pickle(obj, file_path: str | Path):
     """
 
     with open(file_path, 'wb') as f:
-        pickle.dump(obj, f)
+        pickle.dump(obj, f)  # noqa
 
 
 def load_pickle(file_path: str | Path, raise_error=True):
@@ -52,6 +53,38 @@ def load_pickle(file_path: str | Path, raise_error=True):
         with open(file_path, 'rb') as f:
             return pickle.load(f)
     except (EOFError, pickle.UnpicklingError):
+        if raise_error:
+            raise
+        return None
+
+
+def dump_json(obj, file_path: str | Path):
+    """
+    Dumps an object to a file using pickle.
+    :param obj:
+    :param file_path:
+    :return:
+    """
+    with open(file_path, 'w') as f:
+        json.dump(obj, f)
+
+
+def load_json(file_path: str | Path, raise_error=True):
+    """
+    Loads an object from a file using pickle.
+    :param file_path:
+    :param raise_error: If True, raises an error if the file doesn't exist. If False, returns None.
+    :return:
+    """
+    if not Path(file_path).exists():
+        if raise_error:
+            raise FileNotFoundError(f"File {file_path} not found.")
+        return None
+
+    try:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+    except json.JSONDecodeError:
         if raise_error:
             raise
         return None

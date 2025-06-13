@@ -9,7 +9,7 @@ from squadro.evaluators.channels import get_channels
 from squadro.evaluators.evaluator import ModelConfig
 from squadro.evaluators.rl import DeepQLearningEvaluator
 from squadro.state import State
-from squadro.tests.tools import ML
+from squadro.tests.evaluators.tools import ML
 from squadro.tools.ml import assert_models_equal, assert_models_unequal
 
 
