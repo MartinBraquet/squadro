@@ -148,12 +148,17 @@ class QLearningEvaluator(_RLEvaluator):
             return state_to_index(state)
 
 
-class DeepQLearningEvaluator(_RLEvaluator):
+class DeepQLearningEvaluatorMultipleGrids(_RLEvaluator):
     """
     Evaluate a state using a deep neural network.
 
-     _Q is a cache for all neural networks.
-     _Q['/path/dir'][3] is the neural network in '/path/dir' for 3 pawns (stared in file '/path/dir/model_3.json')
+     _models is a cache for all neural networks.
+     _models['/path/dir'][3] is the neural network in '/path/dir' for 3 pawns (stared in file '/path/dir/model_3.json')
+
+     Remember that an Evaluator does not depend on the number of pawns. Multiple models can be
+     attached to the same evaluator.
+
+     `model_path` is the dir where the models for all pawns are stored.
     """
 
     _models = {}
@@ -170,7 +175,10 @@ class DeepQLearningEvaluator(_RLEvaluator):
         """
         kwargs.setdefault('dtype', 'pt')
         super().__init__(**kwargs)
+
+        # This can only be used to initialize a model
         self.model_config: ModelConfig = model_config or ModelConfig()
+
         self.device = device or default_device
 
     def evaluate(
@@ -234,8 +242,12 @@ class DeepQLearningEvaluator(_RLEvaluator):
     def get_weight_update_timestamp(self, n_pawns: int):
         return super().get_weight_update_timestamp(self.get_key(n_pawns, player=0))
 
+    @property
+    def separate_networks(self):
+        return self.model_config.separate_networks
+
     def get_key(self, n_pawns, player):
-        if self.model_config.separate_networks:
+        if self.separate_networks:
             assert player is not None, "Player must be specified for separate networks"
             key = f"{n_pawns}_{player}"
         else:
@@ -260,8 +272,9 @@ class DeepQLearningEvaluator(_RLEvaluator):
                 self.models[key] = torch.load(
                     filepath,
                     weights_only=False,
-                    map_location=self.device
+                    map_location=self.device,
                 )
+                self.model_config = self.models[key].config
                 self._weight_update_timestamp[filepath] = get_file_modified_time(filepath)
             else:
                 logger.warn(f"No file at {filepath}, creating new model")
@@ -278,7 +291,7 @@ class DeepQLearningEvaluator(_RLEvaluator):
         model.save(filepath)
 
     def erase(self, n_pawns: int, filepath=None):
-        if self.model_config.separate_networks and not filepath:
+        if self.separate_networks and not filepath:
             for player in range(2):
                 key = self.get_key(n_pawns, player=player)
                 filepath = self.get_filepath(key)
@@ -304,3 +317,29 @@ class DeepQLearningEvaluator(_RLEvaluator):
         for k, model in other.models.items():
             key_info = self.extract_from_key(k)
             self.get_model(**key_info).load(model)
+
+
+class DeepQLearningEvaluator(DeepQLearningEvaluatorMultipleGrids):
+    """
+    Evaluator for a single grid size (specific `n_pawns`), and having a single model.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._separate_networks = None
+
+    @property
+    def separate_networks(self):
+        if self._separate_networks is None:
+            files = os.listdir(self.model_path) if os.path.exists(self.model_path) else []
+            files = [f.replace('.pt', '').replace('model_', '') for f in files if f.endswith('.pt')]
+            if set(files) == {'0', '1'}:
+                self._separate_networks = True
+            elif len(files) == 1:
+                self._separate_networks = False
+            else:
+                self._separate_networks = super().separate_networks
+        return self._separate_networks
+
+    def get_model(self, n_pawns: int, player: int = None) -> Model:
+        return super().get_model(n_pawns=n_pawns, player=player or 0)
