@@ -87,7 +87,7 @@ class DeepQLearningTrainer:
         self.eval_steps = max(eval_steps or 100, 4)
 
         self.mcts_kwargs = mcts_kwargs or {}
-        self.mcts_kwargs.setdefault('max_steps', int(40))  # int(1.3 * self.n_pawns ** 3))
+        self.mcts_kwargs.setdefault('max_steps', int(12 * self.n_pawns))
 
         self.backprop_interval = backprop_interval or 100
         backprop_per_game = backprop_per_game or self.n_pawns ** 3
