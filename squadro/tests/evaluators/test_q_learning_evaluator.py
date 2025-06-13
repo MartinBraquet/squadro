@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import numpy as np
 
+from squadro.core.state import State
 from squadro.evaluators.rl import QLearningEvaluator
-from squadro.state import State
 from squadro.tests.evaluators.tools import ML
 
 

@@ -2,8 +2,8 @@ import json
 import os
 from collections import defaultdict
 
-from squadro.state import State
-from squadro.tools.log import monte_carlo_logger as logger
+from squadro.core.state import State
+from squadro.tools.logs import monte_carlo_logger as logger
 
 
 class Node:

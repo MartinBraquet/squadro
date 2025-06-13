@@ -1,22 +1,20 @@
-import random
 import tempfile
 from pathlib import Path
 from time import sleep
 from unittest import TestCase
 from unittest.mock import patch
 
-import numpy as np
 import pytest
 
 from squadro.agents.random_agent import RandomAgent
-from squadro.game import Game, GameFromState
-from squadro.state import State
+from squadro.core.game import Game, GameFromState
+from squadro.core.state import State
+from squadro.tools.probabilities import set_seed
 
 
 class TestGame(TestCase):
     def setUp(self):
-        np.random.seed(42)
-        random.seed(42)
+        set_seed(42)
 
     def test_game(self):
         first = 0

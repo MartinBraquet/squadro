@@ -1,16 +1,15 @@
-import random
 from unittest import TestCase
 
 import numpy as np
 
+from squadro.core.state import State
 from squadro.evaluators.advancement import AdvancementEvaluator
-from squadro.state import State
+from squadro.tools.probabilities import set_seed
 
 
 class TestAdvancementEvaluator(TestCase):
     def setUp(self):
-        random.seed(0)
-        np.random.seed(0)
+        set_seed(0)
 
     def test_eval(self):
         state = State(first=0, n_pawns=3)

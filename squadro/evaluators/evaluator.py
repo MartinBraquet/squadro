@@ -10,10 +10,10 @@ import torch
 from numpy.typing import NDArray
 from torch import nn
 
-from squadro.evaluators.channels import get_num_channels
-from squadro.state import State
-from squadro.tools.log import logger
-from squadro.tools.ml import get_model_size
+from squadro.core.state import State
+from squadro.ml.channels import get_num_channels
+from squadro.ml.ml import get_model_size
+from squadro.tools.logs import logger
 
 
 class Evaluator(ABC):

@@ -3,7 +3,6 @@ from time import sleep, time
 from unittest import TestCase
 from unittest.mock import patch
 
-from squadro import minimax
 from squadro.agents.alphabeta_agent import (
     AdvancementAgent,
     RelativeAdvancementAgent,
@@ -11,7 +10,8 @@ from squadro.agents.alphabeta_agent import (
     AlphaBetaRelativeAdvancementAgent,
 )
 from squadro.agents.random_agent import RandomAgent
-from squadro.state import State
+from squadro.algorithms import minimax
+from squadro.core.state import State
 from squadro.tools.constants import DefaultParams
 
 

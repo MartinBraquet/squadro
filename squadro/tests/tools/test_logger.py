@@ -2,7 +2,7 @@ from tempfile import NamedTemporaryFile
 from unittest import TestCase
 
 from squadro.tools.disk import load_txt
-from squadro.tools.log import logger
+from squadro.tools.logs import logger
 
 
 class TestLogger(TestCase):

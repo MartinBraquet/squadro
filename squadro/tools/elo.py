@@ -1,5 +1,5 @@
 from squadro.tools.constants import inf
-from squadro.tools.log import training_logger as logger
+from squadro.tools.logs import training_logger as logger
 
 
 class Elo:

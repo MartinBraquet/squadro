@@ -9,12 +9,12 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from squadro.evaluators.channels import get_channels
+from squadro.core.state import State
 from squadro.evaluators.evaluator import Evaluator, default_device, ModelConfig, Model
-from squadro.state import State
+from squadro.ml.channels import get_channels
 from squadro.tools.constants import DATA_PATH, inf
 from squadro.tools.dates import get_file_modified_time, get_now, READABLE_DATE_FMT
-from squadro.tools.log import logger
+from squadro.tools.logs import logger
 from squadro.tools.state import get_grid_shape, state_to_index, get_reward
 
 

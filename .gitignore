@@ -13,7 +13,7 @@ src/squadro/.ipynb_checkpoints/
 *.coverage
 *coverage.xml
 report
-model
+martin/model
 *.pdf
 
 /squadro/data/

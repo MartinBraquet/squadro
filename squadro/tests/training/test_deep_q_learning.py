@@ -8,12 +8,12 @@ import numpy as np
 import squadro
 from squadro import Game, logger
 from squadro.agents.random_agent import RandomAgent
+from squadro.core.state import State
 from squadro.evaluators.evaluator import ModelConfig
 from squadro.evaluators.rl import DeepQLearningEvaluator
-from squadro.state import State
+from squadro.ml.ml import assert_models_equal, assert_models_unequal
 from squadro.tests.base import Base
 from squadro.tools.disk import load_pickle, dump_pickle
-from squadro.tools.ml import assert_models_equal, assert_models_unequal
 from squadro.tools.probabilities import set_seed
 
 DIR = Path(__file__).parent

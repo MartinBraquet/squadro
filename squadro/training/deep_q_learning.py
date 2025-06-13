@@ -13,20 +13,19 @@ from matplotlib import pyplot as plt
 from squadro import Game
 from squadro.agents.agent import Agent
 from squadro.agents.montecarlo_agent import MonteCarloDeepQLearningAgent
-from squadro.benchmarking import Benchmark
+from squadro.core.benchmarking import Benchmark
 from squadro.evaluators.evaluator import Model
 from squadro.evaluators.rl import DeepQLearningEvaluator
 from squadro.tools.basic import dict_factory, check_nan
-from squadro.tools.constants import DefaultParams, inf
+from squadro.tools.constants import DefaultParams, inf, DQL_PATH
 from squadro.tools.dates import get_now
 from squadro.tools.disk import dump_pickle, mkdir, load_pickle
 from squadro.tools.elo import Elo
-from squadro.tools.log import training_logger as logger
+from squadro.tools.logs import training_logger as logger
 from squadro.tools.notebooks import is_notebook
 from squadro.tools.probabilities import get_entropy
 from squadro.tools.state import get_reward
 from squadro.training.buffer import ReplayBuffer
-from squadro.training.constants import DQL_PATH
 
 RESULTS_PATH = DQL_PATH / "results"
 

@@ -1,9 +1,9 @@
+from squadro.core.game import Game
 from squadro.evaluators.evaluator import Evaluator
-from squadro.game import Game
 from squadro.tools.constants import DATA_PATH
 from squadro.tools.dates import get_now
 from squadro.tools.disk import mkdir
-from squadro.tools.log import benchmark_logger as logger
+from squadro.tools.logs import benchmark_logger as logger
 
 
 class Benchmark:

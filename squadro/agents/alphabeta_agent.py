@@ -1,12 +1,12 @@
 from abc import abstractmethod
 from time import time
 
-from squadro import minimax
 from squadro.agents.agent import Agent
-from squadro.state import State, get_next_state
+from squadro.algorithms import minimax
+from squadro.core.state import State, get_next_state
 from squadro.tools.constants import DefaultParams
 from squadro.tools.evaluation import evaluate_advancement
-from squadro.tools.log import alpha_beta_logger as logger
+from squadro.tools.logs import alpha_beta_logger as logger
 
 
 class AlphaBetaAgent(Agent):

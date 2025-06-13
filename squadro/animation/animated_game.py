@@ -6,12 +6,12 @@ import pygame
 from squadro.agents.agent import Agent
 from squadro.agents.best import get_best_real_time_game_agent
 from squadro.animation.board import Board, handle_events, check_quit
-from squadro.game import Game
-from squadro.state import State, get_next_state
+from squadro.core.game import Game
+from squadro.core.state import State, get_next_state
 from squadro.tools.constants import DefaultParams, DATA_PATH
 from squadro.tools.dates import get_now
 from squadro.tools.disk import mkdir
-from squadro.tools.log import logger
+from squadro.tools.logs import logger
 
 
 class GameAnimation:

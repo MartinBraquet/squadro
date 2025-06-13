@@ -18,14 +18,14 @@ import numpy as np
 from numpy.typing import NDArray
 
 from squadro.agents.agent import Agent
+from squadro.core.state import State, get_next_state
 from squadro.evaluators.advancement import AdvancementEvaluator
 from squadro.evaluators.evaluator import Evaluator
 from squadro.evaluators.rl import QLearningEvaluator, DeepQLearningEvaluator
 from squadro.evaluators.rollout import RolloutEvaluator
-from squadro.state import State, get_next_state
 from squadro.tools.constants import DefaultParams, inf, EPS
 from squadro.tools.evaluation import evaluate_advancement
-from squadro.tools.log import monte_carlo_logger as logger
+from squadro.tools.logs import monte_carlo_logger as logger
 from squadro.tools.probabilities import get_random_index
 from squadro.tools.tree import Node, Debug, Edge, log_trajectory
 

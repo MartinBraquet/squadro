@@ -1,16 +1,13 @@
-import random
 from unittest import TestCase
 
-import numpy as np
-
-from squadro.state import State, get_next_state
+from squadro.core.state import State, get_next_state
+from squadro.tools.probabilities import set_seed
 from squadro.tools.tree import Node, Stats, Edge
 
 
 class TestNode(TestCase):
     def setUp(self):
-        np.random.seed(0)
-        random.seed(0)
+        set_seed(0)
 
     def test_node(self):
         state = State(first=0, n_pawns=3)
@@ -23,8 +20,7 @@ class TestNode(TestCase):
 
 class TestStats(TestCase):
     def setUp(self):
-        np.random.seed(0)
-        random.seed(0)
+        set_seed(0)
 
     def test(self):
         stats = Stats(prior=.5)
@@ -37,8 +33,7 @@ class TestStats(TestCase):
 
 class TestEdges(TestCase):
     def setUp(self):
-        np.random.seed(0)
-        random.seed(0)
+        set_seed(0)
 
     def test(self):
         action = 0

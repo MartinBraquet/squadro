@@ -6,12 +6,12 @@ import numpy as np
 from black.trans import defaultdict
 from matplotlib import pyplot as plt
 
-from squadro.state import State
+from squadro.core.state import State
 from squadro.tools.basic import dict_factory
+from squadro.tools.constants import DQL_PATH
 from squadro.tools.disk import load_pickle, dump_pickle
-from squadro.tools.log import training_logger as logger
+from squadro.tools.logs import training_logger as logger
 from squadro.tools.probabilities import get_entropy
-from squadro.training.constants import DQL_PATH
 
 
 class ReplayBuffer:

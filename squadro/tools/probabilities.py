@@ -45,3 +45,9 @@ def get_entropy(probs: np.ndarray | torch.Tensor):
     if isinstance(probs, list):
         probs = np.array(probs)
     return np.sum(- probs * np.log(probs + EPS))
+
+
+def categorical_cross_entropy(y_pred, y_true):
+    y_pred = torch.clamp(y_pred, EPS, 1 - EPS)
+    y_true = torch.clamp(y_true, EPS, 1 - EPS)
+    return (y_true * torch.log(y_true / y_pred)).sum(dim=1).mean()

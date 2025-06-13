@@ -1,18 +1,15 @@
-import random
 from time import time
 from unittest import TestCase
 
-import numpy as np
-
 from squadro.agents.best import get_best_real_time_game_agent
-from squadro.state import State
+from squadro.core.state import State
 from squadro.tools.constants import DefaultParams
+from squadro.tools.probabilities import set_seed
 
 
 class TestBest(TestCase):
     def setUp(self):
-        np.random.seed(42)
-        random.seed(42)
+        set_seed(42)
 
     def test(self):
         n_pawns = 3

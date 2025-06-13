@@ -4,11 +4,11 @@ from pathlib import Path
 from time import time
 
 from squadro.agents.agent import Agent
-from squadro.state import State
+from squadro.core.state import State
 from squadro.tools.agents import get_agent
 from squadro.tools.arrays import box, array2string
 from squadro.tools.constants import DefaultParams
-from squadro.tools.log import game_logger as logger
+from squadro.tools.logs import game_logger as logger
 
 
 class GameFromState:

@@ -4,10 +4,10 @@ import pygame
 
 from squadro.agents.human_agent import get_action_from_click
 from squadro.animation.board import Board, check_quit, get_position_from_click
+from squadro.core.state import State
 from squadro.evaluators.evaluator import Evaluator
-from squadro.state import State
 from squadro.tools.constants import DefaultParams
-from squadro.tools.log import logger
+from squadro.tools.logs import logger
 
 
 class DynamicBoardAnimation:

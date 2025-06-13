@@ -1,8 +1,8 @@
 import numpy as np
 from numpy.typing import NDArray
 
+from squadro.core.state import State
 from squadro.evaluators.evaluator import Evaluator
-from squadro.state import State
 from squadro.tools.evaluation import evaluate_advancement
 
 

@@ -2,9 +2,9 @@ import logging
 import os
 
 from squadro.animation.animated_game import GamePlay, GameAnimation
-from squadro.game import Game
+from squadro.core.game import Game
 from squadro.tools.agents import AVAILABLE_AGENTS
-from squadro.tools.log import logger
+from squadro.tools.logs import logger
 from squadro.training.deep_q_learning import DeepQLearningTrainer
 from squadro.training.q_learning import QLearningTrainer
 

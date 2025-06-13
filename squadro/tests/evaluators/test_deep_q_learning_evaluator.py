@@ -5,12 +5,12 @@ import numpy as np
 import torch
 from torch import tensor
 
-from squadro.evaluators.channels import get_channels
+from squadro.core.state import State
 from squadro.evaluators.evaluator import ModelConfig
 from squadro.evaluators.rl import DeepQLearningEvaluator
-from squadro.state import State
+from squadro.ml.channels import get_channels
+from squadro.ml.ml import assert_models_equal, assert_models_unequal
 from squadro.tests.evaluators.tools import ML
-from squadro.tools.ml import assert_models_equal, assert_models_unequal
 
 
 class TestDeepQLearningEvaluator(ML):

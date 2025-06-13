@@ -1,6 +1,6 @@
 import pytest
 
-from squadro.state import State
+from squadro.core.state import State
 
 
 def test_apply_action_valid_action(sample_state):
