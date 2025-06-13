@@ -5,6 +5,8 @@ from pathlib import Path
 
 import squadro
 
+EPS = 1e-12
+
 
 @dataclass
 class DefaultParams:
@@ -49,6 +51,7 @@ class DefaultParams:
         finally:
             for key, value in old.items():
                 setattr(cls, key, value)
+
 
 RESOURCE_PATH = Path(squadro.__file__).parent / 'resources'
 DATA_PATH = Path(squadro.__file__).parent / 'data'
