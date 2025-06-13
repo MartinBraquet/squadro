@@ -23,11 +23,10 @@ from squadro.tools.disk import dump_pickle, mkdir, load_pickle
 from squadro.tools.elo import Elo
 from squadro.tools.log import training_logger as logger
 from squadro.tools.notebooks import is_notebook
+from squadro.tools.probabilities import get_entropy
 from squadro.tools.state import get_reward
 from squadro.training.buffer import ReplayBuffer
 from squadro.training.constants import DQL_PATH
-
-EPS = 1e-8
 
 RESULTS_PATH = DQL_PATH / "results"
 
@@ -87,7 +86,7 @@ class DeepQLearningTrainer:
         self.eval_steps = max(eval_steps or 100, 4)
 
         self.mcts_kwargs = mcts_kwargs or {}
-        self.mcts_kwargs.setdefault('max_steps', int(12 * self.n_pawns))
+        self.mcts_kwargs.setdefault('max_steps', int(4 * self.n_pawns ** 2))
 
         self.backprop_interval = backprop_interval or 100
         backprop_per_game = backprop_per_game or self.n_pawns ** 3
@@ -690,7 +689,7 @@ class DeepQLearningTrainer:
             loss = v_loss.sum()
             if probs is not None:
                 probs = torch.FloatTensor(probs).to(self.device)
-                entropy = - torch.sum(p * torch.log(p + EPS), dim=-1)
+                entropy = get_entropy(probs)
                 p_loss = self._base_p_loss(p, probs) + lambda_entropy * (
                     max_entropy - entropy.sum())
                 p_losses += [p_loss.item()]
