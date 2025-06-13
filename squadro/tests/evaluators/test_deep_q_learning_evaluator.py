@@ -59,7 +59,7 @@ class TestDeepQLearningEvaluator(ML):
 
         weights = list(model.parameters())
 
-        evaluator = DeepQLearningEvaluator(model_path=model_path, model_config=model_config)
+        evaluator = DeepQLearningEvaluator(model_path=model_path)
         weights2 = list(evaluator.get_model(n_pawns).parameters())
 
         evaluator_r = DeepQLearningEvaluator(
@@ -85,7 +85,7 @@ class TestDeepQLearningEvaluator(ML):
         key = self.evaluator.get_key(n_pawns=n_pawns, player=0)
         self.assertEqual(n_pawns, key)
 
-        self.evaluator.model_config.separate_networks = True
+        self.evaluator._separate_networks = True
         for player in range(2):
             key = self.evaluator.get_key(n_pawns=n_pawns, player=player)
             self.assertEqual(f"{n_pawns}_{player}", key)
@@ -97,7 +97,7 @@ class TestDeepQLearningEvaluator(ML):
         result = e.extract_from_key(e.get_key(**d, player=0))
         self.assertEqual(d, result)
 
-        e.model_config.separate_networks = True
+        e._separate_networks = True
         for player in range(2):
             d = dict(n_pawns=n_pawns, player=player)
             result = e.extract_from_key(e.get_key(**d))

@@ -115,7 +115,7 @@ class TestDeepQLearningTrainerTight(_Base):
     to be able to quickly update the expected results here.
     If there is a bug in a low-level method, the bug should be caught somewhere else. The tests
     here are not intended to catch low-level bugs.
-    The primary goal of these tests it to be able to refactor the code or any other code change
+    The primary goal of these tests is to be able to refactor the code or any other code changes
     that are not expected to affect the results.
     In other words, if we change the results, those tests should be ignored.
     If we refactor code without result change, we should pay close attention to those tests and
@@ -212,12 +212,13 @@ class TestDeepQLearningTrainer(_Base):
 
         path = model_path / 'checkpoint'
         files = os.listdir(path)
+        # print(files)
         self.assertGreaterEqual(len(files), 1)
         pt = 'checkpoint/model_3.pt'
         if pt in files:
             files.remove(pt)
-        # print(files)
         path = path / files[0] / 'model_3.pt'
+        # print(path)
         self.assertTrue(path.exists())
 
         path = model_path / 'results/logs.txt'
