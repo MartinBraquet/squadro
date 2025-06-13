@@ -118,7 +118,7 @@ class DeepQLearningTrainer:
         self.replay_buffer = ReplayBuffer(
             n_pawns=self.n_pawns,
             path=self.model_path / 'replay_buffer.pkl',
-            max_size=8e3 * (self.n_pawns ** 2),
+            max_size=4e3 * (self.n_pawns ** 2),
         )
 
         self._v_loss = torch.nn.MSELoss(reduction='none')
