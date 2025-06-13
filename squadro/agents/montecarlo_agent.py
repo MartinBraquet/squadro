@@ -23,7 +23,7 @@ from squadro.evaluators.evaluator import Evaluator
 from squadro.evaluators.rl import QLearningEvaluator, DeepQLearningEvaluator
 from squadro.evaluators.rollout import RolloutEvaluator
 from squadro.state import State, get_next_state
-from squadro.tools.constants import DefaultParams, inf
+from squadro.tools.constants import DefaultParams, inf, EPS
 from squadro.tools.evaluation import evaluate_advancement
 from squadro.tools.log import monte_carlo_logger as logger
 from squadro.tools.probabilities import get_random_index
@@ -83,7 +83,7 @@ class MCTS:
         self.tau = tau or 1.
         assert self.tau > 0
 
-        self.decay_rate = .9
+        # self.decay_rate = .8 + self.n_pawns * .03
         self.min_temp = .1
 
         # Upper Confidence Bound for Trees (exploration constant)
@@ -122,7 +122,7 @@ class MCTS:
             'max_steps': self.max_steps,
             'tau': self.tau,
             'min_temp': self.min_temp,
-            'decay_rate': self.decay_rate,
+            # 'decay_rate': self.decay_rate,
             'stochastic_moves': self.stochastic_moves,
             'p_mix': self.p_mix,
             'a_dirichlet': self.a_dirichlet,
@@ -309,7 +309,7 @@ class MCTS:
         temperature = self.get_temperature()
 
         for edge in self.root.edges:
-            pi[edge.action] = np.log(edge.stats.N + 1e-9) / temperature
+            pi[edge.action] = np.log(edge.stats.N + EPS) / temperature
             values[edge.action] = edge.stats.Q
 
         # Numerical trick to avoid overflow when computing softmax (N^temp)
@@ -322,7 +322,16 @@ class MCTS:
         """
         Get temperature for the softmax function.
         """
-        return max(self.tau * self.decay_rate ** self.root.state.turn_count, self.min_temp)
+        turn_count = self.root.state.turn_count
+        mid_turn_count = self.n_pawns * 5
+        end_turn_count = self.n_pawns * 10
+        if turn_count < mid_turn_count:
+            return self.tau
+        elif turn_count < end_turn_count:
+            return self.tau / 2.
+        else:
+            return self.min_temp
+        # return max(self.tau * self.decay_rate ** turn_count, self.min_temp)
 
     def choose_action(self, pi: np.ndarray) -> int:
         """
