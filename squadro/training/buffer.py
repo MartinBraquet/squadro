@@ -8,7 +8,6 @@ from matplotlib import pyplot as plt
 
 from squadro.state.state import State
 from squadro.tools.basic import dict_factory
-from squadro.tools.constants import DQL_PATH
 from squadro.tools.disk import load_pickle, dump_pickle
 from squadro.tools.logs import training_logger as logger
 from squadro.tools.probabilities import get_entropy
@@ -22,12 +21,8 @@ class ReplayBuffer:
     def __init__(
         self,
         path: Path = None,
-        n_pawns: int = None,
         max_size: int = None,
     ):
-        if path is None:
-            assert n_pawns is not None, "Must provide either path or n_pawns"
-            path = DQL_PATH / f"replay_buffer_{n_pawns}.pkl"
         self.path = Path(path)
         self._results = None
         self.clear()
@@ -134,7 +129,7 @@ class ReplayBuffer:
         plt.show()
         logger.info(f"Win rate in replay buffer: {win_rate.mean():.0%}")
 
-    def get_diversity_ratio(self, epoch=0):
+    def compute_diversity_ratio(self, epoch=0):
         unique_hashes = set()
         for w, f, s, _, _ in self.iter_data():
             unique_hashes.add(str(s))
