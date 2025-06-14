@@ -324,6 +324,8 @@ class DeepQLearningEvaluatorMultipleGrids(_RLEvaluator):
 class DeepQLearningEvaluator(DeepQLearningEvaluatorMultipleGrids):
     """
     Evaluator for a single grid size (specific `n_pawns`), and having a single model.
+    Since it infers the (unique) model, it allows for loading
+    such a pre-trained model without having to pass its model config again.
     """
 
     def __init__(self, **kwargs):
