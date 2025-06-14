@@ -204,7 +204,7 @@ class TestDeepQLearningTrainerTight(_Base):
 
 
 class TestDeepQLearningTrainer(_Base):
-    # Adam optimizer is very slow to initialize (1 sec), even with very light model.
+    # Adam optimizer is very slow to initialize (1 sec), even with a very light model.
     # A fix for it would greatly speed up the tests.
 
     @patch.object(Game, 'run', run)
@@ -302,26 +302,29 @@ class TestDeepQLearningTrainer(_Base):
 
     def test_step_lr(self):
         trainer = self.get_trainer()
-        lr = trainer.get_lr(0)
-        trainer._step_lr(0)
-        self.assertLess(trainer.get_lr(0), lr)
+        backprop = trainer.back_propagation
+        lr = backprop.get_lr(0)
+        backprop._step_lr(0)
+        self.assertLess(backprop.get_lr(0), lr)
 
     def test_tweak_lr(self):
         trainer = self.get_trainer()
-        trainer._lr_tweak = a = .42
-        lr = trainer.get_lr(0)
-        with trainer._tweak_lr(0):
-            self.assertEqual(trainer.get_lr(0), a * lr)
-        self.assertEqual(trainer.get_lr(0), lr)
+        backprop = trainer.back_propagation
+        backprop._lr_tweak = a = .42
+        lr = backprop.get_lr(0)
+        with backprop._tweak_lr(0):
+            self.assertEqual(backprop.get_lr(0), a * lr)
+        self.assertEqual(backprop.get_lr(0), lr)
 
     def test_policy_entropy(self):
         trainer = self.get_trainer()
+        backprop = trainer.back_propagation
 
         trainer.set_game_count(0)
-        self.assertEqual(trainer.lambda_entropy, trainer._get_lambda_entropy())
+        self.assertEqual(backprop.lambda_entropy, backprop._get_lambda_entropy())
 
-        trainer.set_game_count(trainer.entropy_temp)
-        self.assertEqual(.1 * trainer.lambda_entropy, trainer._get_lambda_entropy())
+        trainer.set_game_count(backprop.entropy_temp)
+        self.assertEqual(.1 * backprop.lambda_entropy, backprop._get_lambda_entropy())
 
     @patch.object(Game, 'run', run)
     def test_self_play(self):
@@ -332,7 +335,7 @@ class TestDeepQLearningTrainer(_Base):
 
         self.assertEqual(trainer._self_play_win_rate, {0: [], 1: []})
 
-        trainer.get_training_samples()
+        trainer.run_self_play_game()
 
         self.assertGreater(len(trainer.replay_buffer), 0)
         first = 1

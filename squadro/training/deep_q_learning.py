@@ -42,6 +42,15 @@ class Results:
     def data(self):
         return self._data
 
+    @classmethod
+    def load(cls, path):
+        results = load_pickle(path, raise_error=False)
+        if isinstance(results, dict):
+            results = cls(results)
+        if not results:
+            results = cls()
+        return results
+
     @property
     def checkpoint_eval(self):
         return self._data['eval']['checkpoint']
@@ -262,69 +271,47 @@ class Plotter:
         self._display_plot()
 
 
-class DeepQLearningTrainer:
+class BackPropagation:
     """
-    Deep Q-learning trainer.
+    A class that implements the Backpropagation algorithm for training neural
+    networks.
+
+    Backpropagation is a supervised learning algorithm that uses a
+    gradient descent approach to minimize the error of a prediction by
+    propagating backwards through the layers of a network. It allows weights
+    and biases to be adjusted to optimize the learning process and ultimately
+    improve the model's predictive performance.
     """
 
     def __init__(
         self,
-        n_pawns=None,
-        lr=None,
-        min_lr=None,
-        min_lr_game_count=None,
-        adaptive_lr=True,
-        lambda_entropy=None,
-        self_play_games=None,
-        backprop_interval=None,
-        backprop_games=None,
-        backprop_per_game=None,
-        eval_interval=None,
-        eval_games=None,
-        model_path=None,
-        model_config=None,
-        init_from=None,
-        mcts_kwargs=None,
-        adaptive_sampling=True,
-        freeze_backprop=None,
-        display_plot=True,
+        adaptive_lr,
+        adaptive_sampling,
+        freeze_backprop,
+        backprop_games,
+        lambda_entropy,
+        min_lr_game_count,
+        lr,
+        min_lr,
+        backprop_per_game,
+        evaluator,
+        backprop_interval,
+        self_play_games,
+        replay_buffer,
+        results,
+        n_pawns,
     ):
-        """
-        Represents a class for initializing and training a deep reinforcement learning agent
-        using Monte Carlo and Q-Learning methodologies. The class manages model training,
-        evaluation, adaptive sampling, learning rate adjustments, and results logging.
-
-        Attributes:
-            n_pawns (int): Number of pawns in the game. Defaults to DefaultParams.n_pawns.
-            lr (float): Initial learning rate for the optimizer.
-            min_lr (float): Minimum learning rate when using a scheduler.
-            min_lr_game_count (int): Final step for learning rate adjustment.
-            adaptive_lr (bool): Whether to enable adaptive learning rate.
-            lambda_entropy (float): Entropy regularization parameter to balance exploration
-                with exploitation.
-            self_play_games (int): Total number of training steps to execute.
-            backprop_interval (int): Interval in steps for executing backpropagation.
-            backprop_games (int): Total number of backpropagation steps.
-            backprop_per_game (int): Number of backpropagation operations to be performed per game.
-            eval_interval (int): Interval in steps for running evaluations.
-            eval_games (int): Number of steps for evaluation during training.
-            model_path (Path): Path to save or load the model checkpoint.
-            model_config (dict): Configuration dictionary defining the architecture of the model.
-            init_from (str): Indicator for initializing models from scratch or checkpoint.
-            mcts_kwargs (dict): Keyword arguments for configuring Monte Carlo Tree Search (MCTS).
-            adaptive_sampling (bool): Whether to enable adaptive sampling in training.
-            freeze_backprop (bool): Whether to disable backpropagation altogether.
-            display_plot (bool): Whether to plot results during training.
-        """
-        self.n_pawns = n_pawns or DefaultParams.n_pawns
-
-        self.adaptive_sampling = adaptive_sampling
         self.adaptive_lr = adaptive_lr
+        self.adaptive_sampling = adaptive_sampling
         self.freeze_backprop = freeze_backprop
+        self.backprop_games = backprop_games
+        self.evaluator = evaluator
+        self.replay_buffer = replay_buffer
+        self.results = results
+        self.n_pawns = n_pawns
 
-        from_scratch = init_from == 'scratch'
-
-        self.self_play_games = self_play_games
+        self._v_loss = torch.nn.MSELoss(reduction='none')
+        self._base_p_loss = torch.nn.CrossEntropyLoss()
 
         self.min_lr_game_count = min_lr_game_count or 5000
         if self_play_games:
@@ -334,58 +321,12 @@ class DeepQLearningTrainer:
         self.entropy_temp = self.min_lr_game_count
         self._max_entropy = np.log(self.n_pawns)
 
-        self.eval_interval = eval_interval or 500
-        self.eval_games = max(eval_games or 100, 4)
-
-        self.mcts_kwargs = mcts_kwargs or {}
-        self.mcts_kwargs.setdefault('max_steps', int(4 * self.n_pawns ** 2))
-
-        self.backprop_interval = backprop_interval or 100
         backprop_per_game = backprop_per_game or self.n_pawns ** 3
-        self.backprop_games = backprop_games or self.backprop_interval * backprop_per_game
-        backprop_per_game = int(self.backprop_games / self.backprop_interval)
-
-        self.agent = MonteCarloDeepQLearningAgent(
-            model_path=model_path,
-            model_config=model_config,
-            is_training=True,
-            **self.agent_kwargs,
-        )
-        self.evaluator_chkpt = DeepQLearningEvaluator(
-            model_path=Path(self.model_path) / "checkpoint",
-            model_config=model_config,
-        )
-
-        self.results_path = self.model_path / 'results'
-        mkdir(self.results_path)
-        logger.info(f'Results will be saved in {self.results_path}')
-
-        self.results = load_pickle(self.pkl_results_path, raise_error=False)
-        if isinstance(self.results, dict):
-            self.results = Results(self.results)
-        if not self.results or from_scratch:
-            self.results = Results()
+        self.backprop_games = backprop_games or backprop_interval * backprop_per_game
+        backprop_per_game = int(self.backprop_games / backprop_interval)
 
         lr = lr or 1e-3
         self.min_lr = min_lr or max(lr / 10., 1e-4)
-
-        self.replay_buffer = ReplayBuffer(
-            n_pawns=self.n_pawns,
-            path=self.model_path / 'replay_buffer.pkl',
-            max_size=4e3 * (self.n_pawns ** 2),
-        )
-
-        self._v_loss = torch.nn.MSELoss(reduction='none')
-        self._base_p_loss = torch.nn.CrossEntropyLoss()
-
-        self._opponents = [
-            'checkpoint',
-            'random',
-        ]
-
-        if from_scratch:
-            self.evaluator.erase(self.n_pawns)
-            self.replay_buffer.clear()
 
         self._optimizer = [
             torch.optim.Adam(
@@ -398,16 +339,16 @@ class DeepQLearningTrainer:
 
         self._scheduler = None
         if self.min_lr != lr:
-            epoch = self.game_count - 1
+            game_count = self.game_count - 1
             self._scheduler = []
             for player in range(self.n_networks):
-                if epoch < self.min_lr_game_count:
+                if game_count < self.min_lr_game_count:
                     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                         self.get_optimizer(player=player),
                         eta_min=self.min_lr,
                         T_max=int(self.min_lr_game_count * backprop_per_game / self.n_networks),
                     )
-                    scheduler.last_epoch = int(epoch * backprop_per_game / self.n_networks)
+                    scheduler.last_epoch = int(game_count * backprop_per_game / self.n_networks)
                     warnings.filterwarnings(
                         "ignore",
                         message="To get the last learning rate computed by the scheduler",
@@ -418,119 +359,13 @@ class DeepQLearningTrainer:
                 else:
                     self.set_lr(self.min_lr, player=player)
 
-        self.plotter = Plotter(
-            title=self.title,
-            display_plot=display_plot,
-            path=self.results_path / 'plots.png',
-        )
-
-        self._self_play_win_rate = None
-        self.run_ts = None
-        self._player_losses = None
         self._lr_tweak = None
+        self._player_losses = None
 
-    def run(self) -> None:
-        """
-        Run the training loop.
-        """
-        self.run_ts = get_now()
-        logger.info(
-            f"Starting training: {self.n_pawns} pawns\n"
-            f"model size: {self.get_model().byte_size()}\n"
-            f"model config: {self.model_config}\n"
-            f"optimizer: {self.get_optimizer()}\n"
-            f"scheduler: {self.get_scheduler().__class__.__name__} (min lr: {self.min_lr:.0e})\n"
-            f"game count: {self.game_count}\n"
-            f"max games: {self.self_play_games}\n"
-            f"backprop interval: {self.backprop_interval}\n"
-            f"backprop steps: {self.backprop_games}\n"
-            f"eval interval: {self.eval_interval}\n"
-            f"eval steps: {self.eval_games}\n"
-            f"MCTS config: {json.dumps(self.agent.mcts_config, indent=4)}\n"
-            f"device: {self.device}\n"
-            f"path: {self.model_path}\n"
-            f"replay buffer: {self.replay_buffer}\n"
-            f"run ts: {self.run_ts}\n"
-        )
-
-        if not self.evaluator_chkpt.is_pretrained(n_pawns=self.n_pawns):
-            self.copy_weights_to_checkpoint()
-
-        self.plotter.init()
-
-        try:
-            self._run()
-        finally:
-            self.dump()
-            self.plotter.close()
-
-        logger.info("Training finished.")
-
-    def _run(self):
-        self.plot('all')
-        self._clear_self_play_win_rate()
-
-        for game_count in range(self.game_count, (self.self_play_games or int(1e15)) + 1):
-            self.get_training_samples()
-            logger.info(f'Self-play game: {game_count}')
-
-            if game_count % self.backprop_interval == 0:
-                self.backpropagation()
-
-            if game_count % self.eval_interval == 0:
-                self.evaluation()
-
-    def backpropagation(self):
-        self.back_propagate()
-        self.plot('backprop')
-
-    def evaluation(self):
-        self.evaluate_agents()
-        self.update_checkpoint_model()
-        self.update_diversity_ratio()
-        self.plot('eval')
-        self.dump()
-
-    def get_training_samples(self):
-        self.step_self_play_game()
-
-        game = Game(
-            n_pawns=self.n_pawns,
-            agent_0=self.agent,
-            agent_1=self.agent,
-            save_states=True,
-        )
-        game.run()
-
-        history = []
-        for i, s in enumerate(game.state_history):
-            s = s.to_list()
-
-            move_probs = game.move_info[i]['mcts_move_probs'] if i < len(game.move_info) else None
-            check_nan(move_probs)
-            if isinstance(move_probs, np.ndarray):
-                move_probs = move_probs.tolist()
-
-            history.append((
-                s,
-                move_probs,
-                game.winner,
-            ))
-
-        # probs = game.move_info[0]['mcts_move_probs']
-        # probs = (100 * np.array(probs)).round().tolist()
-        # logger.info(f"Initial state MCTS move probs: {probs}")
-
-        self.replay_buffer.add_game(history=history, winner=game.winner, first=game.first)
-        self._self_play_win_rate[game.first] += [1 - game.winner]
-
-        return history
-
-    def back_propagate(self):
+    def run(self, self_play_win_rate):
         """
         Update the Q-network based on the reward obtained at the end of the game.
         """
-        self._process_self_play_info()
 
         lrs = ', '.join([f"{self.get_lr(i):.1e}" for i in range(self.n_networks)])
         logger.info(f"lr: {lrs}")
@@ -540,7 +375,7 @@ class DeepQLearningTrainer:
         batches = []
         for w, f, data in self.replay_buffer.iter_buckets():
             if self.adaptive_sampling:
-                win_rate = self._self_play_win_rate[f]
+                win_rate = self_play_win_rate[f]
                 if w == 1:
                     win_rate = 1. - win_rate
             else:
@@ -600,8 +435,6 @@ class DeepQLearningTrainer:
         v_txt = ', '.join([f"v{i}: {v:.2f}" for i, v in enumerate(v_loss)])
         logger.info(f"Backprop loss: {loss:.2f} (p: {p_loss:.2f}, {v_txt})")
 
-        self._clear_self_play_win_rate()
-
     def _backprop_batches(self, batches: list, player: int):
         if self.freeze_backprop == player:
             logger.info(f"Skipping backprop for player {player} (freeze)")
@@ -657,6 +490,322 @@ class DeepQLearningTrainer:
             logger.info(f"Backprop loss for player {player}: {loss :.2f}")
 
         return losses, p_losses, v_losses
+
+    @property
+    def backprop_losses(self):
+        return self.results.backprop_losses
+
+    @property
+    def device(self):
+        return self.get_model().device
+
+    def _get_lambda_entropy(self):
+        decay_rate = 0.1
+        lambda_t = self.lambda_entropy * (decay_rate ** (self.game_count / self.entropy_temp))
+        return lambda_t
+
+    def _step_lr(self, player: int):
+        scheduler = self.get_scheduler(player)
+        if scheduler and scheduler.last_epoch < scheduler.T_max:
+            scheduler.step()
+            logger.debug(self.get_lr(player))
+
+    @contextlib.contextmanager
+    def _tweak_lr(self, player: int):
+        if self.adaptive_lr and self._lr_tweak:
+            base_lr = self.get_lr(player)
+            tweak = self._lr_tweak if player == 0 else 1. / self._lr_tweak
+            tweak = min(1.5, tweak)
+            self.set_lr(base_lr * tweak, player=player)
+            logger.debug(f"Player {player} lr tweak: {tweak:.2f}, lr: {self.get_lr(player):.1e}")
+            yield
+            self.set_lr(base_lr, player=player)
+            logger.debug(f"Player {player} back to lr: {self.get_lr(player):.1e}")
+        else:
+            yield
+
+    def _zero_grad(self):
+        for i in range(self.n_networks):
+            self.get_optimizer(i).zero_grad()
+
+    def _train(self, mode=True):
+        for i in range(self.n_networks):
+            self.get_model(i).train(mode=mode)
+
+    def _p_loss(self, p, probs):
+        probs = torch.FloatTensor(probs).to(self.device)
+        lambda_entropy = self._get_lambda_entropy()
+        entropy = get_entropy(probs)
+        p_loss = self._base_p_loss(p, probs) + lambda_entropy * (self._max_entropy - entropy.sum())
+        return p_loss, entropy
+
+    @property
+    def lr(self):
+        return self.get_lr()
+
+    def get_lr(self, player=0) -> float:
+        return self.get_optimizer(player).param_groups[0]["lr"]
+
+    def set_lr(self, lr, player=0) -> None:
+        for param_group in self.get_optimizer(player).param_groups:
+            if isinstance(param_group["lr"], torch.Tensor):
+                param_group["lr"].fill_(lr)
+            else:
+                param_group["lr"] = lr
+
+    def get_optimizer(self, player=0) -> torch.optim.Optimizer:
+        return self._optimizer[player]
+
+    def get_scheduler(self, player=0) -> Optional[torch.optim.lr_scheduler.CosineAnnealingLR]:
+        if self._scheduler:
+            return self._scheduler[player]
+        return None
+
+    @property
+    def model_config(self):
+        return self.evaluator.model_config
+
+    @property
+    def n_networks(self) -> int:
+        return 2 if self.separate_networks else 1
+
+    @property
+    def separate_networks(self):
+        return self.model_config.separate_networks
+
+    def get_model(self, player=0) -> Model:
+        return self.evaluator.get_model(n_pawns=self.n_pawns, player=player)
+
+    @property
+    def game_count(self):
+        return self.results.game_count
+
+
+class DeepQLearningTrainer:
+    """
+    Deep Q-learning trainer.
+    """
+
+    def __init__(
+        self,
+        n_pawns=None,
+        lr=None,
+        min_lr=None,
+        min_lr_game_count=None,
+        adaptive_lr=True,
+        lambda_entropy=None,
+        self_play_games=None,
+        backprop_interval=None,
+        backprop_games=None,
+        backprop_per_game=None,
+        eval_interval=None,
+        eval_games=None,
+        model_path=None,
+        model_config=None,
+        init_from=None,
+        mcts_kwargs=None,
+        adaptive_sampling=True,
+        freeze_backprop=None,
+        display_plot=True,
+    ):
+        """
+        Represents a class for initializing and training a deep reinforcement learning agent
+        using Monte Carlo and Q-Learning methodologies. The class manages model training,
+        evaluation, adaptive sampling, learning rate adjustments, and results logging.
+
+        Attributes:
+            n_pawns (int): Number of pawns in the game. Defaults to DefaultParams.n_pawns.
+            lr (float): Initial learning rate for the optimizer.
+            min_lr (float): Minimum learning rate when using a scheduler.
+            min_lr_game_count (int): Final step for learning rate adjustment.
+            adaptive_lr (bool): Whether to enable adaptive learning rate.
+            lambda_entropy (float): Entropy regularization parameter to balance exploration
+                with exploitation.
+            self_play_games (int): Total number of training steps to execute.
+            backprop_interval (int): Interval in steps for executing backpropagation.
+            backprop_games (int): Total number of backpropagation steps.
+            backprop_per_game (int): Number of backpropagation operations to be performed per game.
+            eval_interval (int): Interval in steps for running evaluations.
+            eval_games (int): Number of steps for evaluation during training.
+            model_path (Path): Path to save or load the model checkpoint.
+            model_config (dict): Configuration dictionary defining the architecture of the model.
+            init_from (str): Indicator for initializing models from scratch or checkpoint.
+            mcts_kwargs (dict): Keyword arguments for configuring Monte Carlo Tree Search (MCTS).
+            adaptive_sampling (bool): Whether to enable adaptive sampling in training.
+            freeze_backprop (bool): Whether to disable backpropagation altogether.
+            display_plot (bool): Whether to plot results during training.
+        """
+        self.n_pawns = n_pawns or DefaultParams.n_pawns
+
+        self.self_play_games = self_play_games
+        self.eval_interval = eval_interval or 500
+        self.eval_games = max(eval_games or 100, 4)
+
+        self.backprop_interval = backprop_interval or 100
+
+        self.mcts_kwargs = mcts_kwargs or {}
+        self.mcts_kwargs.setdefault('max_steps', int(4 * self.n_pawns ** 2))
+
+        self.agent = MonteCarloDeepQLearningAgent(
+            model_path=model_path,
+            model_config=model_config,
+            is_training=True,
+            **self.agent_kwargs,
+        )
+        self.evaluator_chkpt = DeepQLearningEvaluator(
+            model_path=Path(self.model_path) / 'checkpoint',
+            model_config=model_config,
+        )
+
+        self.results_path = self.model_path / 'results'
+        mkdir(self.results_path)
+        logger.info(f'Results will be saved in {self.results_path}')
+
+        from_scratch = init_from == 'scratch'
+
+        self.results = Results() if from_scratch else Results.load(self.pkl_results_path)
+
+        self.replay_buffer = ReplayBuffer(
+            n_pawns=self.n_pawns,
+            path=self.model_path / 'replay_buffer.pkl',
+            max_size=4e3 * (self.n_pawns ** 2),
+        )
+
+        self._opponents = ['checkpoint', 'random']
+
+        if from_scratch:
+            self.evaluator.erase(self.n_pawns)
+            self.replay_buffer.clear()
+
+        self.back_propagation = BackPropagation(
+            adaptive_lr=adaptive_lr,
+            adaptive_sampling=adaptive_sampling,
+            freeze_backprop=freeze_backprop,
+            backprop_games=backprop_games,
+            lambda_entropy=lambda_entropy,
+            min_lr_game_count=min_lr_game_count,
+            lr=lr,
+            min_lr=min_lr,
+            backprop_per_game=backprop_per_game,
+            evaluator=self.evaluator,
+            backprop_interval=self.backprop_interval,
+            self_play_games=self.self_play_games,
+            replay_buffer=self.replay_buffer,
+            results=self.results,
+            n_pawns=self.n_pawns,
+        )
+
+        self.plotter = Plotter(
+            title=self.title,
+            display_plot=display_plot,
+            path=self.results_path / 'plots.png',
+        )
+
+        self._self_play_win_rate = None
+        self.run_ts = None
+
+    def run(self) -> None:
+        """
+        Run the training loop.
+        """
+        self.run_ts = get_now()
+        logger.info(
+            f"Starting training: {self.n_pawns} pawns\n"
+            f"model size: {self.get_model().byte_size()}\n"
+            f"model config: {self.model_config}\n"
+            f"optimizer: {self.back_propagation.get_optimizer()}\n"
+            f"scheduler: {self.back_propagation.get_scheduler().__class__.__name__}"
+            f" (min lr: {self.back_propagation.min_lr:.0e})\n"
+            f"game count: {self.game_count}\n"
+            f"max games: {self.self_play_games}\n"
+            f"backprop interval: {self.backprop_interval}\n"
+            f"backprop steps: {self.back_propagation.backprop_games}\n"
+            f"eval interval: {self.eval_interval}\n"
+            f"eval steps: {self.eval_games}\n"
+            f"MCTS config: {json.dumps(self.agent.mcts_config, indent=4)}\n"
+            f"device: {self.device}\n"
+            f"path: {self.model_path}\n"
+            f"replay buffer: {self.replay_buffer}\n"
+            f"run ts: {self.run_ts}\n"
+        )
+
+        if not self.evaluator_chkpt.is_pretrained(n_pawns=self.n_pawns):
+            self.copy_weights_to_checkpoint()
+
+        self.plotter.init()
+
+        try:
+            self._run()
+        finally:
+            self.dump()
+            self.plotter.close()
+
+        logger.info("Training finished.")
+
+    def _run(self):
+        self.plot('all')
+        self._clear_self_play_win_rate()
+
+        for game_count in range(self.game_count, (self.self_play_games or int(1e15)) + 1):
+            self.run_self_play_game()
+            logger.info(f'Self-play game: {game_count}')
+
+            if game_count % self.backprop_interval == 0:
+                self.backpropagate()
+
+            if game_count % self.eval_interval == 0:
+                self.evaluate()
+
+    def backpropagate(self):
+        self._process_self_play_info()
+        self.back_propagation.run(self_play_win_rate=self._self_play_win_rate)
+        self._clear_self_play_win_rate()
+        self.plot('backprop')
+
+    def evaluate(self):
+        self.evaluate_agents()
+        self.update_checkpoint_model()
+        self.update_diversity_ratio()
+        self.plot('eval')
+        self.dump()
+
+    def plot(self, name):
+        self.plotter.update(self.results, name)
+
+    def run_self_play_game(self):
+        self.step_self_play_game()
+
+        game = Game(
+            n_pawns=self.n_pawns,
+            agent_0=self.agent,
+            agent_1=self.agent,
+            save_states=True,
+        )
+        game.run()
+
+        history = []
+        for i, s in enumerate(game.state_history):
+            s = s.to_list()
+
+            move_probs = game.move_info[i]['mcts_move_probs'] if i < len(game.move_info) else None
+            check_nan(move_probs)
+            if isinstance(move_probs, np.ndarray):
+                move_probs = move_probs.tolist()
+
+            history.append((
+                s,
+                move_probs,
+                game.winner,
+            ))
+
+        # probs = game.move_info[0]['mcts_move_probs']
+        # probs = (100 * np.array(probs)).round().tolist()
+        # logger.info(f"Initial state MCTS move probs: {probs}")
+
+        self.replay_buffer.add_game(history=history, winner=game.winner, first=game.first)
+        self._self_play_win_rate[game.first] += [1 - game.winner]
+
+        return history
 
     def evaluate_agents(self):
         vs_list = self._opponents
@@ -721,19 +870,9 @@ class DeepQLearningTrainer:
 
         return win_rate_split
 
-    def _p_loss(self, p, probs):
-        probs = torch.FloatTensor(probs).to(self.device)
-        lambda_entropy = self._get_lambda_entropy()
-        entropy = get_entropy(probs)
-        p_loss = self._base_p_loss(p, probs) + lambda_entropy * (self._max_entropy - entropy.sum())
-        return p_loss, entropy
-
     def update_diversity_ratio(self):
         self.replay_buffer.get_diversity_ratio(self.game_count)
         self.results.diversity_history = self.replay_buffer.diversity_history
-
-    def plot(self, name):
-        self.plotter.update(self.results, name)
 
     def copy_weights_to_checkpoint(self):
         self.evaluator_chkpt.load_weights(self.evaluator)
@@ -784,39 +923,6 @@ class DeepQLearningTrainer:
         logger.info(f"Self-play win rate: {win_rate:.0%}"
                     f" (first 0: {win_rate_split[0]:.0%}, first 1: {win_rate_split[1]:.0%})")
 
-    def _get_lambda_entropy(self):
-        decay_rate = 0.1
-        lambda_t = self.lambda_entropy * (decay_rate ** (self.game_count / self.entropy_temp))
-        return lambda_t
-
-    def _step_lr(self, player: int):
-        scheduler = self.get_scheduler(player)
-        if scheduler and scheduler.last_epoch < scheduler.T_max:
-            scheduler.step()
-            logger.debug(self.get_lr(player))
-
-    @contextlib.contextmanager
-    def _tweak_lr(self, player: int):
-        if self.adaptive_lr and self._lr_tweak:
-            base_lr = self.get_lr(player)
-            tweak = self._lr_tweak if player == 0 else 1. / self._lr_tweak
-            tweak = min(1.5, tweak)
-            self.set_lr(base_lr * tweak, player=player)
-            logger.debug(f"Player {player} lr tweak: {tweak:.2f}, lr: {self.get_lr(player):.1e}")
-            yield
-            self.set_lr(base_lr, player=player)
-            logger.debug(f"Player {player} back to lr: {self.get_lr(player):.1e}")
-        else:
-            yield
-
-    def _zero_grad(self):
-        for i in range(self.n_networks):
-            self.get_optimizer(i).zero_grad()
-
-    def _train(self, mode=True):
-        for i in range(self.n_networks):
-            self.get_model(i).train(mode=mode)
-
     @property
     def device(self):
         return self.get_model().device
@@ -846,14 +952,6 @@ class DeepQLearningTrainer:
     @property
     def separate_networks(self):
         return self.model_config.separate_networks
-
-    def get_optimizer(self, player=0) -> torch.optim.Optimizer:
-        return self._optimizer[player]
-
-    def get_scheduler(self, player=0) -> Optional[torch.optim.lr_scheduler.CosineAnnealingLR]:
-        if self._scheduler:
-            return self._scheduler[player]
-        return None
 
     def get_model(self, player=0) -> Model:
         return self.evaluator.get_model(n_pawns=self.n_pawns, player=player)
@@ -890,22 +988,8 @@ class DeepQLearningTrainer:
             r"$\mathbf{Deep\ Q-Learning\ Training}$"
             f" ({self.n_pawns} pawns)"
             f"\n{mcts_info}"
-            f"\n{self.model_config}, lr={self.lr:.0e}"
+            f"\n{self.model_config}, lr={self.back_propagation.lr:.0e}"
         )
-
-    @property
-    def lr(self):
-        return self.get_lr()
-
-    def get_lr(self, player=0) -> float:
-        return self.get_optimizer(player).param_groups[0]["lr"]
-
-    def set_lr(self, lr, player=0) -> None:
-        for param_group in self.get_optimizer(player).param_groups:
-            if isinstance(param_group["lr"], torch.Tensor):
-                param_group["lr"].fill_(lr)
-            else:
-                param_group["lr"] = lr
 
     @property
     def checkpoint_eval(self):
@@ -917,8 +1001,11 @@ class DeepQLearningTrainer:
 
     @property
     def backprop_losses(self):
-        return self.results.backprop_losses
+        return self.back_propagation.backprop_losses
 
     @property
     def elo(self) -> Elo:
         return self.results.elo
+
+    def get_lr(self, player=0):
+        return self.back_propagation.get_lr(player=player)
