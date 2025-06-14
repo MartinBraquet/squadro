@@ -472,7 +472,7 @@ class DeepQLearningTrainer:
 
         for game_count in range(self.game_count, (self.self_play_games or int(1e15)) + 1):
             self.get_training_samples()
-            print('Self-play game:', game_count)
+            logger.info(f'Self-play game: {game_count}')
 
             if game_count % self.backprop_interval == 0:
                 self.backpropagation()
@@ -570,7 +570,7 @@ class DeepQLearningTrainer:
             batches_by_player = {0: batches}
 
         for player, ba in batches_by_player.items():
-            print(f"Backprop batch length for player {player}: {len(ba)}")
+            logger.info(f"Backprop batch length for player {player}: {len(ba)}")
 
         self._player_losses = []
         losses, p_losses, v_losses = [], [], []
