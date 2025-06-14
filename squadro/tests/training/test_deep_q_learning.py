@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import numpy as np
+from matplotlib import image as mpimg
 
 import squadro
 from squadro import Game, logger
@@ -13,7 +14,7 @@ from squadro.evaluators.evaluator import ModelConfig
 from squadro.evaluators.rl import DeepQLearningEvaluator
 from squadro.ml.ml import assert_models_equal, assert_models_unequal
 from squadro.tests.base import Base
-from squadro.tools.disk import load_pickle, dump_pickle
+from squadro.tools.disk import load_pickle, dump_pickle, load_txt
 from squadro.tools.probabilities import set_seed
 
 DIR = Path(__file__).parent
@@ -85,14 +86,15 @@ class _Base(Base):
 
 class Data:
     data = {}
-    _data_path = DIR / 'dql_data.pkl'
+    _data_path = DIR / 'data/dql_data.pkl'
 
     @classmethod
     def load(cls):
         data = load_pickle(cls._data_path, raise_error=False)
-        print(data)
+        # print(data)
         if data:
             cls.data = data
+        return data
 
     @classmethod
     def dump(cls):
@@ -105,6 +107,11 @@ class Data:
     @classmethod
     def set(cls, key, value):
         cls.data[key] = value
+
+
+class Results(Data):
+    data = {}
+    _data_path = DIR / 'data/results.pkl'
 
 
 # @pytest.mark.slow
@@ -175,12 +182,25 @@ class TestDeepQLearningTrainerTight(_Base):
         This test should make sure the attributes, like win rates, stay correct.
         """
         trainer = self.get_trainer(**MEDIUM_PARAMS)
-        trainer.run()
+        with logger.setup_in_context(section=['training', 'benchmark']):
+            trainer.run()
         evaluator = DeepQLearningEvaluator(
             model_path=trainer.model_path,
             model_config=self.model_config,
         )
         self.check(evaluator, key='longer_training')
+
+        logs = load_txt(trainer.model_path / 'results/logs.txt')
+        self.assertGreater(len(logs), 0)
+
+        results = load_pickle(trainer.model_path / 'results/results.pkl')
+        if self.UPDATE_DATA:
+            Results.data = results
+            Results.dump()
+        expected = Results.load()
+        self.assertEqual(str(expected), str(results))
+
+        mpimg.imread(trainer.model_path / 'results/plots.png')
 
 
 class TestDeepQLearningTrainer(_Base):
