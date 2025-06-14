@@ -5,6 +5,7 @@ import warnings
 from pathlib import Path
 from typing import Optional
 
+import matplotlib
 import numpy as np
 import torch
 from IPython.core.display_functions import display
@@ -324,29 +325,27 @@ class DeepQLearningTrainer:
         self.results['game_step'] += 1
 
     def _open_figure(self):
-        if not self.plot:
-            return
         self._fig, self._ax = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
         self._ax = self._ax.flatten()
         self._fig.suptitle(self.title)
-        if is_notebook():
-            self._display_handle = display(self._fig, display_id=True)
+        if self.plot:
+            if is_notebook():
+                self._display_handle = display(self._fig, display_id=True)
+            else:
+                plt.ion()
         else:
-            plt.ion()
+            matplotlib.use('Agg')
 
     def _close_figure(self):
-        if not self.plot:
-            return
         self._save_figure()
-        if is_notebook():
-            plt.close(self._fig)
-        else:
-            plt.ioff()
-            plt.show(block=False)
+        if self.plot:
+            if is_notebook():
+                plt.close(self._fig)
+            else:
+                plt.ioff()
+                plt.show(block=False)
 
     def _save_figure(self):
-        if not self.plot:
-            return
         plt.savefig(self.results_path / 'plots.png')
 
     def update_checkpoint_model(self):
@@ -406,19 +405,15 @@ class DeepQLearningTrainer:
         return self.results['backprop_loss']
 
     def _display_plot(self):
-        if not self.plot:
-            return
-        if is_notebook():
-            self._display_handle.update(self._fig)
-        else:
-            self._fig.canvas.draw()
-            self._fig.canvas.flush_events()
-            plt.pause(0.01)  # Needed to refresh the figure
+        if self.plot:
+            if is_notebook():
+                self._display_handle.update(self._fig)
+            else:
+                self._fig.canvas.draw()
+                self._fig.canvas.flush_events()
+                plt.pause(0.01)  # Needed to refresh the figure
 
     def _plot_replay_buffer_diversity(self):
-        if not self.plot:
-            return
-
         ax = self._ax[0]
         ax.clear()
 
@@ -442,9 +437,6 @@ class DeepQLearningTrainer:
         self._display_plot()
 
     def _plot_loss(self):
-        if not self.plot:
-            return
-
         ax = self._ax[1]
         ax.clear()
         labels = {'total': "Total", 'p': "Policy", 'v': "Value"}
@@ -485,9 +477,6 @@ class DeepQLearningTrainer:
         self._display_plot()
 
     def _plot_win_rate(self):
-        if not self.plot:
-            return
-
         ax = self._ax[2]
         ax.clear()
 
@@ -531,9 +520,6 @@ class DeepQLearningTrainer:
         self._display_plot()
 
     def _plot_elo(self):
-        if not self.plot:
-            return
-
         ax = self._ax[3]
         ax.clear()
         x, y = zip(*self.elo.history.items())
