@@ -209,7 +209,7 @@ class QLearningTrainer:
             agent_0=agent,
             agent_1=vs,
             n_pawns=self.n_pawns,
-            n=self.eval_steps,
+            n_games=self.eval_steps,
         )
 
         return win_rate
