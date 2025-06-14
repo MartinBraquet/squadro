@@ -130,6 +130,8 @@ class ReplayBuffer:
         logger.info(f"Win rate in replay buffer: {win_rate.mean():.0%}")
 
     def compute_diversity_ratio(self, epoch=0):
+        if len(self) == 0:
+            return
         unique_hashes = set()
         for w, f, s, _, _ in self.iter_data():
             unique_hashes.add(str(s))
