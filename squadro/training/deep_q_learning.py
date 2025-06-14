@@ -332,6 +332,7 @@ class DeepQLearningTrainer:
 
         self.lambda_entropy = lambda_entropy if lambda_entropy is not None else .5
         self.entropy_temp = self.min_lr_game_count
+        self._max_entropy = np.log(self.n_pawns)
 
         self.eval_interval = eval_interval or 500
         self.eval_games = max(eval_games or 100, 4)
@@ -375,7 +376,7 @@ class DeepQLearningTrainer:
         )
 
         self._v_loss = torch.nn.MSELoss(reduction='none')
-        self._base_p_loss = torch.nn.CrossEntropyLoss()  # TODO
+        self._base_p_loss = torch.nn.CrossEntropyLoss()
 
         self._opponents = [
             'checkpoint',
@@ -608,9 +609,6 @@ class DeepQLearningTrainer:
 
         return_all = self.model_config.double_value_head
 
-        max_entropy = np.log(self.n_pawns)
-        lambda_entropy = self._get_lambda_entropy()
-
         losses, p_losses, v_losses, entropies = [], [], [], []
         for state, probs, winner in batches:
             assert winner in {0, 1}, f"Got {winner=} instead of {0, 1} for state {state}"
@@ -634,10 +632,7 @@ class DeepQLearningTrainer:
             v_losses += [v_loss.cpu().detach().numpy()]
             loss = v_loss.sum()
             if probs is not None:
-                probs = torch.FloatTensor(probs).to(self.device)
-                entropy = get_entropy(probs)
-                p_loss = self._base_p_loss(p, probs) + lambda_entropy * (
-                    max_entropy - entropy.sum())
+                p_loss, entropy = self._p_loss(p, probs)
                 p_losses += [p_loss.item()]
                 loss += p_loss
                 entropies.append(entropy)
@@ -652,8 +647,8 @@ class DeepQLearningTrainer:
 
         entropies = torch.Tensor(entropies).mean()
         logger.info(
-            f"Entropy: {entropies:.2f} (theoretical max: {max_entropy:.2f})"
-            f", lambda: {lambda_entropy:.2f}"
+            f"Entropy: {entropies:.2f} (theoretical max: {self._max_entropy:.2f})"
+            f", lambda: {self._get_lambda_entropy():.2f}"
         )
 
         if self.separate_networks:
@@ -725,6 +720,13 @@ class DeepQLearningTrainer:
         win_rate_split['total'] = win_rate
 
         return win_rate_split
+
+    def _p_loss(self, p, probs):
+        probs = torch.FloatTensor(probs).to(self.device)
+        lambda_entropy = self._get_lambda_entropy()
+        entropy = get_entropy(probs)
+        p_loss = self._base_p_loss(p, probs) + lambda_entropy * (self._max_entropy - entropy.sum())
+        return p_loss, entropy
 
     def update_diversity_ratio(self):
         self.replay_buffer.get_diversity_ratio(self.game_count)
