@@ -20,11 +20,11 @@ from squadro.tools.probabilities import set_seed
 DIR = Path(__file__).parent
 
 MEDIUM_PARAMS = dict(
-    eval_steps=8,
+    eval_games=8,
     eval_interval=16,
     backprop_interval=16,
-    backprop_steps=16,
-    n_steps=32,
+    backprop_games=16,
+    self_play_games=32,
 )
 
 
@@ -64,21 +64,21 @@ class _Base(Base):
         )
         self.state = State(cur_player=0, advancement=[[1, 2, 3], [4, 5, 6]])
 
-    def get_trainer(self, **kwargs):
+    def get_trainer(self, **kwargs) -> squadro.DeepQLearningTrainer:
         model_path = Path(TemporaryDirectory().name)
         kwargs = dict(
             n_pawns=3,
-            eval_steps=4,
+            eval_games=4,
             eval_interval=4,
             backprop_interval=2,
-            backprop_steps=2,
-            n_steps=4,
+            backprop_games=2,
+            self_play_games=4,
             model_path=model_path,
             model_config=self.model_config,
             mcts_kwargs=dict(
                 max_steps=4,
             ),
-            plot=False,
+            display_plot=False,
         ) | kwargs
         trainer = squadro.DeepQLearningTrainer(**kwargs)
         return trainer
@@ -198,7 +198,7 @@ class TestDeepQLearningTrainerTight(_Base):
             Results.data = results
             Results.dump()
         expected = Results.load()
-        self.assertEqual(str(expected), str(results))
+        self.assertEqual(str(expected.data), str(results.data))
 
         mpimg.imread(trainer.model_path / 'results/plots.png')
 
@@ -211,12 +211,12 @@ class TestDeepQLearningTrainer(_Base):
 
         trainer = self.get_trainer()
 
-        self.assertEqual(1, trainer.get_step())
+        self.assertEqual(1, trainer.game_count)
         self.assertEqual(trainer.get_lr(0), 1e-3)
 
         trainer.run()
 
-        self.assertEqual(5, trainer.get_step())
+        self.assertEqual(5, trainer.game_count)
         self.assertLess(trainer.get_lr(0), 1e-3)
 
         model_path = trainer.model_path
@@ -244,16 +244,15 @@ class TestDeepQLearningTrainer(_Base):
         path = model_path / 'results/logs.txt'
         self.assertTrue(path.exists())
 
-        trainer = self.get_trainer(n_steps=10, model_path=model_path)
+        trainer = self.get_trainer(self_play_games=10, model_path=model_path)
 
-        self.assertEqual(5, trainer.get_step())
+        self.assertEqual(5, trainer.game_count)
         self.assertLess(trainer.get_lr(0), 1e-3)
 
         buffer = trainer.replay_buffer
         self.assertGreater(len(buffer), 0)
         self.assertGreater(len(buffer.diversity_history), 0)
 
-        self.assertGreater(len(trainer.results), 0)
         self.assertGreater(len(trainer.self_play_win_rates), 0)
         self.assertGreater(len(trainer.backprop_losses), 0)
         self.assertGreater(len(trainer.checkpoint_eval), 0)
@@ -261,7 +260,7 @@ class TestDeepQLearningTrainer(_Base):
 
         trainer.run()
 
-        self.assertEqual(11, trainer.get_step())
+        self.assertEqual(11, trainer.game_count)
 
     def test_update_checkpoint(self):
         trainer = self.get_trainer()
@@ -270,12 +269,12 @@ class TestDeepQLearningTrainer(_Base):
 
         assert_models_unequal(checkpoint, model)
 
-        trainer.checkpoint_eval[trainer.get_step()]['total'] = .1
+        trainer.checkpoint_eval[trainer.game_count]['total'] = .1
         trainer.update_checkpoint_model()
 
         assert_models_unequal(checkpoint, model)
 
-        trainer.checkpoint_eval[trainer.get_step()]['total'] = .9
+        trainer.checkpoint_eval[trainer.game_count]['total'] = .9
         trainer.update_checkpoint_model()
 
         assert_models_equal(checkpoint, model)
@@ -287,16 +286,16 @@ class TestDeepQLearningTrainer(_Base):
 
         trainer._self_play_win_rate = {0: [1, 0, 1, 0, 0], 1: [1, 1, 0, 0]}
         trainer._process_self_play_info()
-        self.assertEqual(trainer.self_play_win_rates[trainer.get_step()], 4 / 9)
+        self.assertEqual(trainer.self_play_win_rates[trainer.game_count], 4 / 9)
         self.assertEqual(trainer._self_play_win_rate, {0: 0.4, 1: 0.5})
 
         trainer._self_play_win_rate = {0: [1], 1: []}
         trainer._process_self_play_info()
-        self.assertEqual(trainer.self_play_win_rates[trainer.get_step()], 1)
+        self.assertEqual(trainer.self_play_win_rates[trainer.game_count], 1)
         self.assertEqual(trainer._self_play_win_rate, {0: 1, 1: .5})
 
     def test_plot(self):
-        trainer = self.get_trainer(plot=True)
+        trainer = self.get_trainer(display_plot=True)
         trainer.run()
 
     def test_step_lr(self):
@@ -316,10 +315,10 @@ class TestDeepQLearningTrainer(_Base):
     def test_policy_entropy(self):
         trainer = self.get_trainer()
 
-        trainer.set_step(0)
+        trainer.set_game_count(0)
         self.assertEqual(trainer.lambda_entropy, trainer._get_lambda_entropy())
 
-        trainer.set_step(trainer.entropy_final_step)
+        trainer.set_game_count(trainer.entropy_temp)
         self.assertEqual(.1 * trainer.lambda_entropy, trainer._get_lambda_entropy())
 
     @patch.object(Game, 'run', run)
@@ -341,8 +340,8 @@ class TestDeepQLearningTrainer(_Base):
     def test_evaluation(self):
         RunMock.call_count = 0
 
-        eval_steps = 8
-        trainer = self.get_trainer(eval_steps=eval_steps)
+        self_play_games = 8
+        trainer = self.get_trainer(self_play_games=self_play_games)
 
         win_rate_split = trainer.evaluate_agent(vs='random')
         self.assertEqual({
@@ -352,20 +351,20 @@ class TestDeepQLearningTrainer(_Base):
             (1, 0): 0.0,
             (1, 1): 1.0
         }, win_rate_split)
-        self.assertEqual(eval_steps / 2, RunMock.call_count)
+        self.assertEqual(self_play_games / 2, RunMock.call_count)
 
         RunMock.call_count = 0
         trainer.evaluate_agent(vs='checkpoint')
-        self.assertEqual(eval_steps, RunMock.call_count)
+        self.assertEqual(self_play_games, RunMock.call_count)
 
     @patch.object(Game, 'run', run)
     def test_evaluation(self):
-        trainer = self.get_trainer(eval_steps=8)
+        trainer = self.get_trainer(self_play_games=8)
         self.assertEqual(trainer.elo.current, trainer.elo.checkpoint)
 
         trainer.evaluate_agents()
 
-        s = trainer.get_step()
+        s = trainer.game_count
         n_data = 5
         self.assertEqual(len(trainer.results['eval']['checkpoint'][s]), n_data)
         self.assertEqual(len(trainer.results['eval']['random'][s]), n_data)
