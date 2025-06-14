@@ -1,5 +1,5 @@
 from squadro.core.game import Game
-from squadro.state.evaluators.evaluator import Evaluator
+from squadro.state.evaluators.base import Evaluator
 from squadro.tools.constants import DATA_PATH
 from squadro.tools.dates import get_now
 from squadro.tools.disk import mkdir

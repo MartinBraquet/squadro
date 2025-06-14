@@ -4,7 +4,8 @@ from unittest import TestCase
 
 import torch
 
-from squadro.state.evaluators.evaluator import ModelConfig, Model
+from squadro.evaluators.evaluator import Model
+from squadro.state.evaluators.ml import ModelConfig
 from squadro.tools.probabilities import set_seed
 
 

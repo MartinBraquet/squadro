@@ -7,7 +7,7 @@ from torch import tensor
 
 from squadro.ml.channels import get_channels
 from squadro.ml.ml import assert_models_equal, assert_models_unequal
-from squadro.state.evaluators.evaluator import ModelConfig
+from squadro.state.evaluators.ml import ModelConfig
 from squadro.state.evaluators.rl import DeepQLearningEvaluator
 from squadro.state.state import State
 from squadro.tests.evaluators.tools import ML

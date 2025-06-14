@@ -15,7 +15,7 @@ from squadro import Game
 from squadro.agents.agent import Agent
 from squadro.agents.montecarlo_agent import MonteCarloDeepQLearningAgent
 from squadro.core.benchmarking import Benchmark
-from squadro.state.evaluators.evaluator import Model
+from squadro.evaluators.evaluator import Model
 from squadro.state.evaluators.rl import DeepQLearningEvaluator
 from squadro.tools.basic import dict_factory, check_nan
 from squadro.tools.constants import DefaultParams, inf, DQL_PATH
@@ -998,10 +998,6 @@ class DeepQLearningTrainer:
     @property
     def self_play_win_rates(self):
         return self.results.self_play_win_rates
-
-    @property
-    def backprop_losses(self):
-        return self.back_propagation.backprop_losses
 
     @property
     def elo(self) -> Elo:

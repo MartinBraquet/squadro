@@ -10,7 +10,7 @@ import squadro
 from squadro import Game, logger
 from squadro.agents.random_agent import RandomAgent
 from squadro.ml.ml import assert_models_equal, assert_models_unequal
-from squadro.state.evaluators.evaluator import ModelConfig
+from squadro.state.evaluators.ml import ModelConfig
 from squadro.state.evaluators.rl import DeepQLearningEvaluator
 from squadro.state.state import State
 from squadro.tests.base import Base
@@ -256,7 +256,7 @@ class TestDeepQLearningTrainer(_Base):
         self.assertGreater(len(buffer.diversity_history), 0)
 
         self.assertGreater(len(trainer.self_play_win_rates), 0)
-        self.assertGreater(len(trainer.backprop_losses), 0)
+        self.assertGreater(len(trainer.back_propagation.backprop_losses), 0)
         self.assertGreater(len(trainer.checkpoint_eval), 0)
         self.assertGreater(len(trainer.elo.history), 1)
 

@@ -4,7 +4,7 @@ import pygame
 
 from squadro.agents.human_agent import get_action_from_click
 from squadro.animation.board import Board, check_quit, get_position_from_click
-from squadro.state.evaluators.evaluator import Evaluator
+from squadro.state.evaluators.base import Evaluator
 from squadro.state.state import State
 from squadro.tools.constants import DefaultParams
 from squadro.tools.logs import logger

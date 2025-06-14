@@ -9,8 +9,10 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
+from squadro.evaluators.evaluator import default_device, Model
 from squadro.ml.channels import get_channels
-from squadro.state.evaluators.evaluator import Evaluator, default_device, ModelConfig, Model
+from squadro.state.evaluators.base import Evaluator
+from squadro.state.evaluators.ml import ModelConfig
 from squadro.state.state import State
 from squadro.tools.constants import DATA_PATH, inf
 from squadro.tools.dates import get_file_modified_time, get_now, READABLE_DATE_FMT

@@ -1,97 +1,19 @@
+# Ideally, this would go into state.evaluators.ml, but some previous models stored in disk
+# point to this file, so we need to keep it here for backwards compatibility reasons.
+
 import os
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from multiprocessing.managers import DictProxy, ArrayProxy  # noqa
 from pathlib import Path
 from typing import Union
 
-import numpy as np
 import torch
-from numpy.typing import NDArray
 from torch import nn
 
 from squadro.ml.channels import get_num_channels
 from squadro.ml.ml import get_model_size
-from squadro.state.state import State
-from squadro.tools.logs import logger
-
-
-class Evaluator(ABC):
-    """
-    Base class for state evaluation.
-    """
-
-    @abstractmethod
-    def evaluate(self, state: State) -> tuple[NDArray[np.float64], float]:
-        """
-        Evaluate the current state (value and policy), according to the current player.
-
-        Args:
-            state: The current game state to evaluate
-
-        Returns:
-            A tuple containing:
-                - NDArray[np.float64]: Probability distribution over possible actions (policy)
-                - float: Value estimation for the current state from the perspective of the player
-                playing the next move at that state.
-        """
-        ...
-
-    @staticmethod
-    def get_policy(state: State) -> np.ndarray:
-        """
-        Get the policy for the given state.
-        """
-        return np.ones(state.n_pawns) / state.n_pawns
-
-    def get_value(self, state: State) -> float:
-        """
-        Get the value for the given state.
-        """
-        return self.evaluate(state)[1]
-
-    @classmethod
-    def reload(cls):
-        ...
-
+from squadro.state.evaluators.ml import ModelConfig
 
 default_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-@dataclass
-class ModelConfig:
-    cnn_hidden_dim: int = 64
-    value_hidden_dim: int = 64
-    policy_hidden_dim: int = 4
-    num_blocks: int = 5
-    double_value_head: bool = False
-    board_flipping: bool = False
-    separate_networks: bool = True
-
-    def __post_init__(self):
-        if self.double_value_head and self.separate_networks:
-            raise ValueError("Cannot use separate networks with double value head")
-        if self.separate_networks and self.board_flipping:
-            logger.warn("Using separate networks with board flipping, not recommended")
-
-    def __repr__(self):
-        text = ''
-        if self.double_value_head:
-            text += f"double_value"
-        if self.board_flipping:
-            text += f"board_flip"
-        if self.separate_networks:
-            text += f"separate_networks"
-        text += (
-            f", cnn_d={self.cnn_hidden_dim}"
-            f", v_d={self.value_hidden_dim}"
-            f", p_d={self.policy_hidden_dim}"
-            f", blocks={self.num_blocks}"
-        )
-        return text
-
-    def copy(self):
-        return ModelConfig(**self.__dict__)
 
 
 class ResidualBlock(nn.Module):

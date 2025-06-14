@@ -1,7 +1,7 @@
 import numpy as np
 from numpy._typing import NDArray
 
-from squadro.state.evaluators.evaluator import Evaluator
+from squadro.state.evaluators.base import Evaluator
 from squadro.state.state import State
 
 
