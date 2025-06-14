@@ -257,7 +257,7 @@ class TestDeepQLearningTrainer(_Base):
         self.assertGreater(len(buffer), 0)
         self.assertGreater(len(buffer.diversity_history), 0)
 
-        self.assertGreater(len(trainer.self_play_win_rates), 0)
+        self.assertGreater(len(trainer.self_player.win_rate), 0)
         self.assertGreater(len(trainer.back_propagation.backprop_losses), 0)
         self.assertGreater(len(benchmarker.checkpoint_eval), 0)
         self.assertGreater(len(benchmarker.elo.history), 1)
@@ -293,16 +293,17 @@ class TestDeepQLearningTrainer(_Base):
 
     def test_self_play_info(self):
         trainer = self.get_trainer()
+        self_player = trainer.self_player
 
-        trainer._self_play_win_rate = {0: [1, 0, 1, 0, 0], 1: [1, 1, 0, 0]}
-        trainer._process_self_play_info()
-        self.assertEqual(trainer.self_play_win_rates[trainer.game_count], 4 / 9)
-        self.assertEqual(trainer._self_play_win_rate, {0: 0.4, 1: 0.5})
+        self_player.win_rate = {0: [1, 0, 1, 0, 0], 1: [1, 1, 0, 0]}
+        win_rate = self_player.compute_info()
+        self.assertEqual(4 / 9, self_player.self_play_win_rates[trainer.game_count])
+        self.assertEqual({0: 0.4, 1: 0.5}, win_rate)
 
-        trainer._self_play_win_rate = {0: [1], 1: []}
-        trainer._process_self_play_info()
-        self.assertEqual(trainer.self_play_win_rates[trainer.game_count], 1)
-        self.assertEqual(trainer._self_play_win_rate, {0: 1, 1: .5})
+        self_player.win_rate = {0: [1], 1: []}
+        win_rate = self_player.compute_info()
+        self.assertEqual(1, self_player.self_play_win_rates[trainer.game_count])
+        self.assertEqual({0: 1, 1: .5}, win_rate)
 
     def test_plot(self):
         trainer = self.get_trainer(display_plot=True)
@@ -339,15 +340,15 @@ class TestDeepQLearningTrainer(_Base):
         trainer = self.get_trainer()
         self.assertEqual(len(trainer.replay_buffer), 0)
 
-        trainer._clear_self_play_win_rate()
+        trainer.self_player.clear_win_rate()
 
-        self.assertEqual(trainer._self_play_win_rate, {0: [], 1: []})
+        self.assertEqual(trainer.self_player.win_rate, {0: [], 1: []})
 
-        trainer.run_self_play_game()
+        trainer.generate_training_samples()
 
         self.assertGreater(len(trainer.replay_buffer), 0)
         first = 1
-        self.assertGreater(len(trainer._self_play_win_rate[first]), 0)
+        self.assertGreater(len(trainer.self_player.win_rate[first]), 0)
 
     @patch.object(Game, 'run', run)
     def test_evaluation(self):

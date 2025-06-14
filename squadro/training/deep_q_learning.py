@@ -95,14 +95,15 @@ class Plotter:
         self,
         title: str,
         path: str,
+        results: Results,
         display_plot: bool = True,
     ):
         self.title = title
         self.path = path
         self.display_plot = display_plot
+        self.results = results
 
         self._display_handle, self._fig, self._ax = None, None, None
-        self.results: Optional[Results] = None
 
     def init(self):
         self._fig, self._ax = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
@@ -139,9 +140,9 @@ class Plotter:
             self._fig.canvas.flush_events()
             plt.pause(0.01)  # Needed to refresh the figure
 
-    def update(self, results: Results, name: str):
-        self.results = results
+    def update(self, name: str):
         if name == 'backprop':
+            self._plot_replay_buffer_diversity()
             self._plot_loss()
         elif name == 'all':
             self._plot_replay_buffer_diversity()
@@ -149,7 +150,6 @@ class Plotter:
             self._plot_win_rate()
             self._plot_elo()
         elif name == 'eval':
-            self._plot_replay_buffer_diversity()
             self._plot_win_rate()
             self._plot_elo()
 
@@ -701,6 +701,89 @@ class Benchmarker:
         return self.results.game_count
 
 
+class SelfPlayer:
+    def __init__(
+        self,
+        agent,
+        n_pawns,
+        results,
+        replay_buffer,
+    ):
+        self.agent = agent
+        self.n_pawns = n_pawns
+        self.results = results
+        self.replay_buffer = replay_buffer
+
+        self.win_rate = ...
+        self.clear_win_rate()
+
+    def run(self):
+        self.step_game()
+
+        game = Game(
+            n_pawns=self.n_pawns,
+            agent_0=self.agent,
+            agent_1=self.agent,
+            save_states=True,
+        )
+        game.run()
+
+        history = []
+        for i, s in enumerate(game.state_history):
+            s = s.to_list()
+
+            move_probs = game.move_info[i]['mcts_move_probs'] if i < len(game.move_info) else None
+            check_nan(move_probs)
+            if isinstance(move_probs, np.ndarray):
+                move_probs = move_probs.tolist()
+
+            history.append((
+                s,
+                move_probs,
+                game.winner,
+            ))
+
+        # probs = game.move_info[0]['mcts_move_probs']
+        # probs = (100 * np.array(probs)).round().tolist()
+        # logger.info(f"Initial state MCTS move probs: {probs}")
+
+        self.replay_buffer.add_game(history=history, winner=game.winner, first=game.first)
+        self.win_rate[game.first] += [1 - game.winner]
+
+        return history
+
+    def step_game(self):
+        self.results.step_self_play_game()
+
+    def clear_win_rate(self):
+        self.win_rate = {0: [], 1: []}
+
+    def compute_info(self):
+        self.update_diversity_ratio()
+
+        win_rate = []
+        win_rate_split = {}
+        for f, data in self.win_rate.items():
+            win_rate_split[f] = np.array(data).mean() if len(data) > 0 else 0.5
+            win_rate += data
+        self.self_play_win_rates[self.game_count] = win_rate = np.array(win_rate).mean()
+        logger.info(f"Self-play win rate: {win_rate:.0%}"
+                    f" (first 0: {win_rate_split[0]:.0%}, first 1: {win_rate_split[1]:.0%})")
+        self.clear_win_rate()
+        return win_rate_split
+
+    def update_diversity_ratio(self):
+        self.replay_buffer.compute_diversity_ratio(self.game_count)
+        self.results.diversity_history = self.replay_buffer.diversity_history
+
+    @property
+    def self_play_win_rates(self):
+        return self.results.self_play_win_rates
+
+    @property
+    def game_count(self):
+        return self.results.game_count
+
 
 class DeepQLearningTrainer:
     """
@@ -793,6 +876,13 @@ class DeepQLearningTrainer:
             self.evaluator.erase(self.n_pawns)
             self.replay_buffer.clear()
 
+        self.self_player = SelfPlayer(
+            agent=self.agent,
+            results=self.results,
+            n_pawns=self.n_pawns,
+            replay_buffer=self.replay_buffer,
+        )
+
         self.back_propagation = BackPropagation(
             adaptive_lr=adaptive_lr,
             adaptive_sampling=adaptive_sampling,
@@ -823,9 +913,9 @@ class DeepQLearningTrainer:
             title=self.title,
             display_plot=display_plot,
             path=self.results_path / 'plots.png',
+            results=self.results,
         )
 
-        self._self_play_win_rate = None
         self.run_ts = None
 
     def run(self) -> None:
@@ -865,10 +955,9 @@ class DeepQLearningTrainer:
 
     def _run(self):
         self.plot('all')
-        self._clear_self_play_win_rate()
 
         for game_count in range(self.game_count, (self.self_play_games or int(1e15)) + 1):
-            self.run_self_play_game()
+            self.generate_training_samples()
             logger.info(f'Self-play game: {game_count}')
 
             if game_count % self.backprop_interval == 0:
@@ -877,62 +966,21 @@ class DeepQLearningTrainer:
             if game_count % self.eval_interval == 0:
                 self.evaluate()
 
+    def generate_training_samples(self):
+        self.self_player.run()
+
     def backpropagate(self):
-        self._process_self_play_info()
-        self.back_propagation.run(self_play_win_rate=self._self_play_win_rate)
-        self._clear_self_play_win_rate()
+        self_play_win_rate = self.self_player.compute_info()
+        self.back_propagation.run(self_play_win_rate=self_play_win_rate)
         self.plot('backprop')
 
     def evaluate(self):
         self.benchmarker.run()
-        self.update_diversity_ratio()
         self.plot('eval')
         self.dump()
 
     def plot(self, name):
-        self.plotter.update(self.results, name)
-
-    def run_self_play_game(self):
-        self.step_self_play_game()
-
-        game = Game(
-            n_pawns=self.n_pawns,
-            agent_0=self.agent,
-            agent_1=self.agent,
-            save_states=True,
-        )
-        game.run()
-
-        history = []
-        for i, s in enumerate(game.state_history):
-            s = s.to_list()
-
-            move_probs = game.move_info[i]['mcts_move_probs'] if i < len(game.move_info) else None
-            check_nan(move_probs)
-            if isinstance(move_probs, np.ndarray):
-                move_probs = move_probs.tolist()
-
-            history.append((
-                s,
-                move_probs,
-                game.winner,
-            ))
-
-        # probs = game.move_info[0]['mcts_move_probs']
-        # probs = (100 * np.array(probs)).round().tolist()
-        # logger.info(f"Initial state MCTS move probs: {probs}")
-
-        self.replay_buffer.add_game(history=history, winner=game.winner, first=game.first)
-        self._self_play_win_rate[game.first] += [1 - game.winner]
-
-        return history
-
-    def update_diversity_ratio(self):
-        self.replay_buffer.compute_diversity_ratio(self.game_count)
-        self.results.diversity_history = self.replay_buffer.diversity_history
-
-    def step_self_play_game(self):
-        self.results.step_self_play_game()
+        self.plotter.update(name)
 
     def dump(self):
         # with logger.context_info('dump'):
@@ -955,21 +1003,6 @@ class DeepQLearningTrainer:
         else:
             raise ValueError(f"Unknown format: {fmt}")
 
-    def _clear_self_play_win_rate(self):
-        self._self_play_win_rate = {0: [], 1: []}
-
-    def _process_self_play_info(self):
-        win_rate = []
-        win_rate_split = {}
-        for f, data in self._self_play_win_rate.items():
-            win_rate_split[f] = np.array(data).mean() if len(data) > 0 else 0.5
-            win_rate += data
-        self._self_play_win_rate = win_rate_split
-        win_rate = np.array(win_rate).mean()
-        self.self_play_win_rates[self.game_count] = win_rate
-        logger.info(f"Self-play win rate: {win_rate:.0%}"
-                    f" (first 0: {win_rate_split[0]:.0%}, first 1: {win_rate_split[1]:.0%})")
-
     @property
     def device(self):
         return self.get_model().device
@@ -984,14 +1017,6 @@ class DeepQLearningTrainer:
     @property
     def pkl_results_path(self):
         return self.results_path / 'results.pkl'
-
-    @property
-    def n_networks(self) -> int:
-        return 2 if self.separate_networks else 1
-
-    @property
-    def separate_networks(self):
-        return self.model_config.separate_networks
 
     def get_model(self, player=0) -> Model:
         return self.evaluator.get_model(n_pawns=self.n_pawns, player=player)
@@ -1027,10 +1052,6 @@ class DeepQLearningTrainer:
             f"\n{mcts_info}"
             f"\n{self.model_config}, lr={self.back_propagation.lr:.0e}"
         )
-
-    @property
-    def self_play_win_rates(self):
-        return self.results.self_play_win_rates
 
     def get_lr(self, player=0):
         return self.back_propagation.get_lr(player=player)
