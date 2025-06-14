@@ -581,6 +581,127 @@ class BackPropagation:
         return self.results.game_count
 
 
+class Benchmarker:
+    """
+    Benchmark the trained model against baselines.
+    """
+
+    def __init__(
+        self,
+        results,
+        eval_games,
+        evaluator,
+        n_pawns,
+        agent_kwargs,
+    ):
+        self.results = results
+        self.eval_games = max(eval_games or 100, 4)
+        self.n_pawns = n_pawns
+        self.agent_kwargs = agent_kwargs
+        self.evaluator = evaluator
+        self.evaluator_chkpt = DeepQLearningEvaluator(
+            model_path=Path(self.evaluator.model_path) / 'checkpoint',
+            model_config=self.evaluator.model_config,
+        )
+        self._opponents = ['checkpoint', 'random']
+
+        if not self.evaluator_chkpt.is_pretrained(n_pawns=self.n_pawns):
+            self.copy_weights_to_checkpoint()
+
+    def run(self):
+        self.evaluate_agents()
+        self.update_checkpoint_model()
+
+    def evaluate_agents(self):
+        vs_list = self._opponents
+        results = {}
+        for vs in vs_list:
+            self.results['eval'][str(vs)][self.game_count] = win_rate = self.evaluate_agent(vs=vs)
+            win_rate = win_rate['total']
+            results[str(vs)] = win_rate
+
+        self.elo.update(win_rate=results['checkpoint'], n=self.eval_games, step=self.game_count)
+
+        msg = f"{self.game_count} self-play games: "
+        msg += ', '.join([f"{v:.0%} vs {k}" for k, v in results.items()])
+        logger.info(msg)
+
+    def evaluate_agent(self, vs: str | Agent = None) -> dict:
+        """
+        Evaluate the success rate of the current agent against another agent.
+
+        Note that if the agent is in evaluation mode (`is_training = False`), then it is fully
+        deterministic. And two deterministic agents will always have the same result. The only
+        randomness would come from who started: 100% if agent 0 wins in either starting position,
+        0% if agent 1 wins in either starting position, and close to 50% if agent 0 wins in one
+        starting position. This is a very bad measure for benchmark evaluation.
+
+        This is a benchmark evaluation, so we want to compare the two models in many different
+        configurations. As the model gets trained, we expect it to have a win rate slowly
+        increasing from 50% to 100% against its past checkpoints.
+        To do so, we must keep the randomness in each agent's decision by keeping
+        `is_training = True`.
+        """
+        eval_games = self.eval_games
+        if vs != 'checkpoint':
+            eval_games /= 2
+
+        agent = MonteCarloDeepQLearningAgent(
+            evaluator=self.evaluator,
+            is_training=vs != 'random',
+            **self.agent_kwargs,
+        )
+
+        if vs == 'checkpoint':
+            vs = MonteCarloDeepQLearningAgent(
+                evaluator=self.evaluator_chkpt,
+                is_training=True,
+                **self.agent_kwargs,
+            )
+        elif vs is None:
+            vs = agent
+
+        logger.info(f"Evaluation against {vs}:")
+
+        benchmark = Benchmark(
+            agent_0=agent,
+            agent_1=vs,
+            n_pawns=self.n_pawns,
+            n_games=eval_games,
+        )
+        win_rate = benchmark.run()
+        win_rate_split = benchmark.win_rates.copy()
+        win_rate_split['total'] = win_rate
+
+        return win_rate_split
+
+    def update_checkpoint_model(self):
+        if self.checkpoint_eval[self.game_count]['total'] > .7:
+            logger.info(f"Updating best checkpoint")
+            self.copy_weights_to_checkpoint()
+            self.evaluator_chkpt.dump()
+            self.elo.update_checkpoint()
+
+    def copy_weights_to_checkpoint(self):
+        self.evaluator_chkpt.load_weights(self.evaluator)
+
+    def get_model_chkpt(self, player=0) -> Model:
+        return self.evaluator_chkpt.get_model(n_pawns=self.n_pawns, player=player)
+
+    @property
+    def checkpoint_eval(self):
+        return self.results.checkpoint_eval
+
+    @property
+    def elo(self) -> Elo:
+        return self.results.elo
+
+    @property
+    def game_count(self):
+        return self.results.game_count
+
+
+
 class DeepQLearningTrainer:
     """
     Deep Q-learning trainer.
@@ -636,25 +757,23 @@ class DeepQLearningTrainer:
             display_plot (bool): Whether to plot results during training.
         """
         self.n_pawns = n_pawns or DefaultParams.n_pawns
-
         self.self_play_games = self_play_games
-        self.eval_interval = eval_interval or 500
-        self.eval_games = max(eval_games or 100, 4)
-
         self.backprop_interval = backprop_interval or 100
+        self.eval_interval = eval_interval or 500
 
         self.mcts_kwargs = mcts_kwargs or {}
         self.mcts_kwargs.setdefault('max_steps', int(4 * self.n_pawns ** 2))
+
+        self.agent_kwargs = dict(
+            mcts_kwargs=self.mcts_kwargs,
+            max_time_per_move=inf,
+        )
 
         self.agent = MonteCarloDeepQLearningAgent(
             model_path=model_path,
             model_config=model_config,
             is_training=True,
             **self.agent_kwargs,
-        )
-        self.evaluator_chkpt = DeepQLearningEvaluator(
-            model_path=Path(self.model_path) / 'checkpoint',
-            model_config=model_config,
         )
 
         self.results_path = self.model_path / 'results'
@@ -666,12 +785,9 @@ class DeepQLearningTrainer:
         self.results = Results() if from_scratch else Results.load(self.pkl_results_path)
 
         self.replay_buffer = ReplayBuffer(
-            n_pawns=self.n_pawns,
             path=self.model_path / 'replay_buffer.pkl',
             max_size=4e3 * (self.n_pawns ** 2),
         )
-
-        self._opponents = ['checkpoint', 'random']
 
         if from_scratch:
             self.evaluator.erase(self.n_pawns)
@@ -693,6 +809,14 @@ class DeepQLearningTrainer:
             replay_buffer=self.replay_buffer,
             results=self.results,
             n_pawns=self.n_pawns,
+        )
+
+        self.benchmarker = Benchmarker(
+            results=self.results,
+            eval_games=eval_games,
+            evaluator=self.evaluator,
+            n_pawns=self.n_pawns,
+            agent_kwargs=self.agent_kwargs,
         )
 
         self.plotter = Plotter(
@@ -721,16 +845,13 @@ class DeepQLearningTrainer:
             f"backprop interval: {self.backprop_interval}\n"
             f"backprop steps: {self.back_propagation.backprop_games}\n"
             f"eval interval: {self.eval_interval}\n"
-            f"eval steps: {self.eval_games}\n"
+            f"eval steps: {self.benchmarker.eval_games}\n"
             f"MCTS config: {json.dumps(self.agent.mcts_config, indent=4)}\n"
             f"device: {self.device}\n"
             f"path: {self.model_path}\n"
             f"replay buffer: {self.replay_buffer}\n"
             f"run ts: {self.run_ts}\n"
         )
-
-        if not self.evaluator_chkpt.is_pretrained(n_pawns=self.n_pawns):
-            self.copy_weights_to_checkpoint()
 
         self.plotter.init()
 
@@ -763,8 +884,7 @@ class DeepQLearningTrainer:
         self.plot('backprop')
 
     def evaluate(self):
-        self.evaluate_agents()
-        self.update_checkpoint_model()
+        self.benchmarker.run()
         self.update_diversity_ratio()
         self.plot('eval')
         self.dump()
@@ -807,85 +927,12 @@ class DeepQLearningTrainer:
 
         return history
 
-    def evaluate_agents(self):
-        vs_list = self._opponents
-        results = {}
-        for vs in vs_list:
-            self.results['eval'][str(vs)][self.game_count] = win_rate = self.evaluate_agent(vs=vs)
-            win_rate = win_rate['total']
-            results[str(vs)] = win_rate
-
-        self.elo.update(win_rate=results['checkpoint'], n=self.eval_games, step=self.game_count)
-
-        msg = f"{self.game_count} self-play games: "
-        msg += ', '.join([f"{v:.0%} vs {k}" for k, v in results.items()])
-        logger.info(msg)
-
-    def evaluate_agent(self, vs: str | Agent = None) -> dict:
-        """
-        Evaluate the success rate of the current agent against another agent.
-
-        Note that if the agent is in evaluation mode (`is_training = False`), then it is fully
-        deterministic. And two deterministic agents will always have the same result. The only
-        randomness would come from who started: 100% if agent 0 wins in either starting position,
-        0% if agent 1 wins in either starting position, and close to 50% if agent 0 wins in one
-        starting position. This is a very bad measure for benchmark evaluation.
-
-        This is a benchmark evaluation, so we want to compare the two models in many different
-        configurations. As the model gets trained, we expect it to have a win rate slowly
-        increasing from 50% to 100% against its past checkpoints.
-        To do so, we must keep the randomness in each agent's decision by keeping
-        `is_training = True`.
-        """
-        eval_games = self.eval_games
-        if vs != 'checkpoint':
-            eval_games /= 2
-
-        agent = MonteCarloDeepQLearningAgent(
-            evaluator=self.evaluator,
-            is_training=vs != 'random',
-            **self.agent_kwargs,
-        )
-
-        if vs == 'checkpoint':
-            vs = MonteCarloDeepQLearningAgent(
-                evaluator=self.evaluator_chkpt,
-                is_training=True,
-                **self.agent_kwargs,
-            )
-        elif vs is None:
-            vs = agent
-
-        logger.info(f"Evaluation against {vs}:")
-
-        benchmarker = Benchmark(
-            agent_0=agent,
-            agent_1=vs,
-            n_pawns=self.n_pawns,
-            n_games=eval_games,
-        )
-        win_rate = benchmarker.run()
-        win_rate_split = benchmarker.win_rates.copy()
-        win_rate_split['total'] = win_rate
-
-        return win_rate_split
-
     def update_diversity_ratio(self):
-        self.replay_buffer.get_diversity_ratio(self.game_count)
+        self.replay_buffer.compute_diversity_ratio(self.game_count)
         self.results.diversity_history = self.replay_buffer.diversity_history
-
-    def copy_weights_to_checkpoint(self):
-        self.evaluator_chkpt.load_weights(self.evaluator)
 
     def step_self_play_game(self):
         self.results.step_self_play_game()
-
-    def update_checkpoint_model(self):
-        if self.checkpoint_eval[self.game_count]['total'] > .7:
-            logger.info(f"Updating best checkpoint")
-            self.copy_weights_to_checkpoint()
-            self.evaluator_chkpt.dump()
-            self.elo.update_checkpoint()
 
     def dump(self):
         # with logger.context_info('dump'):
@@ -894,7 +941,7 @@ class DeepQLearningTrainer:
         logger.dump_history(self.results_path / f'logs.txt', clear=True)
         self.plotter.dump()
         self.evaluator.dump()
-        self.evaluator.dump(Path(self.evaluator_chkpt.model_path) / filename)
+        self.evaluator.dump(Path(self.benchmarker.evaluator_chkpt.model_path) / filename)
         self.replay_buffer.save()
         logger.info(f"Dumped current model to '{filename}'")
 
@@ -939,13 +986,6 @@ class DeepQLearningTrainer:
         return self.results_path / 'results.pkl'
 
     @property
-    def agent_kwargs(self):
-        return dict(
-            mcts_kwargs=self.mcts_kwargs,
-            max_time_per_move=inf,
-        )
-
-    @property
     def n_networks(self) -> int:
         return 2 if self.separate_networks else 1
 
@@ -955,9 +995,6 @@ class DeepQLearningTrainer:
 
     def get_model(self, player=0) -> Model:
         return self.evaluator.get_model(n_pawns=self.n_pawns, player=player)
-
-    def get_model_chkpt(self, player=0) -> Model:
-        return self.evaluator_chkpt.get_model(n_pawns=self.n_pawns, player=player)
 
     @property
     def model_config(self):
@@ -992,16 +1029,8 @@ class DeepQLearningTrainer:
         )
 
     @property
-    def checkpoint_eval(self):
-        return self.results.checkpoint_eval
-
-    @property
     def self_play_win_rates(self):
         return self.results.self_play_win_rates
-
-    @property
-    def elo(self) -> Elo:
-        return self.results.elo
 
     def get_lr(self, player=0):
         return self.back_propagation.get_lr(player=player)

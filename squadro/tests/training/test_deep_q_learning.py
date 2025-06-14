@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import numpy as np
+import torch
 from matplotlib import image as mpimg
 
 import squadro
@@ -212,6 +213,7 @@ class TestDeepQLearningTrainer(_Base):
         logger.setup(section=['training', 'benchmark'])
 
         trainer = self.get_trainer()
+        benchmarker = trainer.benchmarker
 
         self.assertEqual(1, trainer.game_count)
         self.assertEqual(trainer.get_lr(0), 1e-3)
@@ -257,8 +259,8 @@ class TestDeepQLearningTrainer(_Base):
 
         self.assertGreater(len(trainer.self_play_win_rates), 0)
         self.assertGreater(len(trainer.back_propagation.backprop_losses), 0)
-        self.assertGreater(len(trainer.checkpoint_eval), 0)
-        self.assertGreater(len(trainer.elo.history), 1)
+        self.assertGreater(len(benchmarker.checkpoint_eval), 0)
+        self.assertGreater(len(benchmarker.elo.history), 1)
 
         trainer.run()
 
@@ -266,22 +268,28 @@ class TestDeepQLearningTrainer(_Base):
 
     def test_update_checkpoint(self):
         trainer = self.get_trainer()
+        benchmarker = trainer.benchmarker
 
-        checkpoint, model = trainer.get_model_chkpt(0), trainer.get_model(0)
-
-        assert_models_unequal(checkpoint, model)
-
-        trainer.checkpoint_eval[trainer.game_count]['total'] = .1
-        trainer.update_checkpoint_model()
-
-        assert_models_unequal(checkpoint, model)
-
-        trainer.checkpoint_eval[trainer.game_count]['total'] = .9
-        trainer.update_checkpoint_model()
+        checkpoint, model = benchmarker.get_model_chkpt(0), trainer.get_model(0)
 
         assert_models_equal(checkpoint, model)
 
-        self.assertEqual(trainer.elo.current, trainer.elo.checkpoint)
+        with torch.no_grad():
+            checkpoint.value_head[0].weight[0][0] = 42.0
+
+        assert_models_unequal(checkpoint, model)
+
+        benchmarker.checkpoint_eval[benchmarker.game_count]['total'] = .1
+        benchmarker.update_checkpoint_model()
+
+        assert_models_unequal(checkpoint, model)
+
+        benchmarker.checkpoint_eval[benchmarker.game_count]['total'] = .9
+        benchmarker.update_checkpoint_model()
+
+        assert_models_equal(checkpoint, model)
+
+        self.assertEqual(benchmarker.elo.current, benchmarker.elo.checkpoint)
 
     def test_self_play_info(self):
         trainer = self.get_trainer()
@@ -347,8 +355,9 @@ class TestDeepQLearningTrainer(_Base):
 
         eval_games = 8
         trainer = self.get_trainer(eval_games=eval_games)
+        benchmarker = trainer.benchmarker
 
-        win_rate_split = trainer.evaluate_agent(vs='random')
+        win_rate_split = benchmarker.evaluate_agent(vs='random')
         self.assertEqual({
             'total': 0.5,
             (0, 0): 1.0,
@@ -359,20 +368,21 @@ class TestDeepQLearningTrainer(_Base):
         self.assertEqual(eval_games / 2, RunMock.call_count)
 
         RunMock.call_count = 0
-        trainer.evaluate_agent(vs='checkpoint')
+        benchmarker.evaluate_agent(vs='checkpoint')
         self.assertEqual(eval_games, RunMock.call_count)
 
     @patch.object(Game, 'run', run)
     def test_elo_evaluation(self):
         trainer = self.get_trainer(eval_games=8)
-        self.assertEqual(trainer.elo.current, trainer.elo.checkpoint)
+        benchmarker = trainer.benchmarker
+        self.assertEqual(benchmarker.elo.current, benchmarker.elo.checkpoint)
 
-        trainer.evaluate_agents()
+        benchmarker.evaluate_agents()
 
-        s = trainer.game_count
+        s = benchmarker.game_count
         n_data = 5
-        self.assertEqual(len(trainer.results['eval']['checkpoint'][s]), n_data)
-        self.assertEqual(len(trainer.results['eval']['random'][s]), n_data)
+        self.assertEqual(len(benchmarker.results['eval']['checkpoint'][s]), n_data)
+        self.assertEqual(len(benchmarker.results['eval']['random'][s]), n_data)
 
         # Might be equal in some cases (if the win rate is 50%), but not with this seed
-        self.assertNotEqual(trainer.elo.current, trainer.elo.checkpoint)
+        self.assertNotEqual(benchmarker.elo.current, benchmarker.elo.checkpoint)
