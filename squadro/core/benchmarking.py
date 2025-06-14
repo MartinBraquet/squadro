@@ -53,7 +53,7 @@ class Benchmark:
                     game.run()
                     # logger.info(game.action_history)
                     win = int(game.winner == agent_id)
-                    print(win)
+                    print(game.action_history)
                     self.win_rates[agent_id, first] += win
                     if self.save_loss and not win:
                         game.to_file(game_path / f'{get_now()}.json')

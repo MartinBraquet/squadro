@@ -340,8 +340,8 @@ class TestDeepQLearningTrainer(_Base):
     def test_evaluation(self):
         RunMock.call_count = 0
 
-        self_play_games = 8
-        trainer = self.get_trainer(self_play_games=self_play_games)
+        eval_games = 8
+        trainer = self.get_trainer(eval_games=eval_games)
 
         win_rate_split = trainer.evaluate_agent(vs='random')
         self.assertEqual({
@@ -351,15 +351,15 @@ class TestDeepQLearningTrainer(_Base):
             (1, 0): 0.0,
             (1, 1): 1.0
         }, win_rate_split)
-        self.assertEqual(self_play_games / 2, RunMock.call_count)
+        self.assertEqual(eval_games / 2, RunMock.call_count)
 
         RunMock.call_count = 0
         trainer.evaluate_agent(vs='checkpoint')
-        self.assertEqual(self_play_games, RunMock.call_count)
+        self.assertEqual(eval_games, RunMock.call_count)
 
     @patch.object(Game, 'run', run)
-    def test_evaluation(self):
-        trainer = self.get_trainer(self_play_games=8)
+    def test_elo_evaluation(self):
+        trainer = self.get_trainer(eval_games=8)
         self.assertEqual(trainer.elo.current, trainer.elo.checkpoint)
 
         trainer.evaluate_agents()
