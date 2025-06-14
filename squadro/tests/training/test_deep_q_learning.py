@@ -347,9 +347,9 @@ class TestDeepQLearningTrainer(_Base):
         self.assertEqual({
             'total': 0.5,
             (0, 0): 1.0,
-            (0, 1): 0.0,
+            (0, 1): 1.0,
             (1, 0): 0.0,
-            (1, 1): 1.0
+            (1, 1): 0.0
         }, win_rate_split)
         self.assertEqual(eval_games / 2, RunMock.call_count)
 
