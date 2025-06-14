@@ -96,8 +96,20 @@ class logger:  # noqa
         cls.client.addHandler(stderr_handler)
 
     @classmethod
+    @contextmanager
+    def setup_in_context(cls, *args, **kwargs):
+        cls.setup(*args, **kwargs)
+        enabled_sections = logger.ENABLED_SECTIONS
+        try:
+            yield
+        finally:
+            cls.stop()
+            logger.ENABLED_SECTIONS = enabled_sections
+            cls.clear_history()
+
+    @classmethod
     def stop(cls):
-        cls.client = None
+        logger.client = None
 
     @classmethod
     def set_section(cls, section: str | list) -> None:
