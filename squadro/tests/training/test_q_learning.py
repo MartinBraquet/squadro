@@ -4,7 +4,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from squadro import Game
-from squadro.core.state import State
+from squadro.state.state import State
 from squadro.tools.probabilities import set_seed
 from squadro.training.q_learning import QLearningTrainer
 

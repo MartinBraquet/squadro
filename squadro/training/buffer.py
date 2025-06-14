@@ -6,7 +6,7 @@ import numpy as np
 from black.trans import defaultdict
 from matplotlib import pyplot as plt
 
-from squadro.core.state import State
+from squadro.state.state import State
 from squadro.tools.basic import dict_factory
 from squadro.tools.constants import DQL_PATH
 from squadro.tools.disk import load_pickle, dump_pickle

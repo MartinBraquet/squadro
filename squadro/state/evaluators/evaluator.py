@@ -10,9 +10,9 @@ import torch
 from numpy.typing import NDArray
 from torch import nn
 
-from squadro.core.state import State
 from squadro.ml.channels import get_num_channels
 from squadro.ml.ml import get_model_size
+from squadro.state.state import State
 from squadro.tools.logs import logger
 
 

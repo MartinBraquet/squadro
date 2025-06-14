@@ -1,7 +1,7 @@
 import numpy as np
 from numpy._typing import NDArray
 
-from squadro.core.state import State
+from squadro.state.state import State
 
 
 def get_reward(winner: int, cur_player: int, return_all: bool) -> NDArray[np.float64]:

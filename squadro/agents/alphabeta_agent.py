@@ -3,7 +3,7 @@ from time import time
 
 from squadro.agents.agent import Agent
 from squadro.algorithms import minimax
-from squadro.core.state import State, get_next_state
+from squadro.state.state import State, get_next_state
 from squadro.tools.constants import DefaultParams
 from squadro.tools.evaluation import evaluate_advancement
 from squadro.tools.logs import alpha_beta_logger as logger

@@ -2,8 +2,8 @@ from unittest import TestCase
 
 import numpy as np
 
-from squadro.core.state import State
-from squadro.evaluators.rollout import RolloutEvaluator
+from squadro.state.evaluators.rollout import RolloutEvaluator
+from squadro.state.state import State
 from squadro.tools.probabilities import set_seed
 
 

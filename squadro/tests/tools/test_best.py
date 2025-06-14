@@ -2,7 +2,7 @@ from time import time
 from unittest import TestCase
 
 from squadro.agents.best import get_best_real_time_game_agent
-from squadro.core.state import State
+from squadro.state.state import State
 from squadro.tools.constants import DefaultParams
 from squadro.tools.probabilities import set_seed
 

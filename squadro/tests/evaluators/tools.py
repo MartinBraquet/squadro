@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from unittest import TestCase
 
-from squadro.core.state import State
+from squadro.state.state import State
 from squadro.tools.probabilities import set_seed
 
 

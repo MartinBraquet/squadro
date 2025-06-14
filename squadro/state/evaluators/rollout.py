@@ -1,8 +1,8 @@
 import numpy as np
 from numpy._typing import NDArray
 
-from squadro.core.state import State
-from squadro.evaluators.evaluator import Evaluator
+from squadro.state.evaluators.evaluator import Evaluator
+from squadro.state.state import State
 
 
 class RolloutEvaluator(Evaluator):

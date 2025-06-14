@@ -1,4 +1,4 @@
-from squadro.core.state import State
+from squadro.state.state import State
 
 
 def evaluate_advancement(state: State, player_id: int = None) -> int:

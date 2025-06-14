@@ -9,10 +9,10 @@ from matplotlib import image as mpimg
 import squadro
 from squadro import Game, logger
 from squadro.agents.random_agent import RandomAgent
-from squadro.core.state import State
-from squadro.evaluators.evaluator import ModelConfig
-from squadro.evaluators.rl import DeepQLearningEvaluator
 from squadro.ml.ml import assert_models_equal, assert_models_unequal
+from squadro.state.evaluators.evaluator import ModelConfig
+from squadro.state.evaluators.rl import DeepQLearningEvaluator
+from squadro.state.state import State
 from squadro.tests.base import Base
 from squadro.tools.disk import load_pickle, dump_pickle, load_txt
 from squadro.tools.probabilities import set_seed

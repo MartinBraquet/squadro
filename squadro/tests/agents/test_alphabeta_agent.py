@@ -11,7 +11,7 @@ from squadro.agents.alphabeta_agent import (
 )
 from squadro.agents.random_agent import RandomAgent
 from squadro.algorithms import minimax
-from squadro.core.state import State
+from squadro.state.state import State
 from squadro.tools.constants import DefaultParams
 
 

@@ -10,8 +10,8 @@ from squadro.agents.agent import Agent
 from squadro.agents.alphabeta_agent import AlphaBetaRelativeAdvancementAgent
 from squadro.agents.montecarlo_agent import MonteCarloQLearningAgent
 from squadro.core.benchmarking import benchmark
-from squadro.core.state import State
-from squadro.evaluators.rl import QLearningEvaluator
+from squadro.state.evaluators.rl import QLearningEvaluator
+from squadro.state.state import State
 from squadro.tools.constants import DefaultParams, inf
 from squadro.tools.logs import training_logger as logger
 

@@ -8,7 +8,7 @@ import pytest
 
 from squadro.agents.random_agent import RandomAgent
 from squadro.core.game import Game, GameFromState
-from squadro.core.state import State
+from squadro.state.state import State
 from squadro.tools.probabilities import set_seed
 
 

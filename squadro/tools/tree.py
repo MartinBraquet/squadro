@@ -2,7 +2,7 @@ import json
 import os
 from collections import defaultdict
 
-from squadro.core.state import State
+from squadro.state.state import State
 from squadro.tools.logs import monte_carlo_logger as logger
 
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from time import time
 
 from squadro.agents.agent import Agent
-from squadro.core.state import State
+from squadro.state.state import State
 from squadro.tools.agents import get_agent
 from squadro.tools.arrays import box, array2string
 from squadro.tools.constants import DefaultParams

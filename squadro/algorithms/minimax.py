@@ -3,7 +3,7 @@ from collections import defaultdict
 from os import mkdir
 from os.path import exists
 
-from squadro.core.state import State
+from squadro.state.state import State
 from squadro.tools.constants import inf
 from squadro.tools.logs import alpha_beta_logger as logger
 from squadro.tools.tree import get_nested_nodes

@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 
-from squadro.core.state import State
+from squadro.state.state import State
 
 
 def get_num_channels(n_pawns: int, board_flipping: bool, separate_networks) -> int:

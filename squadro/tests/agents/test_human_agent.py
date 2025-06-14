@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pygame
 
 from squadro.agents.human_agent import HumanAgent
-from squadro.core.state import State
+from squadro.state.state import State
 
 
 class MockedEvent:

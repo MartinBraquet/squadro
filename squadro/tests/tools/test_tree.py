@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from squadro.core.state import State, get_next_state
+from squadro.state.state import State, get_next_state
 from squadro.tools.probabilities import set_seed
 from squadro.tools.tree import Node, Stats, Edge
 

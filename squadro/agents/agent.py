@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from squadro.core.state import State
+from squadro.state.state import State
 
 
 class Agent(ABC):
