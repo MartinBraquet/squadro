@@ -204,6 +204,8 @@ class TestDeepQLearningTrainerTight(_Base):
 
 
 class TestDeepQLearningTrainer(_Base):
+    # Adam optimizer is very slow to initialize (1 sec), even with very light model.
+    # A fix for it would greatly speed up the tests.
 
     @patch.object(Game, 'run', run)
     def test_from_file(self):
