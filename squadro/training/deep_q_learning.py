@@ -90,18 +90,53 @@ class Results:
         self._data['game_step'] += 1
 
 
-class Plotter:
+class _Base:
+    """
+    Base class containing results routines
+    """
+
+    def __init__(self, results):
+        self.results = results
+
+    @property
+    def backprop_losses(self):
+        return self.results.backprop_losses
+
+    @property
+    def game_count(self):
+        return self.results.game_count
+
+    def set_game_count(self, game_count: int):
+        self.results.set_game_count(game_count)
+
+    @property
+    def checkpoint_eval(self):
+        return self.results.checkpoint_eval
+
+    @property
+    def elo(self) -> Elo:
+        return self.results.elo
+
+    def step_self_play_game(self):
+        self.results.step_self_play_game()
+
+    @property
+    def self_play_win_rates(self):
+        return self.results.self_play_win_rates
+
+
+class Plotter(_Base):
     def __init__(
         self,
         title: str,
         path: str,
-        results: Results,
         display_plot: bool = True,
+        **kwargs,
     ):
+        super().__init__(**kwargs)
         self.title = title
         self.path = path
         self.display_plot = display_plot
-        self.results = results
 
         self._display_handle, self._fig, self._ax = None, None, None
 
@@ -271,7 +306,7 @@ class Plotter:
         self._display_plot()
 
 
-class BackPropagation:
+class BackPropagation(_Base):
     """
     A class that implements the Backpropagation algorithm for training neural
     networks.
@@ -298,16 +333,16 @@ class BackPropagation:
         backprop_interval,
         self_play_games,
         replay_buffer,
-        results,
         n_pawns,
+        **kwargs,
     ):
+        super().__init__(**kwargs)
         self.adaptive_lr = adaptive_lr
         self.adaptive_sampling = adaptive_sampling
         self.freeze_backprop = freeze_backprop
         self.backprop_games = backprop_games
         self.evaluator = evaluator
         self.replay_buffer = replay_buffer
-        self.results = results
         self.n_pawns = n_pawns
 
         self._v_loss = torch.nn.MSELoss(reduction='none')
@@ -412,7 +447,7 @@ class BackPropagation:
         for player, ba in batches_by_player.items():
             # model = next(self.get_model(player).parameters())[0][0].clone()
             # other_model = next(self.get_model(1 - player).parameters())[0][0].clone()
-            l, p, v = self._backprop_batches(batches=ba, player=player)
+            l, p, v = self._run_batch(batches=ba, player=player)
             # model_updated = next(self.get_model(player).parameters())[0][0]
             # other_model_updated = next(self.get_model(1 - player).parameters())[0][0]
             # print('Should update', model, model_updated, sep='\n')
@@ -435,7 +470,7 @@ class BackPropagation:
         v_txt = ', '.join([f"v{i}: {v:.2f}" for i, v in enumerate(v_loss)])
         logger.info(f"Backprop loss: {loss:.2f} (p: {p_loss:.2f}, {v_txt})")
 
-    def _backprop_batches(self, batches: list, player: int):
+    def _run_batch(self, batches: list, player: int):
         if self.freeze_backprop == player:
             logger.info(f"Skipping backprop for player {player} (freeze)")
             return [], [], []
@@ -490,10 +525,6 @@ class BackPropagation:
             logger.info(f"Backprop loss for player {player}: {loss :.2f}")
 
         return losses, p_losses, v_losses
-
-    @property
-    def backprop_losses(self):
-        return self.results.backprop_losses
 
     @property
     def device(self):
@@ -576,25 +607,21 @@ class BackPropagation:
     def get_model(self, player=0) -> Model:
         return self.evaluator.get_model(n_pawns=self.n_pawns, player=player)
 
-    @property
-    def game_count(self):
-        return self.results.game_count
 
-
-class Benchmarker:
+class Benchmarker(_Base):
     """
     Benchmark the trained model against baselines.
     """
 
     def __init__(
         self,
-        results,
         eval_games,
         evaluator,
         n_pawns,
         agent_kwargs,
+        **kwargs,
     ):
-        self.results = results
+        super().__init__(**kwargs)
         self.eval_games = max(eval_games or 100, 4)
         self.n_pawns = n_pawns
         self.agent_kwargs = agent_kwargs
@@ -688,37 +715,25 @@ class Benchmarker:
     def get_model_chkpt(self, player=0) -> Model:
         return self.evaluator_chkpt.get_model(n_pawns=self.n_pawns, player=player)
 
-    @property
-    def checkpoint_eval(self):
-        return self.results.checkpoint_eval
 
-    @property
-    def elo(self) -> Elo:
-        return self.results.elo
-
-    @property
-    def game_count(self):
-        return self.results.game_count
-
-
-class SelfPlayer:
+class SelfPlayer(_Base):
     def __init__(
         self,
         agent,
         n_pawns,
-        results,
         replay_buffer,
+        **kwargs,
     ):
+        super().__init__(**kwargs)
         self.agent = agent
         self.n_pawns = n_pawns
-        self.results = results
         self.replay_buffer = replay_buffer
 
         self.win_rate = ...
         self.clear_win_rate()
 
     def run(self):
-        self.step_game()
+        self.step_self_play_game()
 
         game = Game(
             n_pawns=self.n_pawns,
@@ -752,9 +767,6 @@ class SelfPlayer:
 
         return history
 
-    def step_game(self):
-        self.results.step_self_play_game()
-
     def clear_win_rate(self):
         self.win_rate = {0: [], 1: []}
 
@@ -776,16 +788,8 @@ class SelfPlayer:
         self.replay_buffer.compute_diversity_ratio(self.game_count)
         self.results.diversity_history = self.replay_buffer.diversity_history
 
-    @property
-    def self_play_win_rates(self):
-        return self.results.self_play_win_rates
 
-    @property
-    def game_count(self):
-        return self.results.game_count
-
-
-class DeepQLearningTrainer:
+class DeepQLearningTrainer(_Base):
     """
     Deep Q-learning trainer.
     """
@@ -865,7 +869,8 @@ class DeepQLearningTrainer:
 
         from_scratch = init_from == 'scratch'
 
-        self.results = Results() if from_scratch else Results.load(self.pkl_results_path)
+        results = Results() if from_scratch else Results.load(self.pkl_results_path)
+        super().__init__(results=results)
 
         self.replay_buffer = ReplayBuffer(
             path=self.model_path / 'replay_buffer.pkl',
@@ -1006,13 +1011,6 @@ class DeepQLearningTrainer:
     @property
     def device(self):
         return self.get_model().device
-
-    def set_game_count(self, game_count: int):
-        self.results.set_game_count(game_count)
-
-    @property
-    def game_count(self):
-        return self.results.game_count
 
     @property
     def pkl_results_path(self):
