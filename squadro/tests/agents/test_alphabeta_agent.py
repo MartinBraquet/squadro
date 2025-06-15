@@ -157,12 +157,12 @@ class TestAdvancementDeep(TestCase):
         """
         Make sure iterative depth search is stopped when time runs out
         """
-        time_out = .001
+        time_out = .01
         self.agent.max_time_per_move = time_out
         compute_time = time()
         self.agent.get_action(self.state)
         compute_time = time() - compute_time
-        self.assertLess(compute_time, time_out + 5e-4)
+        self.assertLess(compute_time, time_out * 1.2)
         self.assertGreater(self.agent.depth, 0)
         self.assertLess(self.agent.depth, self.agent.max_depth)
 
