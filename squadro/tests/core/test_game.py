@@ -1,7 +1,7 @@
 import tempfile
 from pathlib import Path
 from time import sleep
-from unittest import TestCase
+from unittest import TestCase, skipIf
 from unittest.mock import patch
 
 import pytest
@@ -11,6 +11,13 @@ from squadro.agents.random_agent import RandomAgent
 from squadro.core.game import Game, GameFromState
 from squadro.state.state import State
 from squadro.tools.probabilities import set_seed
+from squadro.tools.system import is_windows
+
+
+class SlowRandomAgent(RandomAgent):
+    def get_action(self, *args, **kwargs):
+        sleep(.0001)
+        return super().get_action(*args, **kwargs)
 
 
 class TestGame(TestCase):
@@ -47,6 +54,7 @@ class TestGame(TestCase):
         game = GameFromState(state=state, agent_0="random", agent_1="random")
         self.assertListEqual(game.action_history, [])
 
+    @skipIf(is_windows(), "Unix signal not available on Windows")
     @patch.object(RandomAgent, "get_action", lambda *a, **kw: sleep(2))
     @pytest.mark.slow
     def test_time_out(self):
@@ -56,7 +64,7 @@ class TestGame(TestCase):
 
     def test_time_outs(self):
         time_out = 10.
-        game = Game(time_out=time_out)
+        game = Game(time_out=time_out, agent_0=SlowRandomAgent(), agent_1=SlowRandomAgent())
         with logger.setup_in_context():
             game.run()
         self.assertLess(game.times_left[0], time_out)

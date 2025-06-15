@@ -158,7 +158,7 @@ class TestAdvancementDeep(TestCase):
         self.assertTrue(self.state.is_action_valid(action))
 
     # why is the compute time way above the time-out on Windows?
-    @skipIf(is_windows(), "Skipped on Windows")
+    @skipIf(is_windows(), "Fails because too slow on Windows")
     def test_minimax_timeout(self, *args, **kwargs):
         """
         Make sure iterative depth search is stopped when time runs out
