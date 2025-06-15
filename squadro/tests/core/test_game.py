@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
+from squadro import logger
 from squadro.agents.random_agent import RandomAgent
 from squadro.core.game import Game, GameFromState
 from squadro.state.state import State
@@ -19,7 +20,8 @@ class TestGame(TestCase):
     def test_game(self):
         first = 0
         game = Game(n_pawns=5, agent_0='random', agent_1='random', first=first)
-        action_history = game.run()
+        with logger.setup_in_context():
+            action_history = game.run()
         self.assertEqual(game.first, first)
         self.assertListEqual(
             action_history,
@@ -53,9 +55,10 @@ class TestGame(TestCase):
         self.assertEqual(game.first, game.state.timeout_player)
 
     def test_time_outs(self):
-        time_out = 10
+        time_out = 10.
         game = Game(time_out=time_out)
-        game.run()
+        with logger.setup_in_context():
+            game.run()
         self.assertLess(game.times_left[0], time_out)
         self.assertLess(game.times_left[1], time_out)
 

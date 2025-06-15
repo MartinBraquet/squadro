@@ -100,7 +100,7 @@ class GameFromState:
                         last_action=last_action,
                         time_left=self.times_left[player],
                     )
-                    logger.info(f'Player {player} action: {action} (in {exe_time:.3f}s)')
+                    logger.info(f'Player {player} action: {action} (in {exe_time}s)')
                 except TimeoutError:
                     self.state.set_timed_out(player)
                     break

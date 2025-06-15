@@ -14,8 +14,8 @@ def extend_filename(file_path: str | Path, s: str) -> Path:
     >>> Path(extend_filename("path/to/file.txt", "_new")).as_posix()
     'path/to/file_new.txt'
 
-    >>> extend_filename(Path("file.txt"), "_old")
-    PosixPath('file_old.txt')
+    >>> extend_filename(Path("file.txt"), "_old").as_posix()
+    'file_old.txt'
     """
     is_string = isinstance(file_path, str)
     file_path = Path(file_path)
