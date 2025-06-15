@@ -1,1 +1,3 @@
-include ....pt
+recursive-include squadro *.py
+recursive-include squadro/resources *.png
+recursive-include squadro/tests/training/data *.pkl

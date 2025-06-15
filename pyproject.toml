@@ -1,10 +1,16 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
-
 [tool.setuptools]
-packages = ["squadro"]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["squadro"]
+include = ["squadro*"]
+
+#[tool.setuptools.package-data]
+#myModule = ["*.pt"]
 
 [project]
 name = "squadro"
@@ -12,12 +18,12 @@ version = "0.1.0"
 authors = [
     { name = "Martin" },
 ]
-description = "Squadro board game"
+description = "Play the Squadro Board Game against Someone Else or an AI"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
@@ -51,9 +57,6 @@ testing = [
     "pytest-env",
     "pytest-html",
 ]
-
-[tool.setuptools.package-data]
-myModule = ["*.pt"]
 
 [project.urls]
 "Homepage" = "https://github.com/MartinBraquet/squadro"
