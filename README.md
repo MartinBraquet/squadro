@@ -96,14 +96,8 @@ squadro.GamePlay(agent_1='random').run()
 
 #### Play against your trained AI
 
-After training your AI as described in the [Training](#Training) section, you can play against her using:
+After training your AI, you will be able to play against her (see [Training](#Training) section)
 
-```python
-import squadro
-
-agent = squadro.MonteCarloDeepQLearningAgent(model_path='path/to/model')
-squadro.GamePlay(agent_1=agent).run()
-```
 
 [//]: # (TODO)
 [//]: # (#### Play against a benchmarked AI)
@@ -193,7 +187,7 @@ trainer = squadro.QLearningTrainer(
 trainer.run()
 ```
 
-It should take a few hours to train on a typical CPU (8-16 cores).
+It should take a few hours to train on a typical CPU (8–16 cores).
 
 Note that there are many more parameters to tweak, if desired. See all of them in the doc:
 
@@ -224,7 +218,12 @@ trainer.run()
 
 For three pawns, it should take a few hours to train on a typical CPU (8–16 cores), and it is much faster on a GPU. For five pawns, it may take a few days.
 
-Once done, one can use the model; see the next section below (setting the appropriate value for `model_path`, e.g., `'...'`).
+Once done, one can use the play against the AI agent (setting the same value for `model_path`):
+
+```python
+agent = squadro.MonteCarloDeepQLearningAgent(model_path='path/to/model')
+squadro.GamePlay(agent_1=agent).run()
+```
 
 ### Simulations
 
