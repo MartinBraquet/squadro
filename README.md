@@ -1,4 +1,4 @@
-# Squadro
+from squadro.state.evaluators.ml import ModelConfigfrom squadro.agents.montecarlo_agent import MonteCarloDeepQLearningAgent# Squadro
 
 
 [![Release](https://img.shields.io/pypi/v/squadro?label=Release&style=flat-square)](https://pypi.org/project/squadro/)
@@ -12,15 +12,16 @@
 
 ## Documentation
 
-Go to my [website](https://martinbraquet.com/research/#AI_Agent_for_Squadro_board_game) for a visual and qualitative description.
+Squadro is a two-player board game on a 5x5 board. The goal is to have four of our pawns perform a return trip before the opponent. Each pawn has a respective speed given by the number of dots (1–3) at their starting position. If an opponent's pawn crosses one of my pawns, then my pawn returns to the side of the board. 
 
+Visit my [website](https://martinbraquet.com/research/#AI_Agent_for_Squadro_board_game) for a visual and qualitative description.
+
+#### Demo
+
+<img src="https://martinbraquet.com/wp-content/uploads/demo-1.gif" alt="drawing" width="300"/>
 
 #### Other games?
 The code is modular enough to be easily applied to other games. To do so, you must implement its state in [state.py](squadro/state/state.py), and make a few other changes in the code base depending on your needs. Please raise an issue if discussion is needed.
-
-## Demo
-
-![Alt Text](https://raw.githubusercontent.com/MartinBraquet/squadro/img/demo.gif)
 
 ## Installation
 
@@ -98,23 +99,36 @@ squadro.GamePlay(agent_1='random').run()
 After training your AI as described in the [Training](#Training) section, you can play against her using:
 
 ```python
+import squadro
+
+agent = squadro.MonteCarloDeepQLearningAgent(model_path='path/to/model')
+squadro.GamePlay(agent_1=agent).run()
 ```
 
-#### Play against a benchmarked AI
+[//]: # (#### Play against a benchmarked AI) #TODO
 
-If you do not want to train a model, as described in the [Training](#Training) section, you can still play against a benchmarked model available online. After passing `init_from='online'`, you can set `model_path` to any of those currently supported models:
+[//]: # ()
+[//]: # (If you do not want to train a model, as described in the [Training]&#40;#Training&#41; section, you can still play against a benchmarked model available online. After passing `init_from='online'`, you can set `model_path` to any of those currently supported models:)
 
-| `model_path` | # layers | # heads | embed dims | # params | size   |
-|--------------|----------|---------|------------|----------|--------|
-| `...`        | 12       | 12      | 768        | 124M     | 500 MB |
+[//]: # ()
+[//]: # (| `model_path` | # layers | # heads | embed dims | # params | size   |)
 
-Note that the first time you use a model, it needs to be downloaded from the internet; so it can take a few minutes.
+[//]: # (|--------------|----------|---------|------------|----------|--------|)
 
-Example:
+[//]: # (| `...`        | 12       | 12      | 768        | 124M     | 500 MB |)
 
-```python
-...
-```
+[//]: # ()
+[//]: # (Note that the first time you use a model, it needs to be downloaded from the internet; so it can take a few minutes.)
+
+[//]: # ()
+[//]: # (Example:)
+
+[//]: # ()
+[//]: # (```python)
+
+[//]: # (...)
+
+[//]: # (```)
 
 #### Agents
 
@@ -190,9 +204,26 @@ help(squadro.QLearningTrainer)
 
 Here the state-action value is approximated by a neural network.
 
-It should take a few hours to train on a typical CPU (8-16 cores), and it is much faster on a GPU.
+```python
+import squadro
 
-It will stop training when the evaluation loss stops improving. Once done, one can use the model; see the next section below (setting the appropriate value for `model_path`, e.g., `'...'`).
+squadro.logger.setup(section=['training', 'benchmark'])
+
+trainer = squadro.DeepQLearningTrainer(
+    eval_games=50,
+    eval_interval=300,
+    backprop_interval=20,
+    model_path='path/to/model',
+    model_config=squadro.ModelConfig(),
+    init_from=None,
+    n_pawns=5,
+)
+trainer.run()
+```
+
+For three pawns, it should take a few hours to train on a typical CPU (8–16 cores), and it is much faster on a GPU. For five pawns, it may take a few days.
+
+Once done, one can use the model; see the next section below (setting the appropriate value for `model_path`, e.g., `'...'`).
 
 ### Simulations
 
