@@ -5,3 +5,4 @@ conda activate test
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install squadro
 python -c "from squadro import Game; Game().run()"
+echo "Installation from Pypi ran a test successfully"
