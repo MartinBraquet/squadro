@@ -1,19 +1,46 @@
 #!/bin/bash
 
-cd "$(dirname "$0")"/..
+# Release script for release.yaml (a GitHub Action)
+# Can be run locally as well if desired
+# It creates a tag based on the version in pyproject.toml and creates a GitHub release based on the tag
 
 set -e
+cd "$(dirname "$0")"/..
 
-RELEASE=$1
-if [ -z "$RELEASE" ]
-then
-    RELEASE=0
-fi
+pip install --no-deps -e .
+tag=v$(python -c "from importlib.metadata import version; print(version('squadro'))")
 
-rm -rf dist
+tagged=$(git tag -l $tag)
+if [ -z "$tagged" ]; then
+  git tag -a "$tag" -m "Release $tag"
+  git push origin "$tag"
+  echo "Tagged release $tag"
+
+  gh release create "$tag" \
+      --repo="$GITHUB_REPOSITORY" \
+      --title="$tag" \
+      --generate-notes
+  echo "Created release"
+
+pip install wheel build twine
 python -m build
-if [ "$RELEASE" -eq 0 ]; then
-    twine check dist/*
+twine upload -u __token__ -p ${{ secrets.PYPI_API_TOKEN }} dist/*
+
 else
-    twine upload dist/*
+  echo "Tag $tag already exists"
 fi
+
+
+#RELEASE=$1
+#if [ -z "$RELEASE" ]
+#then
+#    RELEASE=0
+#fi
+#
+#rm -rf dist
+#python -m build
+#if [ "$RELEASE" -eq 0 ]; then
+#    twine check dist/*
+#else
+#    twine upload dist/*
+#fi
