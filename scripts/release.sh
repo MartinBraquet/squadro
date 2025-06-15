@@ -24,7 +24,7 @@ if [ -z "$tagged" ]; then
 
 pip install wheel build twine
 python -m build
-twine upload -u __token__ -p ${{ secrets.PYPI_API_TOKEN }} dist/*
+twine upload -u __token__ -p $PYPI_API_TOKEN dist/*
 
 else
   echo "Tag $tag already exists"

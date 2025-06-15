@@ -1,5 +1,8 @@
 name: CD
 
+# Must select "Read and write permissions" in GitHub → Repo → Settings → Actions → General → Workflow permissions
+
+
 on:
   push:
     branches: [ master ]
