@@ -5,11 +5,10 @@
 [![CI](https://github.com/MartinBraquet/squadro/actions/workflows/ci.yml/badge.svg)](https://github.com/MartinBraquet/squadro/actions/workflows/ci.yml/badge.svg)
 [![CD](https://github.com/MartinBraquet/squadro/actions/workflows/cd.yml/badge.svg)](https://github.com/MartinBraquet/squadro/actions/workflows/cd.yml/badge.svg)
 [![Coverage](https://codecov.io/gh/MartinBraquet/squadro/branch/master/graph/badge.svg)](https://codecov.io/gh/MartinBraquet/squadro)
-
-[//]: # ([![Documentation Status]&#40;https://readthedocs.org/projects/squadro/badge/?version=latest&#41;]&#40;https://squadro.readthedocs.io/en/latest/?badge=latest&#41;)
 [![Downloads](https://static.pepy.tech/badge/squadro)](https://pepy.tech/project/squadro) 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+[//]: # ([![Documentation Status]&#40;https://readthedocs.org/projects/squadro/badge/?version=latest&#41;]&#40;https://squadro.readthedocs.io/en/latest/?badge=latest&#41;)
 
 ## Documentation
 

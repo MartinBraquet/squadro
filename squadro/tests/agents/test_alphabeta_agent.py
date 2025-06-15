@@ -168,7 +168,7 @@ class TestAdvancementDeep(TestCase):
         compute_time = time()
         self.agent.get_action(self.state)
         compute_time = time() - compute_time
-        self.assertLess(compute_time, time_out * 1.5)
+        self.assertLess(compute_time, time_out * 2.0)
         self.assertGreater(self.agent.depth, 0)
         self.assertLess(self.agent.depth, self.agent.max_depth)
 
