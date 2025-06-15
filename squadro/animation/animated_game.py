@@ -104,6 +104,37 @@ class GamePlay(Game):
         agent_kwargs: dict = None,
         **kwargs
     ):
+        """
+        Initializes the class for a real-time game setup with optional agent configurations.
+
+        This method sets up a real-time game environment by processing agent inputs,
+        applying optional keyword arguments to the agents, and initializing the game board.
+        It supports different agent types, such as human players, pre-defined best game
+        agents, or custom agents provided by the user. The initialization ensures agents
+        are configured with appropriate values, including a maximum time per move.
+
+        Parameters:
+            agent_0: Optional[Union[str, Agent]]
+                An agent instance or type for player 0.
+                Can be 'human', 'best', or a custom Agent object.
+            agent_1: Optional[Union[str, Agent]]
+                An agent instance or type for player 1.
+                Can be 'human', 'best', or a custom Agent object.
+            time_out: Optional[int]
+                Time in seconds for the game to time out. Default value is taken from
+                DefaultParams if not provided.
+            agent_kwargs: dict
+                Additional keyword arguments to configure the agents. For example, it
+                can include settings such as 'max_time_per_move'.
+            **kwargs: dict
+                Additional keyword arguments to customize the game or support specific
+                configurations like 'n_pawns'.
+
+        Attributes:
+            board: Board
+                The game board instance initialized using the provided number of pawns
+                and the game title.
+        """
         agent_kwargs = agent_kwargs or {}
 
         agents = dict(agent_0=agent_0, agent_1=agent_1)
