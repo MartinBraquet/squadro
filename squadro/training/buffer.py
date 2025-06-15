@@ -1,9 +1,9 @@
 import shutil
+from collections import defaultdict
 from pathlib import Path
 from typing import Iterator
 
 import numpy as np
-from black.trans import defaultdict
 from matplotlib import pyplot as plt
 
 from squadro.state.state import State

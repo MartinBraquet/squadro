@@ -28,6 +28,7 @@ classifiers = [
 ]
 dependencies = [
     'Pillow',
+    'ipython',
     "igraph",
     'matplotlib',
     'numpy',
