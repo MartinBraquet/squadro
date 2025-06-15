@@ -14,7 +14,7 @@ include = ["squadro*"]
 
 [project]
 name = "squadro"
-version = "1.0.2"
+version = "1.0.3"
 authors = [
     { name = "Martin" },
 ]
