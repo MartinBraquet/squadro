@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-where = ["squadro"]
+where = ["."]
 include = ["squadro*"]
 
 #[tool.setuptools.package-data]
@@ -14,7 +14,7 @@ include = ["squadro*"]
 
 [project]
 name = "squadro"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
     { name = "Martin" },
 ]
