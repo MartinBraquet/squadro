@@ -22,9 +22,11 @@ classifiers = [
 ]
 dependencies = [
     'Pillow',
+    "igraph",
     'matplotlib',
     'numpy',
     'pandas',
+    "plotly",
     'pydantic',
     'pygame',
     'torch',
@@ -42,8 +44,6 @@ dev = [
     "notebook",
     'pip-tools',
     'build',
-    "igraph",
-    "plotly",
 ]
 testing = [
     "pytest",
