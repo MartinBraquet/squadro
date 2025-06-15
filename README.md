@@ -5,16 +5,21 @@
 [![CI](https://github.com/MartinBraquet/squadro/actions/workflows/ci.yml/badge.svg)](https://github.com/MartinBraquet/squadro/actions/workflows/ci.yml/badge.svg)
 [![CD](https://github.com/MartinBraquet/squadro/actions/workflows/cd.yml/badge.svg)](https://github.com/MartinBraquet/squadro/actions/workflows/cd.yml/badge.svg)
 [![Coverage](https://codecov.io/gh/MartinBraquet/squadro/branch/main/graph/badge.svg)](https://codecov.io/gh/MartinBraquet/squadro)
-[![Documentation Status](https://readthedocs.org/projects/squadro/badge/?version=latest)](https://squadro.readthedocs.io/en/latest/?badge=latest)
-[![Downloads](https://static.pepy.tech/badge/squadro)](https://pepy.tech/project/squadro) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+[//]: # ([![Documentation Status]&#40;https://readthedocs.org/projects/squadro/badge/?version=latest&#41;]&#40;https://squadro.readthedocs.io/en/latest/?badge=latest&#41;)
+[![Downloads](https://static.pepy.tech/badge/squadro)](https://pepy.tech/project/squadro) 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ![Alt Text](https://raw.githubusercontent.com/MartinBraquet/squadro/img/demo.gif)
 
 
 ## Documentation
 
-Click [here](https://martinbraquet.com/index.php/research/#Squadro) for a full description.
+Go to my [website](https://martinbraquet.com/research/#AI_Agent_for_Squadro_board_game) for a visual and qualitative description.
 
+
+#### Other games?
+The code is modular enough to be easily applied to other games. To do so, you must implement its state in [state.py](squadro/state/state.py), and make a few other changes in the code base depending on your needs. Please raise an issue if discussion is needed.
 
 ## Demo
 
@@ -138,6 +143,9 @@ List of available agents:
 * _ab_relative_advancement_: a computer that plays minimax with alpha-beta pruning (depth ~4), where the evaluation function is the player's advancement compared to the other player
 * _mcts_advancement_: Monte Carlo tree search, where the evaluation function is the player's advancement compared to the other player
 * _mcts_rollout_: Monte Carlo tree search, where the evaluation function is determined by a random playout until the end of the game
+* _mcts_q_learning_: Monte Carlo tree search, where the evaluation function is determined by a lookup table
+* _mcts_deep_q_learning_: Monte Carlo tree search, where the evaluation function is determined by a convolutional neural network 
+
 
 You can also access the most updated list of available agents with:
 
@@ -209,27 +217,40 @@ game = squadro.Game(agent_0='random', agent_1='random')
 squadro.GameAnimation(game).show()
 ```
 
-### Profiling
+[//]: # (### Profiling)
 
-You can also profile (memory, CPU and GPU usage, etc.) and benchmark the training process via:
+[//]: # ()
+[//]: # (You can also profile &#40;memory, CPU and GPU usage, etc.&#41; and benchmark the training process via:)
 
-```python
-...(
-    profile=True,
-    profile_dir='profile_logs',
-    ...
-)
-```
+[//]: # ()
+[//]: # (```python)
 
-Then you can launch tensorboard and open http://localhost:6006 in your browser to watch in real time (or after hand) the training process.
+[//]: # (...&#40;)
 
-```shell
-tensorboard --logdir=profile_logs
-```
+[//]: # (    profile=True,)
 
-### User Interface
+[//]: # (    profile_dir='profile_logs',)
 
-...
+[//]: # (    ...)
+
+[//]: # (&#41;)
+
+[//]: # (```)
+
+[//]: # ()
+[//]: # (Then you can launch tensorboard and open http://localhost:6006 in your browser to watch in real time &#40;or after hand&#41; the training process.)
+
+[//]: # ()
+[//]: # (```shell)
+
+[//]: # (tensorboard --logdir=profile_logs)
+
+[//]: # (```)
+
+[//]: # (### User Interface)
+
+[//]: # ()
+[//]: # (...)
 
 ## Tests
 
