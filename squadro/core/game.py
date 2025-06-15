@@ -9,6 +9,7 @@ from squadro.tools.agents import get_agent
 from squadro.tools.arrays import box, array2string
 from squadro.tools.constants import DefaultParams
 from squadro.tools.logs import game_logger as logger
+from squadro.tools.system import is_windows
 
 
 class GameFromState:
@@ -179,7 +180,7 @@ def get_timed_action(player, state, last_action, time_left):
     """
     Get an action from a player with a timeout.
     """
-    if not time_left:
+    if not time_left or is_windows():
         start_time = time()
         return player.get_action(state, last_action, time_left), time() - start_time
 

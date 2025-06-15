@@ -11,7 +11,7 @@ def extend_filename(file_path: str | Path, s: str) -> Path:
     :return:
 
     Example:
-    >>> extend_filename("path/to/file.txt", "_new")
+    >>> Path(extend_filename("path/to/file.txt", "_new")).as_posix()
     'path/to/file_new.txt'
 
     >>> extend_filename(Path("file.txt"), "_old")

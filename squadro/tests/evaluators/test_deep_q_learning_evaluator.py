@@ -114,7 +114,7 @@ class TestDeepQLearningEvaluator(ML):
         self.assertEqual(0., p[1])
 
         expected_value = -0.085907943546772
-        self.assertEqual(expected_value, value)
+        self.assertAlmostEqual(expected_value, value)
 
     def test_eval_from_list(self):
         """
