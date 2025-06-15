@@ -30,11 +30,16 @@ Click [here](https://martinbraquet.com/index.php/research/#Squadro) for a full d
 
 
 The most straightforward way is to simply install it from PyPI via:
-```
+```bash
 pip install squadro
 ```
 
 If you want to install it from source, which is necessary for development, follow the instructions [here](docs/installation.md).
+
+If some dependencies release changes that break the code, you can install the project from its lock file—which fixes the dependency versions to ensure reproducibility:
+```bash
+pip install -r requirements.txt
+```
 
 ## Usage
 
