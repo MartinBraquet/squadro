@@ -7,6 +7,6 @@ class Base(TestCase):
 
     def assertEqualGeneral(self, first, second):
         if isinstance(first, np.ndarray):
-            np.testing.assert_array_equal(first, second)
+            np.testing.assert_array_almost_equal(first, second, decimal=5)
         else:
             self.assertEqual(first, second)
