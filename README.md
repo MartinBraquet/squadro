@@ -105,7 +105,8 @@ agent = squadro.MonteCarloDeepQLearningAgent(model_path='path/to/model')
 squadro.GamePlay(agent_1=agent).run()
 ```
 
-[//]: # (#### Play against a benchmarked AI) #TODO
+[//]: # (TODO)
+[//]: # (#### Play against a benchmarked AI)
 
 [//]: # ()
 [//]: # (If you do not want to train a model, as described in the [Training]&#40;#Training&#41; section, you can still play against a benchmarked model available online. After passing `init_from='online'`, you can set `model_path` to any of those currently supported models:)
