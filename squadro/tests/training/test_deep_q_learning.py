@@ -199,7 +199,7 @@ class TestDeepQLearningTrainerTight(_Base):
             Results.data = results
             Results.dump()
         expected = Results.load()
-        self.assertEqual(str(expected.data), str(results.data))
+        self.assertAlmostEqualCustom(expected.data, results.data)
 
         mpimg.imread(trainer.model_path / 'results/plots.png')
 

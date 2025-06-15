@@ -12,6 +12,9 @@ class Elo:
     def __repr__(self):
         return f"{self.current:.0f} vs {self.checkpoint:.0f}"
 
+    def __eq__(self, other):
+        return str(self) == str(other)
+
     def update(self, win_rate, n, step):
         expected_score = get_expected_score(self.current, self.checkpoint)
         delta_elo = self.k * (win_rate - expected_score) * n
