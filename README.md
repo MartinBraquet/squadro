@@ -1,6 +1,3 @@
-from squadro.state.evaluators.ml import ModelConfigfrom squadro.agents.montecarlo_agent import MonteCarloDeepQLearningAgent# Squadro
-
-
 [![Release](https://img.shields.io/pypi/v/squadro?label=Release&style=flat-square)](https://pypi.org/project/squadro/)
 [![CI](https://github.com/MartinBraquet/squadro/actions/workflows/ci.yml/badge.svg)](https://github.com/MartinBraquet/squadro/actions/workflows/ci.yml/badge.svg)
 [![CD](https://github.com/MartinBraquet/squadro/actions/workflows/cd.yml/badge.svg)](https://github.com/MartinBraquet/squadro/actions/workflows/cd.yml/badge.svg)
@@ -221,7 +218,10 @@ For three pawns, it should take a few hours to train on a typical CPU (8–16 co
 Once done, one can use the play against the AI agent (setting the same value for `model_path`):
 
 ```python
-agent = squadro.MonteCarloDeepQLearningAgent(model_path='path/to/model')
+agent = squadro.MonteCarloDeepQLearningAgent(
+    model_path='path/to/model',
+    max_time_per_move=1.,
+)
 squadro.GamePlay(agent_1=agent).run()
 ```
 
