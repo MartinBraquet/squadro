@@ -3,9 +3,7 @@ src/squadro/.ipynb_checkpoints/
 *.egg-info/
 /build/
 /dist/
-/src/squadro/Custom test inputs/
 .idea/
-/src/squadro/MNIST/
 */.ipynb_checkpoints/*
 */.idea/*
 */.pytest_cache/*
