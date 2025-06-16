@@ -186,7 +186,9 @@ trainer = squadro.QLearningTrainer(
 trainer.run()
 ```
 
-It should take a few hours to train on a typical CPU (8–16 cores).
+For a 3x3 grid, it should take a few hours to train on a typical CPU (8–16 cores). For larger grids like the original 5x5 ones, the number of states is most likely too large to be stored in memory or computed by your computer in the foreseeable future.
+
+You may however be able to adjust the code so that it does not load the entire table in memory. In such case, you would train the agent by building an ever-growing table in disk.
 
 Note that there are many more parameters to tweak, if desired. See all of them in the doc:
 
