@@ -22,7 +22,7 @@ The code is modular enough to be easily applied to other games. To do so, you mu
 
 ## Installation
 
-The package works on any major OS (Linux, Windows and MacOS).
+The package works on any major OS (Linux, Windows and MacOS) and with Python >= 3.11.
 
 > [!TIP]
 > If you have no intent to use a GPU, run this beforehand to install only the CPU version of the `pytorch` library (much lighter, and hence much faster to install):
