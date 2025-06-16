@@ -22,8 +22,10 @@ The code is modular enough to be easily applied to other games. To do so, you mu
 
 ## Installation
 
+The package works on any major OS (Linux, Windows and MacOS).
+
 > [!TIP]
-> If running on a Linux machine without intent to use a GPU, run this beforehand to install only the CPU version of the `pytorch` library:
+> If you have no intent to use a GPU, run this beforehand to install only the CPU version of the `pytorch` library (much lighter, and hence faster to intall):
 > ```shell
 > pip install torch --index-url https://download.pytorch.org/whl/cpu
 > ```
