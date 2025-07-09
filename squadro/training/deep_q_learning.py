@@ -815,6 +815,7 @@ class DeepQLearningTrainer(_Base):
         adaptive_sampling=True,
         freeze_backprop=None,
         display_plot=True,
+        device=None,
     ):
         """
         Represents a class for initializing and training a deep reinforcement learning agent
@@ -854,6 +855,7 @@ class DeepQLearningTrainer(_Base):
         self.agent_kwargs = dict(
             mcts_kwargs=self.mcts_kwargs,
             max_time_per_move=inf,
+            device=device,
         )
 
         self.agent = MonteCarloDeepQLearningAgent(

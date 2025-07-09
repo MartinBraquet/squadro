@@ -470,6 +470,7 @@ class MonteCarloDeepQLearningAgent(_MonteCarloAgent):
         self,
         model_path: str = None,
         model_config=None,
+        device: str = None,
         mcts_kwargs: Optional[dict] = None,
         **kwargs,
     ):
@@ -478,7 +479,8 @@ class MonteCarloDeepQLearningAgent(_MonteCarloAgent):
         if 'evaluator' not in kwargs:
             kwargs['evaluator'] = DeepQLearningEvaluator(
                 model_path=model_path,
-                model_config=model_config
+                model_config=model_config,
+                device=device,
             )
         super().__init__(mcts_kwargs=mcts_kwargs, **kwargs)
 
