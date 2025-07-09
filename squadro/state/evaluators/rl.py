@@ -271,12 +271,10 @@ class DeepQLearningEvaluatorMultipleGrids(_RLEvaluator):
             filepath = self.get_filepath(key)
             if os.path.exists(filepath):
                 logger.info(f"Using pre-trained model at {filepath}")
-                self.models[key] = torch.load(
-                    filepath,
-                    weights_only=False,
-                    map_location=self.device,
-                )
-                self.model_config = self.models[key].config
+                model = torch.load(filepath, weights_only=False, map_location=self.device)
+                model.device = self.device
+                self.model_config = model.config
+                self.models[key] = model
                 self._weight_update_timestamp[filepath] = get_file_modified_time(filepath)
             else:
                 logger.warn(f"No file at {filepath}, creating new model")
