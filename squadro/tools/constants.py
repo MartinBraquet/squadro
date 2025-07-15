@@ -58,3 +58,4 @@ DATA_PATH = Path(squadro.__file__).parent / 'data'
 DQL_PATH = DATA_PATH / "deep_q_learning"
 MAX_INT = sys.maxsize
 inf = float("inf")
+PYGAME_REFRESH_SECONDS = 3

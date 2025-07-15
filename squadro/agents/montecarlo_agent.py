@@ -23,6 +23,7 @@ from squadro.state.evaluators.base import Evaluator
 from squadro.state.evaluators.rl import QLearningEvaluator, DeepQLearningEvaluator
 from squadro.state.evaluators.rollout import RolloutEvaluator
 from squadro.state.state import State, get_next_state
+from squadro.tools.animation import PygameRefresher
 from squadro.tools.constants import DefaultParams, inf, EPS
 from squadro.tools.evaluation import evaluate_advancement
 from squadro.tools.logs import monte_carlo_logger as logger
@@ -266,6 +267,7 @@ class MCTS:
     def get_action(self):
         Debug.clear(self.root)
         start_time = time()
+        pygame_refresher = PygameRefresher()
         n = 0
 
         # Needs at least two simulations to give backfill value to one root edge
@@ -273,6 +275,7 @@ class MCTS:
             logger.debug(f'\nSIMULATION {n}')
             self.simulate()
             n += 1
+            pygame_refresher.refresh()
 
         logger.info(f'{n} simulations performed.\n'
                     f'Root edges:\n{self.root.get_edge_stats(to_string=True)}')

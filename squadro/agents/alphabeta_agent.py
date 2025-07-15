@@ -4,6 +4,7 @@ from time import time
 from squadro.agents.agent import Agent
 from squadro.algorithms import minimax
 from squadro.state.state import State, get_next_state
+from squadro.tools.animation import PygameRefresher
 from squadro.tools.constants import DefaultParams
 from squadro.tools.evaluation import evaluate_advancement
 from squadro.tools.logs import alpha_beta_logger as logger
@@ -120,7 +121,7 @@ class AlphaBetaRelativeAdvancementAgent(AdvancementAgent):
     (best move so far).
     """
 
-    def __init__(self, max_depth=15, **kwargs):
+    def __init__(self, max_depth=20, **kwargs):
         # use fixed time for now
         kwargs.setdefault('max_time_per_move', DefaultParams.max_time_per_move)
         super().__init__(**kwargs)
@@ -140,6 +141,8 @@ class AlphaBetaRelativeAdvancementAgent(AdvancementAgent):
         self.depth = 0
         self.start_time = time()
 
+        pygame_refresher = PygameRefresher()
+
         # if self.total_time is None:
         #     self.total_time = time_left
         # if time_left / self.total_time > 0.2:
@@ -153,6 +156,7 @@ class AlphaBetaRelativeAdvancementAgent(AdvancementAgent):
             minimax_action = minimax.search(state, self)
             if minimax_action is None:
                 raise ValueError('No best move found, check cutoff function')
+            pygame_refresher.refresh()
             if time() - self.start_time < self.max_time_per_move:
                 # Only keep the minimax action computed for the deepest depth if it got time to
                 # explore all the leaf nodes at that depth
