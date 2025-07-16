@@ -48,11 +48,13 @@ pip install -r requirements.txt
 > [!NOTE]  
 > This section is highly technical; feel free to skip it and play with the code right away.
 
-#### Agents
+#### Algorithms for Board Games
 
 Most computer algorithms discretize the game into states and actions. Here, the state is the position of the pawns and the available actions are the possible moves of the pawns.
 
 Squadro is a finite state machine, meaning that the next state of the game is completely determined by the current state and the action played. With this definition, one can see that the game is a Markov Decision Process (MDP). At each state, the current player can play different actions, which lead to different states. Then the next player can play different actions from any of those new states, etc. The future of the game can be represented as a tree, whose branches are the actions that lead to different states.
+
+#### Exploration - Exploitation trade-off
 
 An algorithm can explore that space of possibilities to infer the best move to play now. As the tree is huge, it is not possible to explore all the possible paths until the end of the game. Typically, they explore only a small fraction of the tree and then use the information gathered from those states to make a decision. More precisely, those two phases are:
 
@@ -63,13 +65,15 @@ An algorithm can explore that space of possibilities to infer the best move to p
     * Q value function, a lookup table for each state and action;
     * deep Q network (DQN), a neural network that approximates the Q value function, which is necessary when the state space is huge (i.e., cannot be stored in memory).
 
-List of available agents:
+#### Agents
+
+At least 8 agents, each running a different algorithm, have been implemented to play the game:
 
 * _human_: another local human player (i.e., both playing on the same computer)
 * _random_: a computer that plays randomly among all available moves
 * _ab_relative_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement
 * _relative_advancement_: a computer that lists the possible moves from the current position and evaluates them directly (i.e., it "thinks" only one move ahead), where the evaluation function is the player's advancement compared to the other player
-* _ab_relative_advancement_: a computer that plays minimax with alpha-beta pruning (depth ~4), where the evaluation function is the player's advancement compared to the other player
+* _ab_relative_advancement_: a computer that plays minimax with alpha-beta pruning, where the evaluation function is the player's advancement compared to the other player
 * _mcts_advancement_: Monte Carlo tree search, where the evaluation function is the player's advancement compared to the other player
 * _mcts_rollout_: Monte Carlo tree search, where the evaluation function is determined by a random playout until the end of the game
 * _mcts_q_learning_: Monte Carlo tree search, where the evaluation function is determined by a lookup table
@@ -83,6 +87,18 @@ import squadro
 print(squadro.AVAILABLE_AGENTS)
 ```
 
+#### Benchmark
+
+All the agents have been evaluated against each other under controlled conditions:
+- Max 3 sec per move
+- 100 games (exactly balanced across the four starting configurations—which color and who starts) except when a human is involved (only 5 games then)
+- Original grid (5 x 5)
+
+Here is the comparison:
+
+TODO
+
+The deep Q-learning algorithm outperforms all other players, including the human (myself, an average player).
 
 ## Usage
 
@@ -150,22 +166,23 @@ Here are the online pre-trained models:
 | Q-Learning | 2       | 18 kB  |
 | Q-Learning | 3       | 6.2 MB |
 
-| Agent           | # pawns | # CNN layers | # blocks | # params | size   |
-| --------------- | ------- | ------------ | -------- | -------- | ------ |
-| Deep Q-Learning | 3       | 64           | 4        | 380 k    | 1.5 MB |
-| Deep Q-Learning | 4       | 128          | 6        | 1.8 M    | 7.1 MB |
-| Deep Q-Learning | 5       | 128          | 6        | 1.8 M    | 7.1 MB |
+| Agent           | # pawns | # CNN layers | # res blocks | # params | size   |
+| --------------- | ------- | ------------ | ------------ | -------- | ------ |
+| Deep Q-Learning | 3       | 64           | 4            | 380 k    | 1.5 MB |
+| Deep Q-Learning | 4       | 128          | 6            | 1.8 M    | 7.1 MB |
+| Deep Q-Learning | 5       | 128          | 6            | 1.8 M    | 7.1 MB |
 
 Those models are all very lightweight, making them convenient even for machines with limited resources and fast games.
 
 To use those models, simply instantiate the corresponding agent **without** passing the `model_path` argument (this is how the package makes the distinction between loading an online model and creating a new model).
 
 ```python
-from squadro import MonteCarloDeepQLearningAgent, MonteCarloQLearningAgent
+import squadro
 
-agent_ql = MonteCarloQLearningAgent()       # Deep Q-Learning
-agent_dql = MonteCarloDeepQLearningAgent()  # Q-Learning
+dql = squadro.MonteCarloDeepQLearningAgent() # Deep Q-Learning Opponent
+ql = squadro.MonteCarloQLearningAgent() # Q-Learning Opponent
 
+squadro.GamePlay(agent_1=dql).run()
 ```
 
 ### Training
