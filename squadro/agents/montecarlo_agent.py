@@ -101,6 +101,7 @@ class MCTS:
         assert self.a_dirichlet > 0
 
         self.move_probs = None
+        self.mcts_value = None
 
         logger.info(f"Using MCTS method '{self.method}', uct={self.uct}")
 
@@ -283,14 +284,14 @@ class MCTS:
         self.move_probs, values = self.get_av()
         action = self.choose_action(self.move_probs)
 
-        value = values[action]
+        self.mcts_value = values[action]
         # next_state, _ = self.take_action(state, action)
         # - sign because it evaluates with respect to the current player of the state
         # NN_value = -self.evaluate(next_state)[1]
 
         logger.info(f'Action probs: {np.round(self.move_probs, 3)}\n'
                     f'Action chosen: {action}\n'
-                    f'MCTS perceived value: {value:.3f}')
+                    f'MCTS perceived value: {self.mcts_value:.3f}')
 
         Debug.save_tree(self.root)
 
@@ -379,7 +380,7 @@ class _MonteCarloAgent(Agent, ABC):
         # use fixed time for now
         kwargs.setdefault('max_time_per_move', DefaultParams.max_time_per_move)
         super().__init__(**kwargs)
-        self.mcts_move_probs = None
+        self.mcts_info = {}
         self.mcts_kwargs = mcts_kwargs or {}
         self.mcts_kwargs['is_training'] = is_training
         self.mcts_kwargs['evaluator'] = evaluator
@@ -415,13 +416,14 @@ class _MonteCarloAgent(Agent, ABC):
         mcts = self.get_mcts(root)
         # print(mcts)
         action = mcts.get_action()
-        self.mcts_move_probs = mcts.move_probs
+        self.mcts_info = dict(
+            mcts_move_probs=mcts.move_probs,
+            mcts_value=mcts.mcts_value,
+        )
         return action
 
     def get_move_info(self):
-        return dict(
-            mcts_move_probs=self.mcts_move_probs,
-        )
+        return self.mcts_info.copy()
 
 
 class MonteCarloAdvancementAgent(_MonteCarloAgent):
