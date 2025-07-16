@@ -95,34 +95,37 @@ squadro.GamePlay(agent_1='random').run()
 
 #### Play against your trained AI
 
-After training your AI, you will be able to play against her (see [Training](#Training) section)
+After training your AI (see [Training](#Training) section), you will be able to play against her.
+
+#### Play against an online pre-trained AI
 
 
-[//]: # (TODO)
-[//]: # (#### Play against a benchmarked AI)
+If you do not want to train a model, as described in the [Training](#Training) section, you can still play against a model that the developers have already trained for you. They are available on [Hugging Face](https://huggingface.co/martin-shark/squadro/tree/main)—no need to download them from the browser, as they will automatically be downloaded once you run the code below.
 
-[//]: # ()
-[//]: # (If you do not want to train a model, as described in the [Training]&#40;#Training&#41; section, you can still play against a benchmarked model available online. After passing `init_from='online'`, you can set `model_path` to any of those currently supported models:)
+Here are the online pre-trained models:
 
-[//]: # ()
-[//]: # (| `model_path` | # layers | # heads | embed dims | # params | size   |)
+| Agent      | # pawns | size   |
+| ---------- | ------- | ------ |
+| Q-Learning | 2       | 18 kB  |
+| Q-Learning | 3       | 6.2 MB |
 
-[//]: # (|--------------|----------|---------|------------|----------|--------|)
+| Agent           | # pawns | # CNN layers | # blocks | # params | size   |
+| --------------- | ------- | ------------ | -------- | -------- | ------ |
+| Deep Q-Learning | 3       | 64           | 4        | 380 k    | 1.5 MB |
+| Deep Q-Learning | 4       | 128          | 6        | 1.8 M    | 7.1 MB |
+| Deep Q-Learning | 5       | 128          | 6        | 1.8 M    | 7.1 MB |
 
-[//]: # (| `...`        | 12       | 12      | 768        | 124M     | 500 MB |)
+Those models are all very lightweight, making them convenient even for machines with limited resources and fast games.
 
-[//]: # ()
-[//]: # (Note that the first time you use a model, it needs to be downloaded from the internet; so it can take a few minutes.)
+To use those models, simply instantiate the corresponding agent **without** passing the `model_path` argument (this is how the package makes the distinction between loading an online model and creating a new model).
 
-[//]: # ()
-[//]: # (Example:)
+```python
+from squadro import MonteCarloDeepQLearningAgent, MonteCarloQLearningAgent
 
-[//]: # ()
-[//]: # (```python)
+agent_ql = MonteCarloQLearningAgent()       # Deep Q-Learning
+agent_dql = MonteCarloDeepQLearningAgent()  # Q-Learning
 
-[//]: # (...)
-
-[//]: # (```)
+```
 
 #### Agents
 
@@ -223,7 +226,7 @@ Below is an example of good training metrics.
 - The self-play win rate stays around 50%.
 - The replay buffer samples remain diverse (above 80%).
 - The policy and value losses slowly decrease.
-- The win rate against its checkpoint is above 50% (checkpoint is replaced by the current model when win rate goes above 70%)
+- The win rate against its checkpoint is above 50% (checkpoint is replaced by the current model when the win rate goes above 70%)
 - The elo is smoothly increasing.
 
 Note that in reinforcement learning, the loss is not a key metrics to measure model improvement, as the training samples are constantly improving. Better metrics include the win rate against its checkpoint and elo. Once the latter metrics stabilize, the model has reached its peak.
