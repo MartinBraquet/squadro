@@ -5,8 +5,6 @@
 [![Downloads](https://static.pepy.tech/badge/squadro)](https://pepy.tech/project/squadro) 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[//]: # ([![Documentation Status]&#40;https://readthedocs.org/projects/squadro/badge/?version=latest&#41;]&#40;https://squadro.readthedocs.io/en/latest/?badge=latest&#41;)
-
 ## Documentation
 
 Squadro is a two-player board game on a 5x5 board. The goal is to have four of our pawns perform a return trip before the opponent. Each pawn has a respective speed given by the number of dots (1–3) at their starting position. If an opponent's pawn crosses one of my pawns, then my pawn returns to the side of the board. 
@@ -198,7 +196,7 @@ help(squadro.QLearningTrainer)
 
 #### Deep Q-Learning
 
-Here the state-action value is approximated by a neural network.
+Here, the state-action value is approximated by a neural network.
 
 ```python
 import squadro
@@ -219,7 +217,18 @@ trainer.run()
 
 For three pawns, it should take a few hours to train on a typical CPU (8–16 cores), and it is much faster on a GPU. For five pawns, it may take a few days.
 
-Once done, one can use the play against the AI agent (setting the same value for `model_path`):
+Below is an example of good training metrics.
+- The self-play win rate stays around 50%.
+- The replay buffer samples remain diverse (above 80%).
+- The policy and value losses slowly decrease.
+- The win rate against its checkpoint is above 50% (checkpoint is replaced by the current model when win rate goes above 70%)
+- The elo is smoothly increasing.
+
+Note that in reinforcement learning, the loss is not a key metrics to measure model improvement, as the training samples are constantly improving. Better metrics include the win rate against its checkpoint and elo. Once the latter metrics stabilize, the model has reached its peak.
+
+![](https://martinbraquet.com/wp-content/uploads/training_plots.png)
+
+Once done, one can play against the AI agent (setting the same value for `model_path`):
 
 ```python
 agent = squadro.MonteCarloDeepQLearningAgent(
@@ -248,41 +257,6 @@ You can render an animation of a game between two computer algorithms. Press the
 game = squadro.Game(agent_0='random', agent_1='random')
 squadro.GameAnimation(game).show()
 ```
-
-[//]: # (### Profiling)
-
-[//]: # ()
-[//]: # (You can also profile &#40;memory, CPU and GPU usage, etc.&#41; and benchmark the training process via:)
-
-[//]: # ()
-[//]: # (```python)
-
-[//]: # (...&#40;)
-
-[//]: # (    profile=True,)
-
-[//]: # (    profile_dir='profile_logs',)
-
-[//]: # (    ...)
-
-[//]: # (&#41;)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # (Then you can launch tensorboard and open http://localhost:6006 in your browser to watch in real time &#40;or after hand&#41; the training process.)
-
-[//]: # ()
-[//]: # (```shell)
-
-[//]: # (tensorboard --logdir=profile_logs)
-
-[//]: # (```)
-
-[//]: # (### User Interface)
-
-[//]: # ()
-[//]: # (...)
 
 ## Tests
 
