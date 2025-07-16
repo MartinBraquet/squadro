@@ -95,6 +95,7 @@ class State:
         self.winner = None
         self.timeout_player = None
         self.invalid_player = None
+        self.transition = None
 
         is_init = advancement is None
 
@@ -318,6 +319,7 @@ class State:
         if not self.is_action_valid(action):
             self.set_invalid_action(player=self.cur_player, action=action)
 
+        self.transition = [self.get_pawn_position(self.cur_player, action)]
         fun = get_moves_return if self.returning[self.cur_player][action] else get_moves
         n_moves = fun(self.n_pawns)[self.cur_player][action]
 
@@ -332,6 +334,7 @@ class State:
             if self.check_crossings(self.cur_player, action):
                 break
 
+        self.transition.append(self.get_pawn_position(self.cur_player, action))
         self.turn_count += 1
         self.cur_player = 1 - self.cur_player
 
