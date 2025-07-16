@@ -14,7 +14,7 @@ class DefaultParams:
     time_out = 3600.0
     first = -1
     n_pawns = 5
-    max_time_per_move = .05
+    max_time_per_move = 3.
     max_time_per_move_real_time = 3.
     uct = 1.0
     mcts_method = 'biased_uct'
