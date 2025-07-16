@@ -28,6 +28,7 @@ classifiers = [
 ]
 dependencies = [
     'Pillow',
+    'huggingface_hub',
     'ipython',
     "igraph",
     'matplotlib',
