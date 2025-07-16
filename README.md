@@ -13,7 +13,9 @@ Visit my [website](https://martinbraquet.com/research/#AI_Agent_for_Squadro_boar
 
 #### Demo
 
-![](https://youtu.be/1KkTbFvQc1Y)
+<img src="https://martinbraquet.com/wp-content/uploads/demo-1.gif" alt="drawing" width="300"/>
+
+[Watch a full demo on YouTube](https://youtu.be/1KkTbFvQc1Y)
 
 #### Other games?
 The code is modular enough to be easily applied to other games. To do so, you must implement its state in [state.py](squadro/state/state.py), and make a few other changes in the code base depending on your needs. Please raise an issue if discussion is needed.
