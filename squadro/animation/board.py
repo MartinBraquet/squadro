@@ -24,7 +24,7 @@ class Board:
         icon_surface = pygame.image.load(RESOURCE_PATH / "red_pawn_ret.png")
         pygame.display.set_icon(icon_surface)
 
-        # Initialise screen
+        # Initialize screen
         self.n_pawns = n_pawns
         self.n_tiles = n_tiles if n_tiles is not None else n_pawns + 2
         self.screen = pygame.display.set_mode(
@@ -78,10 +78,18 @@ class Board:
         pygame.display.flip()
 
     def draw_board(self, state):
+
+        def blit(source, dest):
+            for x, y in state.transition or []:
+                pos = (x * 100, y * 100)
+                if dest == pos:
+                    source = modify_color(source)
+            self.screen.blit(source, dest)
+
         # Draw the tiles
         for i in range(1, self.n_tiles - 1):
             for j in range(1, self.n_tiles - 1):
-                self.screen.blit(self.tile, (i * 100, j * 100))
+                blit(self.tile, (i * 100, j * 100))
 
         n_pixels = (self.n_pawns + 1) * 100
 
@@ -93,10 +101,10 @@ class Board:
         moves = get_moves(self.n_pawns)
 
         for pawn in range(self.n_pawns):
-            self.screen.blit(self.start_l[moves[0][pawn] - 1], (0, 100 * (pawn + 1)))
-            self.screen.blit(self.start_b[moves[0][pawn] - 1], (100 * (pawn + 1), n_pixels))
-            self.screen.blit(self.start_r[moves[1][pawn] - 1], (n_pixels, 100 * (pawn + 1)))
-            self.screen.blit(self.start_t[moves[1][pawn] - 1], (100 * (pawn + 1), 0))
+            blit(self.start_l[moves[0][pawn] - 1], (0, 100 * (pawn + 1)))
+            blit(self.start_b[moves[0][pawn] - 1], (100 * (pawn + 1), n_pixels))
+            blit(self.start_r[moves[1][pawn] - 1], (n_pixels, 100 * (pawn + 1)))
+            blit(self.start_t[moves[1][pawn] - 1], (100 * (pawn + 1), 0))
 
         # Draw the pawns
         pawn_images = dict(
@@ -244,3 +252,14 @@ def board_to_pawn_position(board_pos):
     (1, 2)
     """
     return tuple(map(lambda x: int(x / 100), board_pos))
+
+
+def modify_color(image):
+    image = image.copy()
+    image.lock()
+    for x in range(image.get_width()):
+        for y in range(image.get_height()):
+            if image.get_at((x, y)) == (76, 76, 76, 255):
+                image.set_at((x, y), (100, 80, 33, 255))
+    image.unlock()
+    return image
