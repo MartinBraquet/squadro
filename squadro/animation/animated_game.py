@@ -1,5 +1,5 @@
 import argparse
-from time import sleep
+from time import sleep, time
 
 import pygame
 
@@ -19,13 +19,14 @@ class GameAnimation:
     Visualize a game that was played between two computer agents
     """
 
-    def __init__(self, game: Game, move_delay=.05):
+    def __init__(self, game: Game, move_delay=.05, max_wait=None):
         """
         :param game: Game
         :param move_delay: delay in seconds between moves
         """
         self.game = game
         self.move_delay = move_delay
+        self.max_wait = max_wait
 
     def show(self):
         board = Board(self.game.n_pawns, title=f"Game Visualization: {self.game.title}")
@@ -60,8 +61,7 @@ class GameAnimation:
 
             sleep(self.move_delay)
 
-    @staticmethod
-    def get_command():
+    def get_command(self):
         """
         Wait for a command that will dictate the next update in the animation.
         Available commands:
@@ -69,6 +69,7 @@ class GameAnimation:
         - previous: show the previous move
         - quit: quit the game
         """
+        t = time()
         try:
             while True:
                 for event in pygame.event.get():
@@ -87,6 +88,9 @@ class GameAnimation:
                     return 'next'
                 if keys[pygame.K_LEFT]:
                     return 'previous'
+
+                if self.max_wait and time() - t > self.max_wait:
+                    return 'next'
         except SystemExit:
             return 'quit'
 
