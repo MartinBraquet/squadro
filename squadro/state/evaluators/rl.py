@@ -28,8 +28,18 @@ class _RLEvaluator(Evaluator, ABC):
         """
         :param model_path: Path to the directory where the model is stored.
         """
-        self.model_path = Path(model_path or DATA_PATH / self._default_dir)
+        self._model_path = model_path
         self.dtype = dtype
+
+    @property
+    def model_path(self) -> Path:
+        return Path(self._model_path or DATA_PATH / self._default_dir)
+
+    def get_model_path(self, n_pawns: int) -> Path:
+        path = self.model_path
+        if not self._model_path:
+            path /= str(n_pawns)[0]
+        return path
 
     def get_weight_update_timestamp(self, n_pawns: int):
         return self._weight_update_timestamp[self.get_filepath(n_pawns)]
@@ -44,7 +54,7 @@ class _RLEvaluator(Evaluator, ABC):
         cls._models = {}
 
     def get_filepath(self, n_pawns: int, model_path=None) -> str:
-        model_path = Path(model_path or self.model_path)
+        model_path = Path(model_path or self.get_model_path(n_pawns))
         return str(model_path / f"model_{n_pawns}.{self.dtype}")
 
     def clear(self):
@@ -244,12 +254,11 @@ class DeepQLearningEvaluatorMultipleGrids(_RLEvaluator):
     def get_weight_update_timestamp(self, n_pawns: int):
         return super().get_weight_update_timestamp(self.get_key(n_pawns, player=0))
 
-    @property
-    def separate_networks(self):
+    def is_separate_networks(self, n_pawns: int) -> bool:
         return self.model_config.separate_networks
 
     def get_key(self, n_pawns, player):
-        if self.separate_networks:
+        if self.is_separate_networks(n_pawns):
             assert player is not None, "Player must be specified for separate networks"
             key = f"{n_pawns}_{player}"
         else:
@@ -291,7 +300,7 @@ class DeepQLearningEvaluatorMultipleGrids(_RLEvaluator):
         model.save(filepath)
 
     def erase(self, n_pawns: int, filepath=None):
-        if self.separate_networks and not filepath:
+        if self.is_separate_networks(n_pawns) and not filepath:
             for player in range(2):
                 key = self.get_key(n_pawns, player=player)
                 filepath = self.get_filepath(key)
@@ -328,20 +337,26 @@ class DeepQLearningEvaluator(DeepQLearningEvaluatorMultipleGrids):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._separate_networks = None
+        self._separate_networks = {}
 
-    @property
-    def separate_networks(self):
-        if self._separate_networks is None:
-            files = os.listdir(self.model_path) if os.path.exists(self.model_path) else []
-            files = [f.replace('.pt', '').replace('model_', '') for f in files if f.endswith('.pt')]
+    def is_separate_networks(self, n_pawns: int) -> bool:
+        if isinstance(self._separate_networks, bool):
+            return self._separate_networks
+        n_pawns = int(str(n_pawns)[0])
+        if self._separate_networks.get(n_pawns) is None:
+            model_path = self.get_model_path(n_pawns)
+            files = os.listdir(model_path) if os.path.exists(model_path) else []
+            files = [
+                f.replace('.pt', '').replace('model_', '')
+                for f in files if f.endswith('.pt')
+            ]
             if set(files) == {'0', '1'}:
-                self._separate_networks = True
+                self._separate_networks[n_pawns] = True
             elif len(files) == 1:
-                self._separate_networks = False
+                self._separate_networks[n_pawns] = False
             else:
-                self._separate_networks = super().separate_networks
-        return self._separate_networks
+                self._separate_networks[n_pawns] = super().is_separate_networks(n_pawns)
+        return self._separate_networks[n_pawns]
 
     def get_model(self, n_pawns: int, player: int = None) -> Model:
         return super().get_model(n_pawns=n_pawns, player=player or 0)
