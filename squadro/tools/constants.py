@@ -11,7 +11,7 @@ EPS = 1e-12
 @dataclass
 class DefaultParams:
     agent = "random"
-    time_out = 900.0
+    time_out = 3600.0
     first = -1
     n_pawns = 5
     max_time_per_move = .05
