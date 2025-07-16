@@ -3,6 +3,8 @@ import signal
 from pathlib import Path
 from time import time
 
+from matplotlib import pyplot as plt
+
 from squadro.agents.agent import Agent
 from squadro.state.state import State
 from squadro.tools.agents import get_agent
@@ -22,6 +24,7 @@ class GameFromState:
         save_states: bool = None,
         agent_kwargs: dict = None,
         evaluators=None,
+        plot=False,
     ):
         agent_0 = agent_0 or DefaultParams.agent
         agent_1 = agent_1 or DefaultParams.agent
@@ -40,6 +43,7 @@ class GameFromState:
         self.save_states = save_states if save_states else False
         self.state_history: list[State] = []
         self.move_info = []
+        self.plot = plot
 
     def __repr__(self):
         text = f'{self.agents[0]} vs {self.agents[1]}, first: {self.first}, {self.state.n_pawns} pawns'
@@ -84,6 +88,8 @@ class GameFromState:
             last_action = None
             if self.save_states:
                 self.state_history.append(self.state.copy())
+            if self.plot:
+                self.plot = Plotter()
             while not self.state.game_over():
                 for evaluator in self.evaluators:
                     policy, state_value = evaluator.evaluate(self.state)
@@ -111,9 +117,12 @@ class GameFromState:
                 self.action_history.append(action)
                 self.state.apply_action(action)
                 last_action = action
+                move_info = self.agents[player].get_move_info()
                 if self.save_states:
                     self.state_history.append(self.state.copy())
-                    self.move_info.append(self.agents[player].get_move_info())
+                    self.move_info.append(move_info)
+                if self.plot and (mcts_value := move_info.get('mcts_value')):
+                    self.plot.update(len(self.action_history), mcts_value)
                 self._post_apply_action()
 
             logger.info(f'Game over: {self}')
@@ -193,3 +202,21 @@ def get_timed_action(player, state, last_action, time_left):
         exe_time = time() - start_time
         signal.setitimer(signal.ITIMER_REAL, 0)
     return action, exe_time
+
+
+class Plotter:
+    def __init__(self):
+        self.fig, self.ax = plt.subplots()
+        self.x, self.y = [], []
+        # ax.set_title(self.title)
+        self.ax.set_xlabel('turn')
+        self.ax.set_ylabel('MCTS agent value')
+        self.ax.set_ylim(-1, 1)
+
+    def update(self, x, y):
+        self.x.append(x)
+        self.y.append(y)
+        self.ax.plot(self.x, self.y, 'b')
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+        plt.pause(0.001)

@@ -49,6 +49,7 @@ class Benchmark:
                         agent_0=agent_0,
                         agent_1=agent_1,
                         first=first,
+                        plot=False,
                     )
                     game.run()
                     # logger.info(game.action_history)
