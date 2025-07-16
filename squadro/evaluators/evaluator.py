@@ -116,3 +116,7 @@ class Model(nn.Module):
 
     def byte_size(self, human_readable=True) -> int | str:
         return get_model_size(self, human_readable)
+
+
+def get_num_parameters(model):
+    return sum(p.numel() for p in model.parameters())
