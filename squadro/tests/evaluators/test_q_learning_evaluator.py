@@ -17,7 +17,7 @@ class TestQLearningEvaluator(ML):
         state = State(advancement=[[1, 2, 3], [1, 2, 4]], cur_player=0)
         with (
             TemporaryDirectory() as model_path,
-            patch.object(self.evaluator, '_model_path', model_path),
+            patch.object(self.evaluator, 'model_path', model_path),
         ):
             json.dump(
                 {'[[1, 2, 3], [1, 2, 4]], 0': .14},

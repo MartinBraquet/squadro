@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from huggingface_hub import hf_hub_download, list_repo_files
 from numpy.typing import NDArray
 
 from squadro.evaluators.evaluator import default_device, Model
@@ -14,32 +15,36 @@ from squadro.ml.channels import get_channels
 from squadro.state.evaluators.base import Evaluator
 from squadro.state.evaluators.ml import ModelConfig
 from squadro.state.state import State
-from squadro.tools.constants import DATA_PATH, inf
+from squadro.tools.constants import inf
 from squadro.tools.dates import get_file_modified_time, get_now, READABLE_DATE_FMT
 from squadro.tools.logs import logger
 from squadro.tools.state import get_grid_shape, state_to_index, get_reward
+
+HF_REPO_ID = "martin-shark/squadro"
 
 
 class _RLEvaluator(Evaluator, ABC):
     _default_dir = 'default'
     _weight_update_timestamp = defaultdict(lambda: 'unknown')
+    _online_models = ()
 
     def __init__(self, model_path: str | Path = None, dtype='json'):
         """
-        :param model_path: Path to the directory where the model is stored.
+        :param model_path: Path to the directory where the model(s) is stored.
         """
         self._model_path = model_path
+        if self._model_path:
+            self.model_path = Path(self._model_path)
+        else:
+            logger.info(f"No model path specified, using online pre-trained models.")
+            dir_path = self._default_dir
+            hf_files = [f for f in list_repo_files(HF_REPO_ID) if f.startswith(dir_path)]
+            path = None
+            for f in hf_files:
+                path = hf_hub_download(repo_id=HF_REPO_ID, filename=f)
+            assert path is not None, f"No files found in repo {HF_REPO_ID} for dir {dir_path}"
+            self.model_path = Path(path).parent
         self.dtype = dtype
-
-    @property
-    def model_path(self) -> Path:
-        return Path(self._model_path or DATA_PATH / self._default_dir)
-
-    def get_model_path(self, n_pawns: int) -> Path:
-        path = self.model_path
-        if not self._model_path:
-            path /= str(n_pawns)[0]
-        return path
 
     def get_weight_update_timestamp(self, n_pawns: int):
         return self._weight_update_timestamp[self.get_filepath(n_pawns)]
@@ -54,7 +59,7 @@ class _RLEvaluator(Evaluator, ABC):
         cls._models = {}
 
     def get_filepath(self, n_pawns: int, model_path=None) -> str:
-        model_path = Path(model_path or self.get_model_path(n_pawns))
+        model_path = Path(model_path or self.model_path)
         return str(model_path / f"model_{n_pawns}.{self.dtype}")
 
     def clear(self):
@@ -92,6 +97,14 @@ class _RLEvaluator(Evaluator, ABC):
     def _dump(self, model, filepath: str):
         ...
 
+    def check_online_model(self, n_pawns: int):
+        if not self._model_path:
+            raise ValueError(
+                "When `model_path` is not specified, a pre-trained model must be loaded."
+                f" But there is no pre-trained model available for {self._default_dir}"
+                f" with {n_pawns} pawns. Available number of pawns: {self._online_models}."
+            )
+
 
 class QLearningEvaluator(_RLEvaluator):
     """
@@ -102,6 +115,7 @@ class QLearningEvaluator(_RLEvaluator):
     """
     _models = {}
     _default_dir = 'q_learning'
+    _online_models = (2, 3)
 
     @property
     def is_json(self):
@@ -118,6 +132,7 @@ class QLearningEvaluator(_RLEvaluator):
                 logger.info(f"Using Q table at {filepath}")
                 self._weight_update_timestamp[filepath] = get_file_modified_time(filepath)
             else:
+                self.check_online_model(n_pawns)
                 if self.is_json:
                     self.models[n_pawns] = {}
                 else:
@@ -175,6 +190,7 @@ class DeepQLearningEvaluatorMultipleGrids(_RLEvaluator):
 
     _models = {}
     _default_dir = 'deep_q_learning'
+    _online_models = (3, 4, 5)
 
     def __init__(
         self,
@@ -286,6 +302,7 @@ class DeepQLearningEvaluatorMultipleGrids(_RLEvaluator):
                 self.models[key] = model
                 self._weight_update_timestamp[filepath] = get_file_modified_time(filepath)
             else:
+                self.check_online_model(n_pawns)
                 logger.warn(f"No file at {filepath}, creating new model")
                 self.models[key] = Model(
                     n_pawns=n_pawns,
@@ -344,15 +361,11 @@ class DeepQLearningEvaluator(DeepQLearningEvaluatorMultipleGrids):
             return self._separate_networks
         n_pawns = int(str(n_pawns)[0])
         if self._separate_networks.get(n_pawns) is None:
-            model_path = self.get_model_path(n_pawns)
+            model_path = self.model_path
             files = os.listdir(model_path) if os.path.exists(model_path) else []
-            files = [
-                f.replace('.pt', '').replace('model_', '')
-                for f in files if f.endswith('.pt')
-            ]
-            if set(files) == {'0', '1'}:
+            if {f'model_{n_pawns}_0.pt', f'model_{n_pawns}_1.pt'}.issubset(files):
                 self._separate_networks[n_pawns] = True
-            elif len(files) == 1:
+            elif {f'model_{n_pawns}.pt'}.issubset(files):
                 self._separate_networks[n_pawns] = False
             else:
                 self._separate_networks[n_pawns] = super().is_separate_networks(n_pawns)
