@@ -3,9 +3,11 @@ import signal
 from pathlib import Path
 from time import time
 
+from black.trans import defaultdict
 from matplotlib import pyplot as plt
 
 from squadro.agents.agent import Agent
+from squadro.agents.montecarlo_agent import MonteCarloAgent
 from squadro.state.state import State
 from squadro.tools.agents import get_agent
 from squadro.tools.arrays import box, array2string
@@ -89,7 +91,7 @@ class GameFromState:
             if self.save_states:
                 self.state_history.append(self.state.copy())
             if self.plot:
-                self.plot = Plotter()
+                self.plot = Plotter(agents=self.agents)
             while not self.state.game_over():
                 for evaluator in self.evaluators:
                     policy, state_value = evaluator.evaluate(self.state)
@@ -122,7 +124,7 @@ class GameFromState:
                     self.state_history.append(self.state.copy())
                     self.move_info.append(move_info)
                 if self.plot and (mcts_value := move_info.get('mcts_value')):
-                    self.plot.update(len(self.action_history), mcts_value)
+                    self.plot.update(len(self.action_history), mcts_value, i=player)
                 self._post_apply_action()
 
             logger.info(f'Game over: {self}')
@@ -205,18 +207,24 @@ def get_timed_action(player, state, last_action, time_left):
 
 
 class Plotter:
-    def __init__(self):
+    def __init__(self, agents: list[Agent]):
+        self.names = [a.get_name() for a in agents]
+        self.n = sum(isinstance(a, MonteCarloAgent) for a in agents)
         self.fig, self.ax = plt.subplots()
-        self.x, self.y = [], []
-        # ax.set_title(self.title)
-        self.ax.set_xlabel('turn')
-        self.ax.set_ylabel('MCTS agent value')
-        self.ax.set_ylim(-1, 1)
+        self.X, self.Y = defaultdict(list), defaultdict(list)
+        ax = self.ax
+        ax.set_xlabel('turn')
+        ax.set_ylabel('MCTS perceived value')
+        ax.set_ylim(-1, 1)
 
-    def update(self, x, y):
-        self.x.append(x)
-        self.y.append(y)
-        self.ax.plot(self.x, self.y, 'b')
+    def update(self, x, y, i=0):
+        X, Y = self.X[i], self.Y[i]
+        X.append(x)
+        Y.append(y)
+        self.ax.plot(X, Y, {0: 'y', 1: 'r'}[i], label=self.names[i])
+        legends = self.ax.get_legend()
+        if not legends or len(legends.texts) < self.n:
+            self.ax.legend()
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
         plt.pause(0.001)

@@ -365,7 +365,7 @@ class MCTS:
         return int(action)
 
 
-class _MonteCarloAgent(Agent, ABC):
+class MonteCarloAgent(Agent, ABC):
     """
     Class that represents an agent performing Monte-Carlo tree search.
     """
@@ -426,7 +426,7 @@ class _MonteCarloAgent(Agent, ABC):
         return self.mcts_info.copy()
 
 
-class MonteCarloAdvancementAgent(_MonteCarloAgent):
+class MonteCarloAdvancementAgent(MonteCarloAgent):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('evaluator', AdvancementEvaluator())
         super().__init__(*args, **kwargs)
@@ -436,7 +436,7 @@ class MonteCarloAdvancementAgent(_MonteCarloAgent):
         return "mcts_advancement"
 
 
-class MonteCarloRolloutAgent(_MonteCarloAgent):
+class MonteCarloRolloutAgent(MonteCarloAgent):
     def __init__(
         self,
         mcts_kwargs: Optional[dict] = None,
@@ -452,7 +452,7 @@ class MonteCarloRolloutAgent(_MonteCarloAgent):
         return "mcts_rollout"
 
 
-class MonteCarloQLearningAgent(_MonteCarloAgent):
+class MonteCarloQLearningAgent(MonteCarloAgent):
     def __init__(
         self,
         model_path: str = None,
@@ -470,7 +470,7 @@ class MonteCarloQLearningAgent(_MonteCarloAgent):
         return "mcts_q_learning"
 
 
-class MonteCarloDeepQLearningAgent(_MonteCarloAgent):
+class MonteCarloDeepQLearningAgent(MonteCarloAgent):
     def __init__(
         self,
         model_path: str = None,
