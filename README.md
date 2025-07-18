@@ -95,7 +95,7 @@ All the agents have been evaluated against each other under controlled condition
 - Max 3 sec per move
 - 100 games per pairwise evaluation—exactly balanced across the four starting configurations—which color and who starts—except when a human is involved (only 5 games then)
 - Original grid (5 x 5)
-- Since all the top algorithms (MCTS and Minimax) are deterministic, we need to add small randomness to prevent each starting configuration from leading to the same game. We set `tau=.5, p_mix=0, a_dirichlet=0`.
+- Since all the top algorithms (MCTS and Minimax) are deterministic, we need to add small randomness to prevent each starting configuration from leading to the same game. We set `tau=.5, p_mix=0, a_dirichlet=0` to randomize the MCTS agents; the Minimax ones being les performant, we didn't bother with randomizing them for now.
 - Hardware information:
 	- CPU: AMD Ryzen 9 5900HX with Radeon Graphics (8 cores, 16 threads)
 	- GPU: No NVIDIA GPU
@@ -104,7 +104,7 @@ All the agents have been evaluated against each other under controlled condition
 	- Python 3.12.9 (CPython)
 	- Libraries: {'numpy': '2.0.1', 'torch': '2.6.0+cpu'}
 
-See [comparison.ipynb](notebooks/comparison.ipynb) for code reproducibility.
+See [benchmark.ipynb](notebooks/benchmark.ipynb) for code reproducibility.
 
 Below is the pairwise algorithm comparison; the value for some row R and column C corresponds to the win rate of R against C. For example, I (human) beat MCTS deep Q-learning 20% of the time.
 
