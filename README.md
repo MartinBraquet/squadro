@@ -210,12 +210,13 @@ Those models are all very lightweight, making them convenient even for machines 
 To use those models, simply instantiate the corresponding agent **without** passing the `model_path` argument (this is how the package makes the distinction between loading an online model and creating a new model).
 
 ```python
-import squadro
-
 dql = squadro.MonteCarloDeepQLearningAgent() # Deep Q-Learning Opponent
-ql = squadro.MonteCarloQLearningAgent() # Q-Learning Opponent
-
 squadro.GamePlay(agent_1=dql).run()
+```
+
+```python
+ql = squadro.MonteCarloQLearningAgent() # Q-Learning Opponent
+squadro.GamePlay(agent_1=ql, n_pawns=3).run()
 ```
 
 ### Training
