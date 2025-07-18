@@ -22,7 +22,7 @@ The code is modular enough to be easily applied to other games. To do so, you mu
 
 ## Installation
 
-The package works on any major OS (Linux, Windows and MacOS) and with Python >= 3.11.
+The package works on any major OS (Linux, Windows, and MacOS) and with Python >= 3.11.
 
 > [!TIP]
 > If you have no intent to use a GPU, run this beforehand to install only the CPU version of the `pytorch` library (much lighter, and hence much faster to install):
@@ -91,14 +91,34 @@ print(squadro.AVAILABLE_AGENTS)
 
 All the agents have been evaluated against each other under controlled conditions:
 - Max 3 sec per move
-- 100 games (exactly balanced across the four starting configurations—which color and who starts) except when a human is involved (only 5 games then)
+- 100 games per pairwise evaluation—exactly balanced across the four starting configurations—which color and who starts—except when a human is involved (only 5 games then)
 - Original grid (5 x 5)
+- Since all the top algorithms (MCTS and Minimax) are deterministic, we need to add small randomness to prevent each starting configuration from leading to the same game. We set `tau=.5, p_mix=0, a_dirichlet=0`.
+- Hardware information:
+	- CPU: AMD Ryzen 9 5900HX with Radeon Graphics (8 cores, 16 threads)
+	- GPU: No NVIDIA GPU
+	- RAM: 15.02 GB RAM
+	- OS: Linux 6.11.0-29-generic (#29~24.04.1-Ubuntu SMP)
+	- Python 3.12.9 (CPython)
+	- Libraries: {'numpy': '2.0.1', 'torch': '2.6.0+cpu'}
 
-Here is the comparison:
+See [comparison.ipynb](notebooks/comparison.ipynb) for code reproducibility.
 
-TODO
+Here is the pairwise algorithm comparison:
 
-The deep Q-learning algorithm outperforms all other players, including the human (myself, an average player).
+|                         | human | mcts deep q learning | mcts advancement | mcts rollout | ab relative advancement | relative advancement | advancement | random |
+| :---------------------- | ----: | -------------------: | ---------------: | -----------: | ----------------------: | -------------------: | ----------: | -----: |
+| human                   |       |                  0.2 |              0.4 |            0 |                     0.8 |                    1 |           1 |      1 |
+| mcts deep q learning    |   0.8 |                      |             0.75 |         0.24 |                    0.54 |                    1 |           1 |      1 |
+| mcts advancement        |   0.6 |                 0.25 |                  |         0.06 |                    0.32 |                    1 |           1 |      1 |
+| mcts rollout            |     1 |                 0.76 |             0.94 |              |                    0.77 |                 0.98 |        0.99 |      1 |
+| ab relative advancement |   0.2 |                 0.46 |             0.68 |         0.23 |                         |                    1 |           1 |      1 |
+| relative advancement    |     0 |                    0 |                0 |         0.02 |                       0 |                      |         0.5 |   0.97 |
+| advancement             |     0 |                    0 |                0 |         0.01 |                       0 |                  0.5 |             |   0.95 |
+| random                  |     0 |                    0 |                0 |            0 |                       0 |                 0.03 |        0.05 |        |
+
+
+The MCTS rollout algorithm outperforms all other players, including the human (myself, an average player). The MCTS deep Q-learning algorithm is second, although it beats MCTS rollout when allowed less than .2 second per move.
 
 ## Usage
 
@@ -115,6 +135,13 @@ You can play against someone else or many different types of computer algorithms
 > Then try setting the following environment variable beforehand:
 > ```
 > export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libstdc++.so.6
+> ```
+
+> [!TIP]
+> To see detailed information about how the program is running, you can set up a logger by adding this at the start of your code:
+> ```python
+> import squadro
+> squadro.logger.setup()
 > ```
 
 #### Play against another human
