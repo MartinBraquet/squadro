@@ -310,10 +310,20 @@ game.to_file('game_results.json')
 
 ### Animations
 
-You can render an animation of a game between two computer algorithms. Press the left and right keys to navigate through the game.
+You can render an animation of any game. Press the left and right keys to navigate through the game.
+
+To get the game you want to animate, you can either simulate a new one.
 
 ```python
 game = squadro.Game(agent_0='random', agent_1='random')
+squadro.GameAnimation(game).show()
+```
+
+Or you can load the game from a file.
+
+```python
+game = squadro.Game.from_file('game_results.json')  
+print(game.to_dict())  
 squadro.GameAnimation(game).show()
 ```
 
