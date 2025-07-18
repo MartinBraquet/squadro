@@ -1,6 +1,10 @@
+from squadro import MonteCarloDeepQLearningAgent
+from squadro import logger
+from squadro.agents.montecarlo_agent import MonteCarloRolloutAgent, MonteCarloAdvancementAgent
 from squadro.core.game import Game
 from squadro.state.evaluators.base import Evaluator
-from squadro.tools.constants import DATA_PATH
+from squadro.tools.basic import PrettyDict
+from squadro.tools.constants import DATA_PATH, DefaultParams
 from squadro.tools.dates import get_now
 from squadro.tools.disk import mkdir
 from squadro.tools.logs import benchmark_logger as logger
@@ -80,3 +84,47 @@ def benchmark(*args, **kwargs) -> float:
     Benchmark evaluation between two agents.
     """
     return Benchmark(*args, **kwargs).run()
+
+
+def benchmark_agents(names, n_games=100, n_pawns=5, max_time_per_move=3, results=None):
+    if logger.client is None:
+        logger.setup(section=['benchmark', 'main'])
+
+    DefaultParams.max_time_per_move = max_time_per_move
+    mcts_agent_kwargs = dict(
+        is_training=True,
+        mcts_kwargs=PrettyDict(tau=.5, p_mix=0, a_dirichlet=0),
+    )
+
+    agents = {}
+    for name in names:
+        agents[name] = name
+    if 'mcts_rollout' in names:
+        agents['mcts_rollout'] = MonteCarloRolloutAgent(**mcts_agent_kwargs)
+    if 'mcts_advancement' in names:
+        agents['mcts_advancement'] = MonteCarloAdvancementAgent(**mcts_agent_kwargs)
+    if 'mcts_deep_q_learning' in names:
+        agents['mcts_deep_q_learning'] = MonteCarloDeepQLearningAgent(**mcts_agent_kwargs)
+
+    names = list(agents.keys())
+    logger.info(names)
+
+    results = results or {}
+    for i in range(len(agents)):
+        name_i = names[i]
+        if name_i not in results:
+            results[name_i] = {}
+        for j in range(i + 1, len(agents)):
+            name_j = names[j]
+            if results[name_i].get(name_j) is not None:
+                continue
+            logger.info(f"{name_i} vs {name_j}")
+            results[name_i][name_j] = result = benchmark(
+                agent_0=agents[name_i],
+                agent_1=agents[name_j],
+                n_pawns=n_pawns,
+                n_games=n_games,
+            )
+            logger.info(f"{name_i} vs {name_j}: {result}\n")
+
+    return results
