@@ -120,7 +120,9 @@ Below is the pairwise algorithm comparison; the value for some row R and column 
 | **random**                  |     0 |                    0 |                0 |            0 |                       0 |                 0.03 |        0.05 |        |
 
 
-The MCTS rollout algorithm outperforms all other players, including the human (myself, an average player). The MCTS deep Q-learning algorithm is second, although it beats MCTS rollout when allowed less than .2 second per move.
+The MCTS rollout algorithm outperforms all other players, including the human (myself, an average player). The MCTS deep Q-learning algorithm is second, although it beats MCTS rollout when allowed less than .2 second per move. 
+
+There are two components determining the quality of a tree-search algorithm: number of searches and the quality of evaluation at the end of each search. MCTS rollout has poorer evaluation quality but it makes vastly more (10x) searches than MCTS deep Q-learning. That's why MCTS rollout is more performant than MCTS deep Q-learning (especially so when the neural-network inference runs slowly on a CPU—instead of a GPU).
 
 ## Usage
 
