@@ -104,18 +104,18 @@ All the agents have been evaluated against each other under controlled condition
 
 See [comparison.ipynb](notebooks/comparison.ipynb) for code reproducibility.
 
-Here is the pairwise algorithm comparison:
+Below is the pairwise algorithm comparison; the value for some row R and column C corresponds to the win rate of R against C. For example, I (human) beat MCTS deep Q-learning 20% of the time.
 
-|                         | human | mcts deep q learning | mcts advancement | mcts rollout | ab relative advancement | relative advancement | advancement | random |
-| :---------------------- | ----: | -------------------: | ---------------: | -----------: | ----------------------: | -------------------: | ----------: | -----: |
-| human                   |       |                  0.2 |              0.4 |            0 |                     0.8 |                    1 |           1 |      1 |
-| mcts deep q learning    |   0.8 |                      |             0.75 |         0.24 |                    0.54 |                    1 |           1 |      1 |
-| mcts advancement        |   0.6 |                 0.25 |                  |         0.06 |                    0.32 |                    1 |           1 |      1 |
-| mcts rollout            |     1 |                 0.76 |             0.94 |              |                    0.77 |                 0.98 |        0.99 |      1 |
-| ab relative advancement |   0.2 |                 0.46 |             0.68 |         0.23 |                         |                    1 |           1 |      1 |
-| relative advancement    |     0 |                    0 |                0 |         0.02 |                       0 |                      |         0.5 |   0.97 |
-| advancement             |     0 |                    0 |                0 |         0.01 |                       0 |                  0.5 |             |   0.95 |
-| random                  |     0 |                    0 |                0 |            0 |                       0 |                 0.03 |        0.05 |        |
+|                             | human | mcts deep q learning | mcts advancement | mcts rollout | ab relative advancement | relative advancement | advancement | random |
+| :-------------------------- | ----: | -------------------: | ---------------: | -----------: | ----------------------: | -------------------: | ----------: | -----: |
+| **human**                   |       |                  0.2 |              0.4 |            0 |                     0.8 |                    1 |           1 |      1 |
+| **mcts deep q learning**    |   0.8 |                      |             0.75 |         0.24 |                    0.54 |                    1 |           1 |      1 |
+| **mcts advancement**        |   0.6 |                 0.25 |                  |         0.06 |                    0.32 |                    1 |           1 |      1 |
+| **mcts rollout**            |     1 |                 0.76 |             0.94 |              |                    0.77 |                 0.98 |        0.99 |      1 |
+| **ab relative advancement** |   0.2 |                 0.46 |             0.68 |         0.23 |                         |                    1 |           1 |      1 |
+| **relative advancement**    |     0 |                    0 |                0 |         0.02 |                       0 |                      |         0.5 |   0.97 |
+| **advancement**             |     0 |                    0 |                0 |         0.01 |                       0 |                  0.5 |             |   0.95 |
+| **random**                  |     0 |                    0 |                0 |            0 |                       0 |                 0.03 |        0.05 |        |
 
 
 The MCTS rollout algorithm outperforms all other players, including the human (myself, an average player). The MCTS deep Q-learning algorithm is second, although it beats MCTS rollout when allowed less than .2 second per move.
