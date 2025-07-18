@@ -120,9 +120,11 @@ Below is the pairwise algorithm comparison; the value for some row R and column 
 | **random**                  |     0 |                    0 |                0 |            0 |                       0 |                 0.03 |        0.05 |        |
 
 
-The MCTS rollout algorithm outperforms all other players, including the human (myself, an average player). The MCTS deep Q-learning algorithm is second, although it beats MCTS rollout when allowed less than .2 second per move. 
+The MCTS rollout algorithm outperforms all other players, including the human (myself, an average player). The MCTS deep Q-learning (DQL) algorithm is second, although it beats MCTS rollout when allowed less than .2 second per move. 
 
-There are two components determining the quality of a tree-search algorithm: number of searches and the quality of evaluation at the end of each search. MCTS rollout has poorer evaluation quality but it makes vastly more (10x) searches than MCTS deep Q-learning. That's why MCTS rollout is more performant than MCTS deep Q-learning (especially so when the neural-network inference runs slowly on a CPU—instead of a GPU).
+There are two components determining the quality of a tree-search algorithm: the number of searches and the quality of evaluation at the end of each search. MCTS rollout has poorer evaluation quality but it makes vastly more (10x) searches than MCTS DQL. That's why MCTS rollout is more performant than MCTS DQL (at least when the neural-network inference runs slowly on a CPU—instead of a GPU).
+
+The question whether a specific type of MCTS DQL may ever beat MCTS rollout at Squadro is still left hanging. It is well-known that RL algorithms outperform more basic tree-search algorithms (like rollout) for games like Chess and Go. But those games have a much larger state space than Squadro 5x5. For small state spaces, heavy state evaluation through neural networks tends to have less value since rolling out from one state to the end is very quick.
 
 ## Usage
 
