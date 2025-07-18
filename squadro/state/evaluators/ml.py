@@ -10,8 +10,8 @@ class ModelConfig:
     policy_hidden_dim: int = 4
     num_blocks: int = 5
     double_value_head: bool = False
-    board_flipping: bool = False
-    separate_networks: bool = True
+    board_flipping: bool = True
+    separate_networks: bool = False
 
     def __post_init__(self):
         if self.double_value_head and self.separate_networks:
