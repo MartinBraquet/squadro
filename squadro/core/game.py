@@ -1,9 +1,9 @@
 import json
 import signal
+from collections import defaultdict
 from pathlib import Path
 from time import time
 
-from black.trans import defaultdict
 from matplotlib import pyplot as plt
 
 from squadro.agents.agent import Agent
