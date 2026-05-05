@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install .['all']
+          pip install -r requirements.txt
 
       - name: Run tests
         run: pytest squadro --cov=squadro --cov-branch --cov-report=xml --cov-config=coverage.conf
