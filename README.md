@@ -11,7 +11,7 @@ This package proposes multiple features related to the Squadro game, whose most 
 
 Squadro is a two-player board game on a 5x5 board. The goal is to have four of our pawns perform a return trip before the opponent. Each pawn has a respective speed given by the number of dots (1–3) at their starting position. If an opponent's pawn crosses one of my pawns, then my pawn returns to the side of the board. 
 
-Visit my [website](https://martinbraquet.com/research/#AI_Agent_for_Squadro_board_game) for a visual and qualitative description.
+Visit my [website](https://martinbraquet.com/projects/squadro) for a visual and qualitative description.
 
 #### Demo
 
