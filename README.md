@@ -15,7 +15,7 @@ Visit my [website](https://martinbraquet.com/projects/squadro) for a visual and 
 
 #### Demo
 
-<img src="https://martinbraquet.com/wp-content/uploads/demo-1.gif" alt="drawing" width="300"/>
+<img src="https://raw.githubusercontent.com/MartinBraquet/assets/refs/heads/main/demo-squadro.gif" alt="drawing" width="300"/>
 
 [Watch a full demo on YouTube](https://youtu.be/1KkTbFvQc1Y)
 
